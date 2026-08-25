@@ -1,0 +1,42 @@
+---
+# Advertising a route and having it accepted are two separate things. The
+# client offers the route; headscale ignores it until an operator approves it.
+# Both halves have to be idempotent or every run reports a change.
+- name: Read the routes this host currently advertises
+  ansible.builtin.command: tailscale debug prefs
+  register: mesh_node_prefs
+  changed_when: false
+  check_mode: false
+
+- name: Advertise the guest subnet
+  ansible.builtin.command: >-
+    tailscale set --advertise-routes={{ mesh_node_advertised_routes | join(',') }}
+  when: >-
+    (mesh_node_prefs.stdout | from_json).AdvertiseRoutes | default([], true) | sort
+    != mesh_node_advertised_routes | sort
+  changed_when: true
+
+- name: Find this host in the headscale node list
+  ansible.builtin.command: headscale nodes list --output json
+  register: mesh_node_list
+  changed_when: false
+  check_mode: false
+
+- name: Read the routes headscale has approved for this host
+  ansible.builtin.set_fact:
+    mesh_node_entry: >-
+      {{ (mesh_node_list.stdout | from_json
+          | selectattr('given_name', 'equalto', mesh_node_name)
+          | first) }}
+
+# Approving replaces the whole set rather than adding to it, so the command
+# always names every route the host should have.
+- name: Approve the guest subnet
+  ansible.builtin.command: >-
+    headscale nodes approve-routes
+    --identifier {{ mesh_node_entry.id }}
+    --routes {{ mesh_node_advertised_routes | join(',') }}
+  when: >-
+    mesh_node_entry.approved_routes | default([], true) | sort
+    != mesh_node_advertised_routes | sort
+  changed_when: true

@@ -1,0 +1,65 @@
+---
+# OpenTofu talks to the Proxmox API as its own user, not as root. The role
+# below is the smallest set of privileges that still lets it build, configure
+# and destroy guests, and pull the Talos image into the guest storage.
+- name: List the API roles
+  ansible.builtin.command: pveum role list --output-format json
+  register: proxmox_roles
+  changed_when: false
+  check_mode: false
+
+- name: Create the OpenTofu API role
+  ansible.builtin.command: >-
+    pveum role add {{ proxmox_api_role }}
+    --privs {{ proxmox_api_privileges | join(',') }}
+  when: proxmox_api_role not in (proxmox_roles.stdout | from_json | map(attribute='roleid') | list)
+  changed_when: true
+
+# Privileges change as the provider grows. Keeping this separate from creation
+# means the list above stays the single source of truth.
+- name: Update the OpenTofu API role privileges
+  ansible.builtin.command: >-
+    pveum role modify {{ proxmox_api_role }}
+    --privs {{ proxmox_api_privileges | join(',') }}
+  when: proxmox_api_role in (proxmox_roles.stdout | from_json | map(attribute='roleid') | list)
+  changed_when: false
+
+- name: List the API users
+  ansible.builtin.command: pveum user list --output-format json
+  register: proxmox_api_users
+  changed_when: false
+  check_mode: false
+
+- name: Create the OpenTofu API user
+  ansible.builtin.command: pveum user add {{ proxmox_api_user }}
+  when: proxmox_api_user not in (proxmox_api_users.stdout | from_json | map(attribute='userid') | list)
+  changed_when: true
+
+- name: Grant the OpenTofu user its role
+  ansible.builtin.command: >-
+    pveum acl modify /
+    --user {{ proxmox_api_user }}
+    --role {{ proxmox_api_role }}
+  changed_when: false
+
+# The token secret is shown once and never again, so it cannot be created
+# idempotently. `docs/manual/3-provision-cluster.md` has the command to run by
+# hand, and the result belongs in the encrypted secrets file.
+# Fails outright when the user does not exist yet, which is the normal state
+# under --check on a server that has never had this role applied for real.
+- name: Report whether the OpenTofu user has a token
+  ansible.builtin.command: pveum user token list {{ proxmox_api_user }} --output-format json
+  register: proxmox_api_tokens
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
+- name: Say so when the API token is still missing
+  ansible.builtin.debug:
+    msg: >-
+      {{ proxmox_api_user }} has no API token yet. Create one with
+      `pveum user token add {{ proxmox_api_user }} {{ proxmox_api_token_name }} --privsep 0`
+      and store it in secrets.enc.yaml. See docs/manual/3-provision-cluster.md.
+  when: >-
+    proxmox_api_tokens.rc != 0
+    or (proxmox_api_tokens.stdout | from_json | length == 0)

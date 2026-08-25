@@ -1,0 +1,27 @@
+---
+# A guest disk can only be created on storage whose content types include
+# `images`. Proxmox's defaults already do, so this normally changes nothing; it
+# is here so the requirement is written down and stays true.
+- name: Read the guest storage configuration
+  ansible.builtin.command: pvesh get /storage/{{ proxmox_storage }} --output-format json
+  register: proxmox_storage_config
+  changed_when: false
+  check_mode: false
+
+# `pvesm set --content` replaces the list rather than adding to it, so the new
+# value is the union of what is there and what is needed. Setting only the
+# required types would quietly drop the others, `rootdir` among them.
+- name: Work out the content types the guest storage should have
+  ansible.builtin.set_fact:
+    proxmox_storage_current: >-
+      {{ (proxmox_storage_config.stdout | from_json).content | split(',') | sort }}
+    proxmox_storage_wanted: >-
+      {{ ((proxmox_storage_config.stdout | from_json).content | split(','))
+         | union(proxmox_storage_content) | sort }}
+
+- name: Allow disks and images on the guest storage
+  ansible.builtin.command: >-
+    pvesm set {{ proxmox_storage }}
+    --content {{ proxmox_storage_wanted | join(',') }}
+  when: proxmox_storage_wanted != proxmox_storage_current
+  changed_when: true

@@ -35,6 +35,7 @@
   register: mesh_node_status
   changed_when: false
   failed_when: false
+  check_mode: false
 
 - name: Record mesh membership
   ansible.builtin.set_fact:
@@ -46,6 +47,11 @@
   ansible.builtin.include_tasks: enroll.yaml
   when: not mesh_node_joined
 
+# Guests are reached through this host rather than by joining the mesh
+# themselves, which needs a route advertised here and approved in headscale.
+- name: Advertise the guest subnet to the mesh
+  ansible.builtin.import_tasks: routes.yaml
+
 # Devices on the mesh must resolve the service names to this host's mesh
 # address, not to the public one. Headscale serves these records only to mesh
 # devices, so the public answer is unaffected.
@@ -53,6 +59,7 @@
   ansible.builtin.command: tailscale ip -4
   register: mesh_node_address
   changed_when: false
+  check_mode: false
 
 - name: Publish the mesh DNS records
   ansible.builtin.template:

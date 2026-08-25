@@ -19,15 +19,38 @@ reader.
 - **Cut anything that loses no information by being removed.** No filler, no
   restating the heading, no "as mentioned above".
 
-The manual lives in `docs/manual/`, numbered in the order you would follow it.
-Add new chapters to `docs/manual/index.md`. Reference facts about the system,
-like names and network ranges, belong in `README.md`, not in the manual.
+Documentation is split by the question it answers:
+
+| Where | Answers | Example |
+| --- | --- | --- |
+| `docs/manual/provisioning/` | "How do I get this running?", in order | Provisioning the cluster |
+| `docs/manual/maintenance/` | "How do I change this, now that it runs?" | Upgrading Cilium |
+| `docs/concepts/` | "How does this work, and why?" | Secrets with SOPS |
+| `docs/troubleshooting/` | "It is broken, now what?" | Applying step by step |
+| `docs/cheatsheet.md` | "What was that command?" | — |
+| `README.md` | "What is the system?" | Names, network ranges |
+
+The manual is split by when you need it. **Provisioning is numbered** and read in
+order, once. **Maintenance is not numbered**: each document is a standalone
+procedure for a system that is already running. Both are listed in
+`docs/manual/index.md`, and a new document goes in whichever answers its
+question, not wherever it was written.
+
+When a manual step needs a paragraph of background, that paragraph belongs in
+`docs/concepts/` and the step links to it. A maintenance procedure that needs to
+explain why the thing works the way it does is the same rule: the procedure
+stays a procedure, and the explanation gets a concepts document.
 
 ## Code
 
 - **Every value is defined exactly once**, in `ansible/group_vars/all.yaml` if
   more than one role reads it, otherwise in that role's `defaults/main.yaml`.
-  Never repeat a literal in a task or a template.
+  Never repeat a literal in a task or a template. In OpenTofu the same rule
+  points at `opentofu/project/locals.tf` for anything describing a node, and
+  `terraform.tfvars` for anything describing the environment.
+- **Role defaults carry the role's name as a prefix**, so a value read only by
+  the `proxmox` role is `proxmox_*`. `ansible-lint` enforces this. Values in
+  `group_vars` are shared and use the name of the thing they describe.
 - **Never write the server's public IP anywhere.** It lives in the Cloudflare
   DNS records. Ansible reaches the server by name; templates use the
   `ansible_facts.default_ipv4` facts.
@@ -47,19 +70,60 @@ like names and network ranges, belong in `README.md`, not in the manual.
 
 ## Secrets
 
-There are none in this repo, and it should stay that way. The pre-auth key that
-joins the server to the mesh is created and used within a single run, and is
-never written to disk.
+Secrets live in `secrets.enc.yaml`, encrypted with SOPS, and that file is
+committed. How and why is in
+[Secrets with SOPS](docs/concepts/sops.md); the rules below are what you must
+follow when changing this repo.
 
-Adding the first stored credential is a decision, not a detail. Raise it before
-writing it.
+**Nothing in this repo may hold a secret in plaintext**, including `.tfvars`
+files, role defaults, and anything a `.gitignore` entry is the only thing
+protecting.
+
+- **One encrypted file for the whole repo.** Both Ansible and OpenTofu read from
+  it, so it sits at the root rather than inside either tree.
+- **Secrets reach a command as environment variables**, through
+  `sops exec-env`. Never decrypt to a file.
+- **The age key that decrypts it is not in the repo** and never will be. It is
+  the one secret that cannot be stored here.
+- **The encrypted file documents itself.** SOPS encrypts values, not keys, so the
+  key names are readable without decrypting. There is no example file to keep in
+  sync, and adding one would be a second place to forget.
+- **`task secrets:init` owns the bootstrap**, including the list of key names. A
+  new key goes there and in the file, nowhere else.
+
+Some secrets still never get stored, because they do not need to be. The pre-auth
+key joining the server to the mesh is created and used within a single run. The
+Proxmox API token is minted by hand, because Proxmox shows it once and a task
+that cannot be repeated cannot be idempotent.
+
+OpenTofu state holds the cluster's certificate authorities. It is not encrypted
+by OpenTofu; the R2 bucket being private is what protects it, and
+[Secrets with SOPS](docs/concepts/sops.md) explains why that trade was made.
+Nothing writes state to this repo.
+
+## OpenTofu
+
+- **`opentofu/project` is the root module**, and the only place you run `tofu`.
+  `opentofu/modules` holds anything reused.
+- **A node is described in `locals.tf` and nowhere else.** Adding a worker is one
+  line there.
+- **Providers are pinned** to a minor version in `versions.tf`.
+- **Never run `tofu` directly.** The Taskfile wraps every command in
+  `sops exec-env`, which is what supplies the credentials.
 
 ## Before you finish
 
 ```bash
 task ansible:lint
 task ansible:check
+task tofu:fmt
+task tofu:validate
+task secrets:check
 ```
 
 `ansible:lint` must pass with no failures. `ansible:check` must show only the
 changes you intended. A second `task ansible:site` must report nothing changed.
+`tofu:validate` must pass with no warnings; a deprecation warning means the
+provider has renamed something and the code should follow. `secrets:check` must
+say the file is encrypted: it is deliberately not gitignored, so a plaintext one
+would be committed.

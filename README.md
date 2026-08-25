@@ -8,11 +8,15 @@ In this repo, I configure a dedicated server I have running:
 - **Mesh Network**: Headscale
 - **Virtualization**: Proxmox
 - **Public Access**: Cloudflare tunnels
-- **Container Orchestration**: Kubernetes
+- **Container Orchestration**: Kubernetes, on Talos Linux
+- **Provisioning**: OpenTofu
 
-To get it running, read the [Operator Manual](./docs/manual/index.md).
-When something breaks, read [Applying step by step](./docs/troubleshooting/step-by-step.md).
-For the commands you reach for most, see the [Cheatsheet](./docs/cheatsheet.md).
+## References
+
+- To get it running, read the [Operator Manual](./docs/manual/index.md).
+- When something breaks, read [Applying step by step](./docs/troubleshooting/step-by-step.md).
+- For the commands you reach for most, see the [Cheatsheet](./docs/cheatsheet.md).
+- For how a piece of this works rather than how to run it, see [Concepts](./docs/concepts/), starting with [The mesh network](./docs/concepts/mesh.md), [The cluster's networking](./docs/concepts/cilium.md) and [Secrets with SOPS](./docs/concepts/sops.md).
 
 ## Architecture
 
@@ -24,9 +28,13 @@ and HTTPS, and nothing else. Caddy terminates TLS and forwards to Headscale,
 which runs on loopback.
 
 Proxmox guests have no public address. They sit on a private bridge and reach the
-internet through NAT. To reach a guest, you join the mesh: the guest runs a
-Tailscale client that registers with Headscale, and your laptop talks to it over
-that. The server does the same.
+internet through NAT. To reach a guest, you join the mesh: the server advertises
+the guest subnet into it and forwards the traffic, so a guest needs no mesh
+client of its own.
+
+The guests are a six-node Kubernetes cluster running Talos Linux, built by
+OpenTofu. Ansible owns the server itself; OpenTofu owns everything inside it,
+and the Proxmox API is the line between them.
 
 The Proxmox interface is served by Caddy at `proxmox.homelab.grncunha.com`, with
 a real certificate, but only to mesh devices. The name answers differently
@@ -39,8 +47,11 @@ internet ──▶ 22, 80, 443 ──▶ homelab.grncunha.com
                               ├── caddy ──▶ headscale (loopback)
                               ├── tailscale client ──▶ mesh
                               └── proxmox ──▶ vmbr1 ──▶ guests (NAT, no public IP)
+                                                        ├── cp-1..3      ──▶ etcd, kube-apiserver
+                                                        └── worker-1..3  ──▶ workloads
 
-your laptop ──▶ mesh ──▶ proxmox UI :8006, and guests directly
+your laptop ──▶ mesh ──▶ proxmox UI :8006
+                     └──▶ 10.10.10.0/24, routed by the server ──▶ guests
 ```
 
 ### Names and links
@@ -70,8 +81,8 @@ Overlapping ranges are hard to debug once traffic is flowing.
 | `100.64.0.0/16` | Mesh addresses, handed out by Headscale | in use |
 | `10.10.10.0/24` | Proxmox guests on `vmbr1`; the server is `.1` | in use |
 | `10.10.20.0/24` | A second guest bridge, if one is ever needed | reserved |
-| `10.244.0.0/16` | Kubernetes pods | reserved |
-| `10.96.0.0/12` | Kubernetes services | reserved |
+| `10.244.0.0/16` | Kubernetes pods | in use |
+| `10.96.0.0/12` | Kubernetes services | in use |
 | `172.17.0.0/16` | Docker's default bridge | avoid |
 
 Two notes on the choices:
@@ -82,4 +93,21 @@ Two notes on the choices:
 - `10.96.0.0/12` reaches all the way to `10.111.255.255`. Guest bridges sit at
   `10.10.x` to stay well clear of it.
 
-Guests get static addresses. Nothing on the server hands out DHCP leases.
+Guests get static addresses. Nothing on the server hands out DHCP leases, which
+is why a Talos guest is given its first address by a cloud-init drive rather than
+finding one itself.
+
+### Guest addresses
+
+Check this table before giving a new guest an address.
+
+| Address | Guest | Notes |
+| --- | --- | --- |
+| `10.10.10.1` | The server | The bridge, and the gateway every guest uses |
+| `10.10.10.10` | Kubernetes API | Virtual, shared by the control planes |
+| `10.10.10.11`-`.13` | `cp-1` to `cp-3` | Control planes: 2 vCPU, 4 GB, 40 GB |
+| `10.10.10.21`-`.23` | `worker-1` to `worker-3` | Workers: 4 vCPU, 20 GB, 100 GB |
+| `10.10.10.100`-`.254` | Free | For anything that is not a cluster node |
+
+The cluster uses 18 vCPU against the host's 12 threads and 72 GB of its 125 GB.
+That leaves roughly 53 GB for the server itself.

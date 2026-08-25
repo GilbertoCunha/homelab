@@ -1,0 +1,5 @@
+# Managed by `task secrets:init`. Names the key that may decrypt each file.
+# The recipient is a public key: safe to commit, useless on its own.
+creation_rules:
+  - path_regex: secrets\.enc\.yaml$
+    age: age16y8uf79y5gmc6zpm07mrd5exkuf58pl24gc6ucf4pe6uwvp834hs6k59pk

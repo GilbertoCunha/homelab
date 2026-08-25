@@ -119,10 +119,33 @@ access policy will treat them as servers and deny them.
 Headscale instead of Tailscale's servers:
 
 ```bash
-tailscale up --login-server https://vpn.homelab.grncunha.com --authkey <key>
+tailscale up --login-server https://vpn.homelab.grncunha.com --authkey <key> --accept-routes
 ```
 
 The key authorises the device, so there is nothing to approve afterwards.
+
+`--accept-routes` is what lets this device reach the Proxmox guests on
+`10.10.10.0/24`, including the Kubernetes cluster. It is off by default in every
+client and nothing on the server can turn it on for you. If the device has
+already joined without it:
+
+```bash
+tailscale set --accept-routes
+```
+
+Either way, check the route arrived:
+
+```bash
+netstat -rn -f inet | grep 10.10.10
+```
+
+```
+10.10.10/24        link#31            UCS                 utun5
+```
+
+Nothing printed means the guests are unreachable from this device, however
+healthy the mesh looks. [The mesh network](../../concepts/mesh.md) explains why the
+route needs agreement from both ends.
 
 **3. On the server**, set a root password, once only.
 
@@ -136,8 +159,21 @@ passwd root
 This does not let anyone log in over SSH with a password. SSH is configured to
 refuse passwords entirely; only Proxmox uses this one.
 
-Ansible does not manage this password on purpose. Doing so would mean keeping a
-password hash in the repository, and nothing else here is a stored secret.
+Ansible does not manage this password on purpose. Setting it from the playbook
+would mean the playbook deciding it, and a password you cannot change on the
+server without also editing the repository is worse, not better.
+
+**Write this password down in the encrypted secrets file**, under
+`PROXMOX_ROOT_PASSWORD`. A rebuild wipes the server's users, and this password is
+not stored anywhere else.
+
+That file is `secrets.enc.yaml`, at the root of this repository. It is committed,
+and it is safe to commit because every value in it is encrypted with SOPS. See
+[Secrets with SOPS](../../concepts/sops.md) for what that means and how to use it.
+
+If you have not set that up yet, you have not reached it: it is step 2 of
+[Provision the cluster](./3-provision-cluster.md). Keep the password somewhere
+safe until then, and record it when you get there.
 
 **4. On your own device**, open the interface:
 
@@ -155,14 +191,11 @@ No port, no certificate warning. Log in with:
 
 ### How it stays private
 
-The name answers differently depending on who asks. Headscale tells mesh devices
-it is this server's mesh address. Everyone else gets the public address, which
-is what lets the certificate renew. Caddy then serves the interface only to
-mesh addresses and answers `403` to everything else.
-
-This means the client must be accepting DNS from Headscale, which it does by
-default. If you have turned that off with `--accept-dns=false`, the name
-resolves publicly and you get the `403`.
+The name answers differently depending on who asks: mesh devices get the
+server's mesh address, everyone else gets the public one, and Caddy answers
+`403` to anything that is not a mesh address.
+[The mesh network](../../concepts/mesh.md) explains the split and what a `403`
+tells you.
 
 Port `8006` is also open on the mesh, so `https://<mesh address>:8006` still
 works if Caddy is ever down. It shows a certificate warning, because that is
@@ -171,7 +204,7 @@ Proxmox's own self-signed certificate.
 ## Troubleshooting
 
 If several things fail at once, stop guessing and apply the playbook one
-role at a time: [Applying step by step](../troubleshooting/step-by-step.md).
+role at a time: [Applying step by step](../../troubleshooting/step-by-step.md).
 
 **Caddy cannot get a certificate.** Check the DNS record is **DNS only** and not
 proxied, as described in [Bootstrap](./1-bootstrap.md). On the server, Caddy
@@ -204,3 +237,8 @@ headscale nodes list
 
 **Everything is reported as changed on a second run.** That is a bug, not
 normal. A second `task ansible:site` should report no changes at all.
+
+## Next
+
+The server is now finished. Build the Kubernetes cluster on top of it with
+[Provision the cluster](./3-provision-cluster.md).

@@ -8,5 +8,11 @@
 - name: Install Proxmox VE
   ansible.builtin.import_tasks: install.yaml
 
+- name: Configure the guest storage
+  ansible.builtin.import_tasks: storage.yaml
+
+- name: Create the OpenTofu API user
+  ansible.builtin.import_tasks: api_user.yaml
+
 - name: Configure the guest network
   ansible.builtin.import_tasks: network.yaml

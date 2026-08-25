@@ -40,5 +40,6 @@
     --authkey {{ (mesh_node_preauthkey.stdout | from_json).key }}
     --hostname {{ mesh_node_name }}
     --accept-routes
+    --advertise-routes {{ mesh_node_advertised_routes | join(',') }}
   changed_when: true
   no_log: true

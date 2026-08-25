@@ -9,7 +9,7 @@ Use it the first time you set the server up, and any time something breaks.
 
 ## Before you start
 
-Finish [Bootstrap](../manual/1-bootstrap.md) first. DNS must resolve, and this
+Finish [Bootstrap](../manual/provisioning/1-bootstrap.md) first. DNS must resolve, and this
 must work:
 
 ```bash
@@ -154,7 +154,7 @@ journalctl -u caddy --since "10 minutes ago"
 ```
 
 The usual cause is the DNS record being proxied through Cloudflare instead of
-**DNS only**. See [Bootstrap](../manual/1-bootstrap.md).
+**DNS only**. See [Bootstrap](../manual/provisioning/1-bootstrap.md).
 
 ## Step 4: joining the mesh
 
@@ -177,6 +177,39 @@ cat /var/lib/headscale/extra-records.json
 `tailscale status` should say the connection is up. `headscale nodes list`
 should show `homelab` with an address starting `100.64.`, tagged `tag:infra`.
 The records file should contain that same address.
+
+The server also advertises the guest subnet, which is how a mesh device reaches
+a Proxmox guest without the guest joining the mesh itself:
+
+```bash
+headscale nodes list-routes
+```
+
+`10.10.10.0/24` should be listed against `homelab` and approved.
+
+That is only the server's half. Your own device has to accept the route, which it
+does not do by default and which no role can do for you. On **your own device**:
+
+```bash
+netstat -rn -f inet | grep 10.10.10
+```
+
+```
+10.10.10/24        link#31            UCS                 utun5
+```
+
+Nothing printed means every guest address times out, including the Kubernetes
+API. Before changing anything on the client, check the route was actually sent to
+it:
+
+```bash
+tailscale status --json | grep -A3 AllowedIPs
+```
+
+The `homelab` peer must list `10.10.10.0/24` and not just its own `/32`. If it is
+missing, the access policy is not permitting the subnet, which is a server-side
+fix in step 3's `acl.hujson`. If it is there, run `tailscale set --accept-routes`.
+[The mesh network](../concepts/mesh.md) explains the four steps a route needs.
 
 **If it fails on `tailscale up`**: run step 3's check from your own machine
 first. This step cannot work until that returns healthy.
@@ -201,10 +234,21 @@ systemctl status pveproxy
 uname -r
 ip a show vmbr1
 nft list table ip nat
+pvesh get /storage/local
+pveum user list
 ```
 
 `uname -r` should name a `pve` kernel. `vmbr1` should be up with the guest
 address. The NAT table should contain a masquerade rule for the guest network.
+
+`pvesh get /storage/local` must list `images` among its content types, or no
+guest disk can be created. Proxmox allows it by default, so this is a check
+rather than something the role usually has to fix. `pveum user list` should show
+`opentofu@pve` alongside `root@pam`.
+
+**The API token is not created here.** Proxmox shows a token secret once and
+never again, so Ansible cannot manage it. Mint it by hand when you get to
+[Provision the cluster](../manual/provisioning/3-provision-cluster.md).
 
 **If the install fails on `pve-manager` or `postfix`**: almost always
 `/etc/hosts`. Go back to step 1 and check `getent hosts`.
@@ -218,7 +262,7 @@ The role removes it; check `/etc/apt/sources.list.d/`.
 
 ## Step 6: reaching Proxmox by name
 
-Follow section 6 of [Configure the server](../manual/2-configure-server.md) to
+Follow section 6 of [Configure the server](../manual/provisioning/2-configure-server.md) to
 join your own device to the mesh, then:
 
 ```bash
@@ -227,6 +271,16 @@ dig +short proxmox.homelab.grncunha.com
 
 On a mesh device this prints an address starting `100.64.`. Anywhere else it
 prints the public address, and the site answers `403`. Both are correct.
+
+## Step 7: the Kubernetes cluster
+
+The server is now finished. The cluster is built on top of it with OpenTofu, not
+Ansible, and has its own walkthrough:
+[Provision the cluster](../manual/provisioning/3-provision-cluster.md).
+
+Do not start it until every step above passes. It reaches Proxmox over the mesh,
+so steps 4 and 6 in particular have to be working, and your own device must be
+accepting the guest route as checked in step 4.
 
 ## When a task fails
 
@@ -280,7 +334,7 @@ faster than the above.
 ### Rebuilding from scratch
 
 When the server is beyond fixing, reinstall it. Start again from
-[Bootstrap](../manual/1-bootstrap.md), then work through this document.
+[Bootstrap](../manual/provisioning/1-bootstrap.md), then work through this document.
 
 Before you do, know what is not in this repo and will not come back:
 
@@ -289,8 +343,8 @@ Before you do, know what is not in this repo and will not come back:
 | `/var/lib/headscale/db.sqlite` | Users, nodes, keys. Every device joins again. |
 | Headscale's noise and DERP keys | Regenerated. Harmless once devices re-join. |
 | Caddy's certificates | Re-issued automatically. See the rate limit below. |
-| Proxmox guests and their disks | **Gone.** Back them up first. |
-| The root password | Set it again with `passwd root`, or the Proxmox web login will not work. |
+| Proxmox guests and their disks | **Gone.** Back them up first. The Kubernetes cluster is one of these. |
+| The root password | Set it again with `passwd root`, or the Proxmox web login will not work. It is recorded in `secrets.enc.yaml`; see [Secrets with SOPS](../concepts/sops.md). |
 
 **The DNS records stay.** They point at the server, not at an installation, so
 there is nothing to redo in Cloudflare.

@@ -1,6 +1,23 @@
 ---
 version: "3"
 
+vars:
+  # The tofu tasks run inside the root module, so the secrets file is named by
+  # absolute path rather than relative to the working directory.
+  TOFU_DIR: opentofu/project
+  SECRETS: '{{.ROOT_DIR}}/secrets.enc.yaml'
+  SOPS_CONFIG: '{{.ROOT_DIR}}/.sops.yaml'
+  AGE_KEY: '{{.HOME}}/.config/sops/age/keys.txt'
+  # Decrypts to the environment for the life of one command. Nothing is written
+  # to disk in the clear, so there is no plaintext file to forget about.
+  WITH_SECRETS: sops exec-env {{.SECRETS}}
+
+env:
+  # SOPS looks for the age key in a different place on every platform, and on
+  # macOS it is `~/Library/Application Support/sops/age/keys.txt`. Naming the
+  # file outright means the key lives in one place whatever the machine.
+  SOPS_AGE_KEY_FILE: '{{.AGE_KEY}}'
+
 tasks:
   ansible:deps:
     desc: Installs the Ansible collections the playbook needs
@@ -36,3 +53,132 @@ tasks:
     desc: Configures the server, skipping the roles that need a TLS certificate
     cmds:
       - ansible-playbook ansible/site.yaml --skip-tags mesh
+
+  secrets:init:
+    desc: Creates the age key, .sops.yaml and the encrypted secrets file. Once, ever
+    cmds:
+      - |
+        set -eu
+        if [ -f "{{.AGE_KEY}}" ]; then
+          echo "Using the age key already at {{.AGE_KEY}}"
+        else
+          mkdir -p "$(dirname "{{.AGE_KEY}}")"
+          age-keygen -o "{{.AGE_KEY}}"
+          echo "Back this file up outside the repo. Nothing here decrypts without it."
+        fi
+
+        # Written from the key itself, so there is no placeholder to forget.
+        recipient="$(age-keygen -y "{{.AGE_KEY}}")"
+        cat > "{{.SOPS_CONFIG}}" <<EOF
+        # Managed by \`task secrets:init\`. Names the key that may decrypt each file.
+        # The recipient is a public key: safe to commit, useless on its own.
+        creation_rules:
+          - path_regex: secrets\.enc\.yaml$
+            age: $recipient
+        EOF
+        echo "Wrote {{.SOPS_CONFIG}} for $recipient"
+
+        if [ -f "{{.SECRETS}}" ]; then
+          echo "{{.SECRETS}} already exists, leaving it alone."
+        else
+          # The key names are the file's own documentation: SOPS encrypts values
+          # only, so these stay readable without decrypting anything.
+          cat > "{{.SECRETS}}" <<'EOF'
+        PROXMOX_ROOT_PASSWORD: ""
+        PROXMOX_VE_API_TOKEN: ""
+        AWS_ACCESS_KEY_ID: ""
+        AWS_SECRET_ACCESS_KEY: ""
+        EOF
+          sops -e -i "{{.SECRETS}}"
+          echo "Created {{.SECRETS}}, encrypted and empty. Fill it with: task secrets:edit"
+        fi
+
+  secrets:edit:
+    desc: Opens the encrypted secrets file in your editor
+    cmds:
+      - sops {{.SECRETS}}
+
+  secrets:check:
+    desc: Fails if the secrets file is not encrypted. Run before committing
+    cmds:
+      - |
+        set -eu
+        if [ ! -f "{{.SECRETS}}" ]; then
+          echo "No {{.SECRETS}}. Run: task secrets:init"
+          exit 1
+        fi
+        if ! grep -q '^sops:' "{{.SECRETS}}"; then
+          echo "REFUSING: {{.SECRETS}} is PLAINTEXT and is not gitignored."
+          echo "Encrypt it before committing:  sops -e -i {{.SECRETS}}"
+          exit 1
+        fi
+        echo "{{.SECRETS}} is encrypted."
+
+  secrets:show:
+    desc: Prints the decrypted secrets, to check the age key works
+    cmds:
+      - sops -d {{.SECRETS}}
+
+  tofu:init:
+    desc: Initialises OpenTofu against the R2 state backend
+    dir: "{{.TOFU_DIR}}"
+    cmds:
+      - '{{.WITH_SECRETS}} "tofu init {{.CLI_ARGS}}"'
+
+  tofu:fmt:
+    desc: Formats the OpenTofu code
+    cmds:
+      - tofu fmt -recursive opentofu/
+
+  tofu:validate:
+    desc: Checks the OpenTofu code is valid, without reaching the server
+    dir: "{{.TOFU_DIR}}"
+    cmds:
+      - '{{.WITH_SECRETS}} "tofu validate"'
+
+  tofu:plan:
+    desc: Shows what OpenTofu would change
+    dir: "{{.TOFU_DIR}}"
+    cmds:
+      - '{{.WITH_SECRETS}} "tofu plan {{.CLI_ARGS}}"'
+
+  tofu:apply:
+    desc: Builds the cluster, and waits for it to report healthy
+    dir: "{{.TOFU_DIR}}"
+    cmds:
+      - '{{.WITH_SECRETS}} "tofu apply {{.CLI_ARGS}}"'
+
+  tofu:destroy:
+    desc: Removes every guest. The cluster and its volumes are gone afterwards
+    dir: "{{.TOFU_DIR}}"
+    cmds:
+      - '{{.WITH_SECRETS}} "tofu destroy {{.CLI_ARGS}}"'
+
+  tofu:unlock:
+    desc: Releases a stale state lock, e.g. `task tofu:unlock -- <lock id>`
+    dir: "{{.TOFU_DIR}}"
+    cmds:
+      - '{{.WITH_SECRETS}} "tofu force-unlock {{.CLI_ARGS}}"'
+
+  tofu:cilium-manifest:
+    desc: Writes ./cilium.yaml, the rendered CNI manifest, for applying by hand
+    dir: "{{.TOFU_DIR}}"
+    cmds:
+      - '{{.WITH_SECRETS}} "tofu output -raw cilium_manifest" > {{.ROOT_DIR}}/cilium.yaml'
+      - 'echo "Wrote cilium.yaml. Normally Talos applies this for you; see docs/manual/maintenance/upgrading-cilium.md"'
+
+  tofu:kubeconfig:
+    desc: Writes ./kubeconfig, for kubectl
+    dir: "{{.TOFU_DIR}}"
+    cmds:
+      - '{{.WITH_SECRETS}} "tofu output -raw kubeconfig" > {{.ROOT_DIR}}/kubeconfig'
+      - chmod 600 {{.ROOT_DIR}}/kubeconfig
+      - 'echo "Wrote kubeconfig. Use it with: export KUBECONFIG={{.ROOT_DIR}}/kubeconfig"'
+
+  tofu:talosconfig:
+    desc: Writes ./talosconfig, for talosctl
+    dir: "{{.TOFU_DIR}}"
+    cmds:
+      - '{{.WITH_SECRETS}} "tofu output -raw talosconfig" > {{.ROOT_DIR}}/talosconfig'
+      - chmod 600 {{.ROOT_DIR}}/talosconfig
+      - 'echo "Wrote talosconfig. Use it with: export TALOSCONFIG={{.ROOT_DIR}}/talosconfig"'

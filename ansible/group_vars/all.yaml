@@ -30,6 +30,7 @@ headscale_prefix_v4: 100.64.0.0/16
 pve_bridge: vmbr1
 pve_guest_subnet: 10.10.10.0/24
 pve_bridge_address: 10.10.10.1/24
+pve_gateway: 10.10.10.1  # the bridge address, as guests see it
 k8s_pod_subnet: 10.244.0.0/16  # reserved, Talos default
 k8s_service_subnet: 10.96.0.0/12  # reserved, Talos default
 

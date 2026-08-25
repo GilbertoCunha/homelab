@@ -17,6 +17,7 @@ order. They narrow the problem down fast.
 | Your machine | `task ansible:ping` | The server is up and reachable |
 | Your machine | `curl -sS https://vpn.homelab.grncunha.com/health` | TLS and headscale are healthy from outside |
 | Server | `systemctl is-system-running` | Whether any service failed |
+| Your machine | `talosctl --nodes 10.10.10.11 health` | Whether the cluster is serving |
 
 ## On your own machine
 
@@ -36,6 +37,39 @@ A clean run ends with `changed=0` and `failed=0`. Anything reported as changed
 on a second run is a bug.
 
 Add flags after the tag, for example `task ansible:role -- caddy -vv`.
+
+### Running OpenTofu
+
+Every command below decrypts `secrets.enc.yaml` for the length of that one
+command. Never run `tofu` directly; it will fail with no credentials.
+
+| Command | When to use it |
+| --- | --- |
+| `task tofu:init` | First time, or after changing the backend or a provider |
+| `task tofu:plan` | See what would change. Always before apply |
+| `task tofu:apply` | Build or update the cluster. Waits until it is healthy |
+| `task tofu:fmt` | Format the code before committing |
+| `task tofu:validate` | Check the code without reaching the server |
+| `task tofu:kubeconfig` | Write `./kubeconfig` for `kubectl` |
+| `task tofu:talosconfig` | Write `./talosconfig` for `talosctl` |
+| `task tofu:destroy` | **Deletes every guest**, cluster and volumes with them |
+
+Add flags after `--`, for example `task tofu:plan -- -target=module.talos_node`.
+
+### Secrets
+
+How this works, and what to do when it does not:
+[Secrets with SOPS](./concepts/sops.md).
+
+| Command | What it does |
+| --- | --- |
+| `task secrets:edit` | Open the encrypted file in your editor |
+| `task secrets:show` | Print the decrypted values, to check your age key works |
+| `age-keygen -o ~/.config/sops/age/keys.txt` | Create the key. Once, ever |
+| `sops updatekeys secrets.enc.yaml` | Re-encrypt after changing `.sops.yaml` |
+
+The age key at `~/.config/sops/age/keys.txt` is not in the repo and cannot be
+recovered from it. If it is gone, every secret has to be created again.
 
 ### Applying without rebooting
 
@@ -129,6 +163,24 @@ install is correct, not a fault.
 | `nft list ruleset \| head -20` | `policy drop` on the input chain |
 | `nft list ruleset \| grep dport` | 22, 80, 443 public; 22, 443, 8006 on `tailscale0` |
 
+### Guests and the API user
+
+| Command | Good result |
+| --- | --- |
+| `qm list` | Six guests, `cp-1` to `cp-3` and `worker-1` to `worker-3`, all `running` |
+| `pvesh get /storage/local` | Content types include `images` and `snippets` |
+| `pveum user list` | `opentofu@pve` present |
+| `pveum user token list opentofu@pve` | One token, named `tofu` |
+| `headscale nodes list-routes` | `10.10.10.0/24` against `homelab`, approved |
+
+To mint the API token, once. The secret is shown once and never again:
+
+```bash
+pveum user token add opentofu@pve tofu --privsep 0
+```
+
+Without `--privsep 0` the token has no permissions and every call returns `403`.
+
 ### Upgrades and reboots
 
 | Command | Good result |
@@ -147,7 +199,7 @@ Install the [Tailscale client](https://tailscale.com/download) first, then use a
 key created on the server:
 
 ```bash
-tailscale up --login-server https://vpn.homelab.grncunha.com --authkey <key>
+tailscale up --login-server https://vpn.homelab.grncunha.com --authkey <key> --accept-routes
 ```
 
 | Command | Good result |
@@ -155,12 +207,66 @@ tailscale up --login-server https://vpn.homelab.grncunha.com --authkey <key>
 | `tailscale status` | Connected, and `homelab` listed as a peer |
 | `dig +short proxmox.homelab.grncunha.com` | An address starting `100.64.` |
 | `tailscale ping homelab` | A reply |
+| `netstat -rn -f inet \| grep 10.10.10` | A route for `10.10.10/24` on a `utun` interface |
 
 If `dig` returns the public address instead, this device is not accepting DNS
 from headscale, and Proxmox will answer `403`.
 
+If `netstat` prints nothing, this device is not accepting subnet routes, and
+everything on `10.10.10.0/24` times out: the guests, the Kubernetes API,
+`talosctl`, `tofu apply`. Fix it with `tailscale set --accept-routes`. See
+[The mesh network](./concepts/mesh.md).
+
 Then open `https://proxmox.homelab.grncunha.com` in a browser. No port, no
 certificate warning.
+
+## On the Kubernetes cluster
+
+Get the config files first, from the repo on your own machine:
+
+```bash
+task tofu:kubeconfig && export KUBECONFIG=$PWD/kubeconfig
+task tofu:talosconfig && export TALOSCONFIG=$PWD/talosconfig
+```
+
+Talos has no SSH and no shell. `talosctl` is the only way in.
+
+| Command | Good result |
+| --- | --- |
+| `kubectl get nodes -o wide` | Six nodes, all `Ready`, all `v1.36.2` |
+| `kubectl get pods -A` | Everything `Running` or `Completed` |
+| `talosctl --nodes 10.10.10.11 health` | Every check passes |
+| `talosctl --nodes 10.10.10.11 service etcd status` | `Running` and healthy |
+| `talosctl --nodes 10.10.10.11 dmesg` | Kernel and Talos logs for one node |
+| `talosctl --nodes 10.10.10.11 get members` | All six nodes known to the cluster |
+| `talosctl --nodes 10.10.10.11 get addresses` | Includes `10.10.10.10` on whichever node holds the virtual IP |
+
+| Address | What it is |
+| --- | --- |
+| `10.10.10.10` | The Kubernetes API. Virtual, moves between control planes |
+| `10.10.10.11`-`.13` | `cp-1` to `cp-3` |
+| `10.10.10.21`-`.23` | `worker-1` to `worker-3` |
+
+Restarting a node is `talosctl --nodes <ip> reboot`. Draining first is polite but
+not required; Talos brings the node back into the cluster on its own.
+
+### The network
+
+Cilium is the CNI and it also replaces kube-proxy, so it is what Services run on
+as well. See [The cluster's networking](./concepts/cilium.md).
+
+| Command | Good result |
+| --- | --- |
+| `kubectl -n kube-system get pods -l k8s-app=cilium` | Six pods, `Running`, `1/1` |
+| `kubectl -n kube-system exec ds/cilium -- cilium-dbg status --brief` | `OK` |
+| `kubectl -n kube-system get daemonset cilium -o jsonpath='{.spec.template.spec.containers[0].image}'` | The version pinned in `terraform.tfvars` |
+| `kubectl -n kube-system get pods -l k8s-app=kube-proxy` | **No resources found.** There is no kube-proxy, on purpose |
+
+Upgrading it has its own procedure:
+[Upgrading Cilium](./manual/maintenance/upgrading-cilium.md).
+
+**Nothing has persistent storage yet.** A pod asking for a volume stays
+`Pending`, and that is expected rather than broken.
 
 ## Recovering
 
@@ -168,7 +274,8 @@ certificate warning.
 | --- | --- |
 | Locked out by SSH or the firewall | Hetzner rescue mode. See [step by step](./troubleshooting/step-by-step.md) |
 | A role went wrong | Undo that piece, then run it again. Same document |
-| Beyond fixing | Reinstall and start from [Bootstrap](./manual/1-bootstrap.md) |
+| The cluster is wrong | `task tofu:destroy` then `task tofu:apply`. It is disposable |
+| Beyond fixing | Reinstall and start from [Bootstrap](./manual/provisioning/1-bootstrap.md) |
 
 Ansible has no undo. Running the playbook again re-applies the wanted state; it
 does not return the server to how it was before.

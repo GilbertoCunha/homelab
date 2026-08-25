@@ -18,3 +18,43 @@ proxmox_obsolete_packages:
 proxmox_enterprise_repo_files:
   - /etc/apt/sources.list.d/pve-enterprise.sources
   - /etc/apt/sources.list.d/ceph.sources
+
+# The only storage on the server: the implicit `local` directory, backed by the
+# root filesystem. Proxmox already allows these by default; they are listed so
+# the cluster's requirements are recorded, and stay true if the defaults change.
+# The role adds them to whatever is already set rather than replacing it.
+proxmox_storage: local
+proxmox_storage_content:
+  - images     # guest disks
+  - iso        # the Talos boot image
+  - snippets   # cloud-init data, if the generated drive is ever not enough
+
+# OpenTofu reaches the API as this user, never as root. See
+# docs/manual/3-provision-cluster.md for minting the token.
+proxmox_api_user: opentofu@pve
+proxmox_api_role: OpenTofu
+proxmox_api_token_name: tofu
+
+# The smallest set that still lets the provider build, configure and destroy
+# guests, and pull the Talos image into the guest storage.
+proxmox_api_privileges:
+  - Datastore.Allocate
+  - Datastore.AllocateSpace
+  - Datastore.AllocateTemplate
+  - Datastore.Audit
+  - SDN.Use
+  - Sys.Audit
+  - Sys.Modify
+  - VM.Allocate
+  - VM.Audit
+  - VM.Clone
+  - VM.Config.CDROM
+  - VM.Config.CPU
+  - VM.Config.Cloudinit
+  - VM.Config.Disk
+  - VM.Config.HWType
+  - VM.Config.Memory
+  - VM.Config.Network
+  - VM.Config.Options
+  - VM.GuestAgent.Audit
+  - VM.PowerMgmt

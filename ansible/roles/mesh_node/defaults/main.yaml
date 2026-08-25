@@ -12,3 +12,10 @@ mesh_node_tags: tag:infra
 
 # Pre-auth keys are credentials. Single use, short lived, never written to disk.
 mesh_node_preauthkey_expiry: 10m
+
+# Guests have no mesh client of their own. The server advertises their subnet
+# instead, so a mesh device reaches a guest through the forward rules already
+# in roles/common. Headscale ignores an advertised route until it is approved,
+# which the role does below.
+mesh_node_advertised_routes:
+  - "{{ pve_guest_subnet }}"
