@@ -119,6 +119,8 @@ install is correct, not a fault.
 | `uname -r` | Ends in `-pve` |
 | `ip -br a show vmbr1` | Address `10.10.10.1/24`. State reads `UNKNOWN`, which is normal for a bridge with no ports attached |
 | `nft list table ip nat` | A masquerade rule for `10.10.10.0/24` |
+| `passwd -S root` | `P`. An `L` means locked, and the web login will not work |
+| `passwd root` | Sets the password for the Proxmox web login, user `root`, realm `pam` |
 
 ### Firewall
 

@@ -290,6 +290,7 @@ Before you do, know what is not in this repo and will not come back:
 | Headscale's noise and DERP keys | Regenerated. Harmless once devices re-join. |
 | Caddy's certificates | Re-issued automatically. See the rate limit below. |
 | Proxmox guests and their disks | **Gone.** Back them up first. |
+| The root password | Set it again with `passwd root`, or the Proxmox web login will not work. |
 
 **The DNS records stay.** They point at the server, not at an installation, so
 there is nothing to redo in Cloudflare.

@@ -124,13 +124,34 @@ tailscale up --login-server https://vpn.homelab.grncunha.com --authkey <key>
 
 The key authorises the device, so there is nothing to approve afterwards.
 
-**3. On your own device**, open the interface:
+**3. On the server**, set a root password, once only.
+
+Proxmox checks the web login against the server's Linux users, and Hetzner
+installs with SSH keys and no password, so there is nothing to log in with yet:
+
+```bash
+passwd root
+```
+
+This does not let anyone log in over SSH with a password. SSH is configured to
+refuse passwords entirely; only Proxmox uses this one.
+
+Ansible does not manage this password on purpose. Doing so would mean keeping a
+password hash in the repository, and nothing else here is a stored secret.
+
+**4. On your own device**, open the interface:
 
 ```
 https://proxmox.homelab.grncunha.com
 ```
 
-No port, no certificate warning.
+No port, no certificate warning. Log in with:
+
+| Field | Value |
+| --- | --- |
+| User name | `root` |
+| Password | the one you just set |
+| Realm | **Linux PAM standard authentication** |
 
 ### How it stays private
 
