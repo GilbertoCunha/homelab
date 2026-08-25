@@ -18,6 +18,10 @@
     - role: mesh_node
       tags: [mesh]
 
-    # Last: this swaps the kernel and reboots the server.
+    # Swaps the kernel and reboots the server.
     - role: proxmox
       tags: [proxmox]
+
+    # Truly last: reboots only if something is still running on old code.
+    - role: reboot
+      tags: [reboot]

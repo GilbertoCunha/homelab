@@ -1,0 +1,3 @@
+---
+# Set to false to be told what needs a reboot without one happening.
+reboot_enabled: true

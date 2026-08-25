@@ -1,0 +1,37 @@
+---
+# An upgrade leaves services running against libraries that no longer exist on
+# disk, and a new kernel does nothing until you boot it. needrestart reports
+# both. This runs last so the reboot lands after everything else is applied.
+- name: Check what is running on old code
+  ansible.builtin.command: needrestart -b
+  register: reboot_needrestart
+  changed_when: false
+
+- name: Read the needrestart report
+  ansible.builtin.set_fact:
+    # 0 unknown, 1 current, 2 ABI compatible upgrade, 3 version upgrade.
+    reboot_kernel_status: >-
+      {{ reboot_needrestart.stdout_lines
+         | select('match', '^NEEDRESTART-KSTA:')
+         | map('regex_replace', '^NEEDRESTART-KSTA:\s*', '')
+         | first | default('0') }}
+    reboot_stale_services: >-
+      {{ reboot_needrestart.stdout_lines
+         | select('match', '^NEEDRESTART-SVC:')
+         | map('regex_replace', '^NEEDRESTART-SVC:\s*', '')
+         | list }}
+
+- name: Report what needs a reboot
+  ansible.builtin.debug:
+    msg: >-
+      Kernel status {{ reboot_kernel_status }}.
+      Services on old libraries:
+      {{ reboot_stale_services | join(', ') if reboot_stale_services else 'none' }}.
+
+- name: Reboot to finish applying upgrades
+  ansible.builtin.reboot:
+    reboot_timeout: 900
+    msg: Rebooting to finish applying upgrades
+  when:
+    - reboot_enabled | bool
+    - reboot_kernel_status | int >= 2 or reboot_stale_services | length > 0

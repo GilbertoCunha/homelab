@@ -1,0 +1,4 @@
+// Managed by Ansible (roles/common). Do not edit on the server.
+{% for key, value in common_apt_periodic.items() -%}
+APT::Periodic::{{ key }} "{{ value }}";
+{% endfor -%}

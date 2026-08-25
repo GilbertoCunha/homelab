@@ -4,6 +4,7 @@ common_packages:
   - curl
   - gnupg
   - htop
+  - needrestart
   - nftables
   - unattended-upgrades
   - vim
@@ -11,6 +12,15 @@ common_packages:
 # UDP ports the mesh needs on the public interface.
 common_derp_stun_port: 3478      # headscale embedded DERP, for NAT traversal
 common_wireguard_port: 41641     # tailscale data plane
+
+# Installing unattended-upgrades is not enough. The apt-daily timers only act
+# when these are set, and Debian ships no such file, so nothing is applied.
+# 1 means daily. Debian's own origins allow list decides what is eligible; the
+# Proxmox repository is not a Debian origin, so PVE is never auto-upgraded.
+common_apt_periodic:
+  Update-Package-Lists: 1
+  Unattended-Upgrade: 1
+  AutocleanInterval: 7
 
 common_sshd_settings:
   PasswordAuthentication: "no"

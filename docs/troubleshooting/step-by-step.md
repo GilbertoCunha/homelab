@@ -98,12 +98,17 @@ task ansible:role -- caddy
 Check it worked, on the server:
 
 ```bash
-systemctl status caddy
+systemctl is-active caddy
 caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
-ss -lntp | grep -E ':80|:443'
+ls /etc/caddy/sites/
 ```
 
-Caddy should be `active (running)` and listening on both ports.
+Caddy should be `active`, the config should say `Valid configuration`, and
+`/etc/caddy/sites/` should be empty.
+
+**Caddy is not listening on port 80 or 443 yet, and that is correct.** It only
+opens a port when a site is defined, and the first site arrives with headscale
+in the next step. Do not go hunting for a bug here.
 
 **If the package will not install**: the signing key or repository is wrong.
 Check `/etc/apt/sources.list.d/caddy-stable.sources` and run `apt update`.
