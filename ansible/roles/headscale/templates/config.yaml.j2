@@ -1,0 +1,74 @@
+# Managed by Ansible (roles/headscale). Do not edit on the server.
+---
+server_url: https://{{ headscale_hostname }}
+
+# Loopback only: Caddy terminates TLS and is the sole way in.
+listen_addr: {{ headscale_listen_addr }}
+metrics_listen_addr: {{ headscale_metrics_listen_addr }}
+grpc_listen_addr: {{ headscale_grpc_listen_addr }}
+grpc_allow_insecure: false
+
+# Caddy runs on this host, so the proxy headers it sets are trustworthy.
+trusted_proxies:
+  - 127.0.0.1/32
+
+noise:
+  private_key_path: {{ headscale_data_dir }}/noise_private.key
+
+prefixes:
+  v4: {{ headscale_prefix_v4 }}
+  v6: fd7a:115c:a1e0::/48
+  allocation: sequential
+
+derp:
+  server:
+    enabled: true
+    region_id: 999
+    region_code: homelab
+    region_name: Homelab Embedded DERP
+    verify_clients: {{ headscale_derp_verify_clients | lower }}
+    stun_listen_addr: "0.0.0.0:{{ headscale_derp_stun_port }}"
+    private_key_path: {{ headscale_data_dir }}/derp_server_private.key
+    automatically_add_embedded_derp_region: true
+  urls: []
+  paths: []
+  auto_update_enabled: false
+  update_frequency: 24h
+
+disable_check_updates: true
+
+database:
+  type: sqlite
+  sqlite:
+    path: {{ headscale_data_dir }}/db.sqlite
+    write_ahead_log: true
+
+# TLS is Caddy's job. Leaving these empty keeps headscale plain HTTP on loopback.
+acme_email: ""
+tls_letsencrypt_hostname: ""
+tls_cert_path: ""
+tls_key_path: ""
+
+log:
+  level: info
+  format: text
+
+policy:
+  mode: file
+  path: {{ headscale_policy_path }}
+
+dns:
+  magic_dns: true
+  # Must not be a parent of the server_url host, which it is not.
+  base_domain: {{ mesh_domain }}
+  override_local_dns: true
+  # Mutually exclusive with `extra_records`; set only this one.
+  extra_records_path: {{ headscale_records_path }}
+  nameservers:
+    global:
+{% for ns in headscale_nameservers %}
+      - {{ ns }}
+{% endfor %}
+
+unix_socket: /var/run/headscale/headscale.sock
+unix_socket_permission: "0770"

@@ -1,0 +1,12 @@
+---
+- name: Configure the Proxmox repositories
+  ansible.builtin.import_tasks: repositories.yaml
+
+- name: Install the Proxmox kernel
+  ansible.builtin.import_tasks: kernel.yaml
+
+- name: Install Proxmox VE
+  ansible.builtin.import_tasks: install.yaml
+
+- name: Configure the guest network
+  ansible.builtin.import_tasks: network.yaml

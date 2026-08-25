@@ -1,0 +1,6 @@
+---
+servers:
+  hosts:
+    homelab:
+      ansible_host: homelab.grncunha.com
+      ansible_user: root

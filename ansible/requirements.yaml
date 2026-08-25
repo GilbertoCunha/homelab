@@ -1,0 +1,7 @@
+---
+collections:
+  # Floors are the versions this playbook was written and linted against.
+  - name: ansible.posix
+    version: ">=2.2.2"
+  - name: community.general
+    version: ">=13.3.0"

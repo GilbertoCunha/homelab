@@ -1,0 +1,61 @@
+#!/usr/sbin/nft -f
+# Managed by Ansible (roles/common). Do not edit on the server.
+#
+# Public interface: {{ ansible_default_ipv4.interface }}
+# Only {{ public_tcp_ports | join(', ') }} are reachable from the internet.
+# The Proxmox UI is reachable over the mesh only.
+
+flush ruleset
+
+table inet filter {
+  chain input {
+    type filter hook input priority filter; policy drop;
+
+    ct state established,related accept
+    ct state invalid drop
+    iif lo accept
+
+    icmp type echo-request limit rate 10/second accept
+    icmpv6 type { echo-request, nd-neighbor-solicit, nd-neighbor-advert, nd-router-advert } accept
+
+    # --- public ---
+    iifname "{{ ansible_default_ipv4.interface }}" tcp dport { {{ public_tcp_ports | join(', ') }} } accept
+    iifname "{{ ansible_default_ipv4.interface }}" udp dport { {{ common_derp_stun_port }}, {{ common_wireguard_port }} } accept
+
+    # --- mesh ---
+    # Packets only reach tailscale0 after WireGuard authenticates them, so this
+    # is not internet-facing. Still limited to the ports actually needed; the
+    # headscale ACL policy is the real authorisation layer.
+    # Quoted names match by string, so these rules load before the interfaces exist.
+    iifname "tailscale0" tcp dport { {{ mesh_tcp_ports | join(', ') }} } accept
+    iifname "tailscale0" icmp type echo-request accept
+  }
+
+  chain forward {
+    type filter hook forward priority filter; policy drop;
+
+    ct state established,related accept
+
+    # Guests reach the internet; the internet does not reach guests.
+    iifname "{{ pve_bridge }}" oifname "{{ ansible_default_ipv4.interface }}" accept
+
+    # Guests are reachable over the mesh.
+    iifname "tailscale0" oifname "{{ pve_bridge }}" accept
+    iifname "{{ pve_bridge }}" oifname "tailscale0" accept
+
+    # Guests talk to each other.
+    iifname "{{ pve_bridge }}" oifname "{{ pve_bridge }}" accept
+  }
+
+  chain output {
+    type filter hook output priority filter; policy accept;
+  }
+}
+
+table ip nat {
+  chain postrouting {
+    type nat hook postrouting priority srcnat; policy accept;
+
+    ip saddr {{ pve_guest_subnet }} oifname "{{ ansible_default_ipv4.interface }}" masquerade
+  }
+}

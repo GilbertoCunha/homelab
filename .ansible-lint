@@ -1,0 +1,7 @@
+---
+# ansible-lint resolves modules against its own environment, which does not
+# always have the collections from ansible/requirements.yaml installed.
+# Declaring them here keeps the lint result the same everywhere.
+mock_modules:
+  - ansible.posix.sysctl
+  - community.general.timezone

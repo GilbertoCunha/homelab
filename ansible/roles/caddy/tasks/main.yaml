@@ -1,0 +1,49 @@
+---
+- name: Fetch the Caddy signing key
+  ansible.builtin.get_url:
+    url: "{{ caddy_key_url }}"
+    dest: "{{ caddy_keyring }}"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Add the Caddy apt repository
+  ansible.builtin.deb822_repository:
+    name: caddy-stable
+    types: [deb]
+    uris: "{{ caddy_repo_url }}"
+    suites: any-version
+    components: [main]
+    signed_by: "{{ caddy_keyring }}"
+    state: present
+  register: caddy_repo
+
+- name: Install caddy
+  ansible.builtin.apt:
+    name: caddy
+    state: present
+    update_cache: "{{ caddy_repo.changed }}"
+
+- name: Create the per-service vhost directory
+  ansible.builtin.file:
+    path: "{{ caddy_sites_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Install the Caddyfile
+  ansible.builtin.template:
+    src: Caddyfile.j2
+    dest: /etc/caddy/Caddyfile
+    owner: root
+    group: root
+    mode: "0644"
+    validate: caddy validate --config %s --adapter caddyfile
+  notify: Reload caddy
+
+- name: Enable caddy
+  ansible.builtin.service:
+    name: caddy
+    enabled: true
+    state: started

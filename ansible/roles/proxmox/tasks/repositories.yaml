@@ -1,0 +1,25 @@
+---
+- name: Fetch the Proxmox signing key
+  ansible.builtin.get_url:
+    url: "{{ proxmox_key_url }}"
+    dest: "{{ proxmox_keyring }}"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Add the Proxmox no-subscription repository
+  ansible.builtin.deb822_repository:
+    name: pve
+    types: [deb]
+    uris: "{{ proxmox_repo_url }}"
+    suites: "{{ proxmox_suite }}"
+    components: [pve-no-subscription]
+    signed_by: "{{ proxmox_keyring }}"
+    state: present
+  register: proxmox_repo
+
+# A handler would run too late: the next task installs from this cache.
+- name: Update the apt cache  # noqa: no-handler
+  ansible.builtin.apt:
+    update_cache: true
+  when: proxmox_repo.changed

@@ -1,0 +1,63 @@
+---
+- name: Fetch the Tailscale signing key
+  ansible.builtin.get_url:
+    url: "{{ mesh_node_key_url }}"
+    dest: "{{ mesh_node_keyring }}"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Add the Tailscale apt repository
+  ansible.builtin.deb822_repository:
+    name: tailscale
+    types: [deb]
+    uris: "{{ mesh_node_repo_url }}"
+    suites: trixie
+    components: [main]
+    signed_by: "{{ mesh_node_keyring }}"
+    state: present
+  register: mesh_node_repo
+
+- name: Install tailscale
+  ansible.builtin.apt:
+    name: tailscale
+    state: present
+    update_cache: "{{ mesh_node_repo.changed }}"
+
+- name: Enable tailscaled
+  ansible.builtin.service:
+    name: tailscaled
+    enabled: true
+    state: started
+
+- name: Check whether this host is already on the mesh
+  ansible.builtin.command: tailscale status --json
+  register: mesh_node_status
+  changed_when: false
+  failed_when: false
+
+- name: Record mesh membership
+  ansible.builtin.set_fact:
+    mesh_node_joined: >-
+      {{ mesh_node_status.rc == 0
+         and (mesh_node_status.stdout | from_json).BackendState | default('') == 'Running' }}
+
+- name: Enroll this host into its own headscale
+  ansible.builtin.include_tasks: enroll.yaml
+  when: not mesh_node_joined
+
+# Devices on the mesh must resolve the service names to this host's mesh
+# address, not to the public one. Headscale serves these records only to mesh
+# devices, so the public answer is unaffected.
+- name: Read this host's mesh address
+  ansible.builtin.command: tailscale ip -4
+  register: mesh_node_address
+  changed_when: false
+
+- name: Publish the mesh DNS records
+  ansible.builtin.template:
+    src: extra-records.json.j2
+    dest: "{{ headscale_records_path }}"
+    owner: root
+    group: headscale
+    mode: "0640"

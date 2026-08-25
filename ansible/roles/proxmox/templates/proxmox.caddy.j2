@@ -1,0 +1,23 @@
+# Managed by Ansible (roles/proxmox). Do not edit on the server.
+#
+# This name resolves two ways. Mesh devices get this host's mesh address, from
+# the records headscale serves them. Everyone else gets the public address,
+# which is what lets Let's Encrypt renew the certificate. Only mesh devices are
+# served anything; the rest get 403.
+{{ proxmox_hostname }} {
+	@offmesh not remote_ip {{ headscale_prefix_v4 }}
+
+	handle @offmesh {
+		respond "Available on the mesh only." 403
+	}
+
+	handle {
+		# Proxmox serves its own self-signed certificate on loopback. Caddy holds
+		# the real one, so verifying this hop adds nothing.
+		reverse_proxy https://127.0.0.1:8006 {
+			transport http {
+				tls_insecure_skip_verify
+			}
+		}
+	}
+}

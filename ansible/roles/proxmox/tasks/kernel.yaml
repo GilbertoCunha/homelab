@@ -1,0 +1,14 @@
+---
+- name: Install the Proxmox kernel
+  ansible.builtin.apt:
+    name: proxmox-default-kernel
+    state: present
+  register: proxmox_kernel
+
+# A handler would run at the end of the play. The reboot has to happen
+# before the PVE packages install.
+- name: Reboot into the Proxmox kernel  # noqa: no-handler
+  ansible.builtin.reboot:
+    reboot_timeout: 900
+    msg: Rebooting into the Proxmox kernel
+  when: proxmox_kernel.changed

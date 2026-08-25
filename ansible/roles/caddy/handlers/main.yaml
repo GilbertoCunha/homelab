@@ -1,0 +1,4 @@
+---
+- name: Reload caddy
+  ansible.builtin.command: caddy reload --config /etc/caddy/Caddyfile --force
+  changed_when: true

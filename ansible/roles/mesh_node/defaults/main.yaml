@@ -1,0 +1,14 @@
+---
+mesh_node_keyring: /usr/share/keyrings/tailscale-archive-keyring.gpg
+mesh_node_key_url: https://pkgs.tailscale.com/stable/debian/trixie.noarmor.gpg
+mesh_node_repo_url: https://pkgs.tailscale.com/stable/debian
+
+# The client is not pinned. Headscale enforces a minimum client version and
+# no maximum, so tracking the repo's latest is safe.
+
+# Identifies this node to headscale and to the access policy.
+mesh_node_name: "{{ server_hostname }}"
+mesh_node_tags: tag:infra
+
+# Pre-auth keys are credentials. Single use, short lived, never written to disk.
+mesh_node_preauthkey_expiry: 10m

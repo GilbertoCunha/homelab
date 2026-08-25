@@ -1,0 +1,7 @@
+# Collections installed by `task ansible:deps`
+.ansible/
+
+*.retry
+__pycache__/
+.venv/
+.vault_pass

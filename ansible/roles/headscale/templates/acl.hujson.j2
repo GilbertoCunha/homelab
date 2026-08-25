@@ -1,0 +1,32 @@
+// Managed by Ansible (roles/headscale). Do not edit on the server.
+// Anything not written here is denied.
+{
+  "tagOwners": {
+    "tag:infra": ["{{ headscale_user }}@"],
+    "tag:k8s":   ["{{ headscale_user }}@"],
+  },
+
+  "acls": [
+    // Personal devices reach the server's admin ports.
+    // Tagged nodes lose their user identity, so this does not match the server itself.
+    {
+      "action": "accept",
+      "src":    ["{{ headscale_user }}@"],
+      "dst":    ["tag:infra:{{ mesh_tcp_ports | join(',') }}"],
+    },
+
+    // Personal devices reach the Kubernetes nodes.
+    {
+      "action": "accept",
+      "src":    ["{{ headscale_user }}@"],
+      "dst":    ["tag:k8s:*"],
+    },
+
+    // Kubernetes nodes talk to each other.
+    {
+      "action": "accept",
+      "src":    ["tag:k8s"],
+      "dst":    ["tag:k8s:*"],
+    },
+  ],
+}

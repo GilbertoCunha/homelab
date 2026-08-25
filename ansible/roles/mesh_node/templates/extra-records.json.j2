@@ -1,0 +1,8 @@
+{#- Managed by Ansible (roles/mesh_node). Headscale reloads this on change. -#}
+[
+  {
+    "Name": "{{ proxmox_hostname }}",
+    "Type": "A",
+    "Value": "{{ mesh_node_address.stdout_lines | first | trim }}"
+  }
+]

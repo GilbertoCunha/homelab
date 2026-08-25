@@ -1,0 +1,23 @@
+---
+- name: Configure the homelab server
+  hosts: servers
+  become: false
+
+  roles:
+    - role: common
+      tags: [common]
+
+    - role: caddy
+      tags: [caddy]
+
+    - role: headscale
+      tags: [headscale]
+
+    # Needs a valid certificate for headscale_hostname, so it needs DNS to
+    # resolve. Skip with --skip-tags mesh if the certificate is not issued yet.
+    - role: mesh_node
+      tags: [mesh]
+
+    # Last: this swaps the kernel and reboots the server.
+    - role: proxmox
+      tags: [proxmox]

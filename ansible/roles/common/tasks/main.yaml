@@ -1,0 +1,68 @@
+---
+- name: Update the apt cache
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Install base packages
+  ansible.builtin.apt:
+    name: "{{ common_packages }}"
+    state: present
+
+- name: Set the system timezone
+  community.general.timezone:
+    name: "{{ timezone }}"
+
+- name: Set the system hostname
+  ansible.builtin.hostname:
+    name: "{{ server_hostname }}"
+
+# Proxmox refuses to install unless the hostname resolves to the server's real
+# address. Debian ships 127.0.1.1, which is not good enough.
+- name: Resolve the hostname to the real address in /etc/hosts
+  ansible.builtin.lineinfile:
+    path: /etc/hosts
+    regexp: '^\S+\s+{{ server_fqdn | regex_escape }}\b|^127\.0\.1\.1\s'
+    line: "{{ ansible_default_ipv4.address }} {{ server_fqdn }} {{ server_hostname }}"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Harden sshd
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: "^#?{{ item.key }}\\s"
+    line: "{{ item.key }} {{ item.value }}"
+    validate: /usr/sbin/sshd -T -f %s
+  loop: "{{ common_sshd_settings | dict2items }}"
+  notify: Restart sshd
+
+- name: Enable IPv4 forwarding for Proxmox guests
+  ansible.posix.sysctl:
+    name: net.ipv4.ip_forward
+    value: "1"
+    sysctl_set: true
+    state: present
+    reload: true
+
+- name: Install the firewall ruleset
+  ansible.builtin.template:
+    src: nftables.conf.j2
+    dest: /etc/nftables.conf
+    owner: root
+    group: root
+    mode: "0755"
+    validate: /usr/sbin/nft --check --file %s
+  notify: Reload nftables
+
+- name: Enable the firewall
+  ansible.builtin.service:
+    name: nftables
+    enabled: true
+    state: started
+
+- name: Enable unattended upgrades
+  ansible.builtin.service:
+    name: unattended-upgrades
+    enabled: true
+    state: started

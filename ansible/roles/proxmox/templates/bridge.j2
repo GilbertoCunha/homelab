@@ -1,0 +1,7 @@
+# Managed by Ansible (roles/proxmox). Do not edit on the server.
+auto {{ pve_bridge }}
+iface {{ pve_bridge }} inet static
+	address {{ pve_bridge_address }}
+	bridge-ports none
+	bridge-stp off
+	bridge-fd 0

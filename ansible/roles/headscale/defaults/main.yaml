@@ -1,0 +1,34 @@
+---
+headscale_version: "0.29.3"
+headscale_deb_sha256: 14eccf8d41fd93927ad3fe1fd9e49dbe14d5668a244c4205d940967c442aea0d
+headscale_deb_name: "headscale_{{ headscale_version }}_linux_amd64.deb"
+headscale_releases_url: https://github.com/juanfont/headscale/releases/download
+headscale_deb_url: >-
+  {{ headscale_releases_url }}/v{{ headscale_version }}/{{ headscale_deb_name }}
+
+# Loopback only. Caddy is the sole ingress.
+headscale_listen_addr: 127.0.0.1:8080
+headscale_metrics_listen_addr: 127.0.0.1:9090
+headscale_grpc_listen_addr: 127.0.0.1:50443
+
+headscale_config_dir: /etc/headscale
+headscale_data_dir: /var/lib/headscale
+headscale_policy_path: /etc/headscale/acl.hujson
+
+# Extra DNS records served only to mesh devices. Headscale watches this file
+# and reloads it on change, so writing it needs no restart. It is filled in
+# by the mesh_node role, which is what knows this host's mesh address.
+headscale_records_path: /var/lib/headscale/extra-records.json
+
+# DERP relays traffic between nodes that cannot reach each other directly, and
+# its STUN port helps them find a direct path. Running our own avoids depending
+# on Tailscale's public relays.
+headscale_derp_stun_port: 3478
+
+# Only nodes registered with this server may relay through it. Headscale checks
+# its own node table in process, so this works from the moment it starts.
+headscale_derp_verify_clients: true
+
+headscale_nameservers:
+  - 1.1.1.1
+  - 1.0.0.1

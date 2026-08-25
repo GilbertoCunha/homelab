@@ -1,0 +1,40 @@
+---
+# Names. Everything derives from `domain`; change it in one place only.
+# The server's public IP is deliberately absent — it lives only in DNS.
+domain: grncunha.com
+server_hostname: homelab
+server_fqdn: "{{ server_hostname }}.{{ domain }}"
+headscale_hostname: "vpn.{{ server_fqdn }}"
+proxmox_hostname: "proxmox.{{ server_fqdn }}"
+
+# MagicDNS suffix. Mesh nodes are reachable as <node>.mesh.homelab.grncunha.com
+# from any device on the mesh. This is served by headscale to its clients and
+# needs no DNS record. It must not be a parent of `headscale_hostname`, because
+# clients route the whole suffix through the mesh and would lose the control
+# server. A sibling of it is fine.
+mesh_domain: "mesh.{{ server_fqdn }}"
+
+acme_email: gilberto.cunha@grncunha.com
+
+# Read by more than one role, so it lives here rather than in a role default.
+# The account personal devices register under. Nodes carrying a tag drop this
+# identity, which is what lets the access policy tell devices from servers.
+headscale_user: grnc13
+
+# Per-service Caddy vhosts, one file each.
+caddy_sites_dir: /etc/caddy/sites
+timezone: Europe/Berlin
+
+# CIDR registry. See README "Architecture". Never repeat these literals.
+headscale_prefix_v4: 100.64.0.0/16
+pve_bridge: vmbr1
+pve_guest_subnet: 10.10.10.0/24
+pve_bridge_address: 10.10.10.1/24
+k8s_pod_subnet: 10.244.0.0/16  # reserved, Talos default
+k8s_service_subnet: 10.96.0.0/12  # reserved, Talos default
+
+# Firewall.
+public_tcp_ports: [22, 80, 443]
+# 443 carries the Proxmox interface
+# 8006 is the direct fallback if Caddy is down.
+mesh_tcp_ports: [22, 443, 8006]

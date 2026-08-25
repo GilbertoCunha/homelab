@@ -1,0 +1,20 @@
+---
+proxmox_keyring: /usr/share/keyrings/proxmox-archive-keyring.gpg
+proxmox_key_url: https://enterprise.proxmox.com/debian/proxmox-archive-keyring-trixie.gpg
+proxmox_repo_url: http://download.proxmox.com/debian/pve
+proxmox_suite: trixie
+
+proxmox_packages:
+  - proxmox-ve
+  - postfix
+  - open-iscsi
+
+# Removed after Proxmox supplies its own kernel and boot menu.
+proxmox_obsolete_packages:
+  - linux-image-amd64
+  - os-prober
+
+# Ships enabled but needs a paid subscription, so every apt update fails on it.
+proxmox_enterprise_repo_files:
+  - /etc/apt/sources.list.d/pve-enterprise.sources
+  - /etc/apt/sources.list.d/ceph.sources

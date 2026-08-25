@@ -1,0 +1,27 @@
+---
+# An internal bridge with no physical port. Guests have no public address and
+# reach the internet through the NAT rule in roles/common.
+- name: Create the guest bridge
+  ansible.builtin.template:
+    src: bridge.j2
+    dest: /etc/network/interfaces.d/{{ pve_bridge }}
+    owner: root
+    group: root
+    mode: "0644"
+  register: proxmox_bridge_config
+
+# A handler would run too late: the bridge must exist before anything
+# attaches to it.
+- name: Bring the guest bridge up  # noqa: no-handler
+  ansible.builtin.command: ifup {{ pve_bridge }}
+  when: proxmox_bridge_config.changed
+  changed_when: true
+
+- name: Publish the Proxmox interface through Caddy
+  ansible.builtin.template:
+    src: proxmox.caddy.j2
+    dest: "{{ caddy_sites_dir }}/proxmox.caddy"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Reload caddy

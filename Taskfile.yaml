@@ -1,0 +1,38 @@
+---
+version: "3"
+
+tasks:
+  ansible:deps:
+    desc: Installs the Ansible collections the playbook needs
+    cmds:
+      - ansible-galaxy collection install -r ansible/requirements.yaml
+
+  ansible:ping:
+    desc: Pings the inventory to ensure the server is up
+    cmds:
+      - ansible servers -m ping
+
+  ansible:lint:
+    desc: Lints the Ansible codebase
+    cmds:
+      - ansible-lint ansible/
+
+  ansible:check:
+    desc: Dry runs the playbook, showing what would change
+    cmds:
+      - ansible-playbook ansible/site.yaml --check --diff
+
+  ansible:site:
+    desc: Configures the server
+    cmds:
+      - ansible-playbook ansible/site.yaml
+
+  ansible:role:
+    desc: Configures a single role, e.g. `task ansible:role -- headscale`
+    cmds:
+      - ansible-playbook ansible/site.yaml --tags {{.CLI_ARGS}} --diff
+
+  ansible:site:no-mesh:
+    desc: Configures the server, skipping the roles that need a TLS certificate
+    cmds:
+      - ansible-playbook ansible/site.yaml --skip-tags mesh

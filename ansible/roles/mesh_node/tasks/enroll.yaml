@@ -1,0 +1,44 @@
+---
+- name: List the headscale users
+  ansible.builtin.command: headscale users list --output json
+  register: mesh_node_users
+  changed_when: false
+
+- name: Create the headscale user
+  ansible.builtin.command: headscale users create {{ headscale_user }}
+  changed_when: true
+  when: headscale_user not in (mesh_node_users.stdout | from_json | map(attribute='name') | list)
+
+- name: List the headscale users again
+  ansible.builtin.command: headscale users list --output json
+  register: mesh_node_users
+  changed_when: false
+
+- name: Resolve the headscale user id
+  ansible.builtin.set_fact:
+    mesh_node_user_id: >-
+      {{ (mesh_node_users.stdout | from_json
+          | selectattr('name', 'equalto', headscale_user)
+          | map(attribute='id') | first) }}
+
+# Single use and short lived, so nothing durable exists to leak.
+- name: Mint a single-use pre-auth key
+  ansible.builtin.command: >-
+    headscale preauthkeys create
+    --user {{ mesh_node_user_id }}
+    --expiration {{ mesh_node_preauthkey_expiry }}
+    --tags {{ mesh_node_tags }}
+    --output json
+  register: mesh_node_preauthkey
+  changed_when: true
+  no_log: true
+
+- name: Join the mesh
+  ansible.builtin.command: >-
+    tailscale up
+    --login-server https://{{ headscale_hostname }}
+    --authkey {{ (mesh_node_preauthkey.stdout | from_json).key }}
+    --hostname {{ mesh_node_name }}
+    --accept-routes
+  changed_when: true
+  no_log: true

@@ -1,0 +1,8 @@
+# Managed by Ansible (roles/caddy). Do not edit on the server.
+# Per-service vhosts live in {{ caddy_sites_dir }}, one file per service.
+
+{
+	email {{ acme_email }}
+}
+
+import {{ caddy_sites_dir }}/*.caddy
