@@ -2,6 +2,10 @@
 headscale_version: "0.29.3"
 headscale_deb_sha256: 14eccf8d41fd93927ad3fe1fd9e49dbe14d5668a244c4205d940967c442aea0d
 headscale_deb_name: "headscale_{{ headscale_version }}_linux_amd64.deb"
+# Not /tmp: that is cleared on reboot, so the package would download again
+# every time and the task would never settle.
+headscale_cache_dir: /var/cache/headscale
+headscale_deb_path: "{{ headscale_cache_dir }}/{{ headscale_deb_name }}"
 headscale_releases_url: https://github.com/juanfont/headscale/releases/download
 headscale_deb_url: >-
   {{ headscale_releases_url }}/v{{ headscale_version }}/{{ headscale_deb_name }}

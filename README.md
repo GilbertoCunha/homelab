@@ -12,6 +12,7 @@ In this repo, I configure a dedicated server I have running:
 
 To get it running, read the [Operator Manual](./docs/manual/index.md).
 When something breaks, read [Applying step by step](./docs/troubleshooting/step-by-step.md).
+For the commands you reach for most, see the [Cheatsheet](./docs/cheatsheet.md).
 
 ## Architecture
 

@@ -22,11 +22,41 @@
   environment:
     DEBIAN_FRONTEND: noninteractive
 
-- name: Remove the Debian kernel and boot menu prober
+- name: Remove the meta package and boot menu prober
   ansible.builtin.apt:
     name: "{{ proxmox_obsolete_packages }}"
     state: absent
     purge: true
+
+# Removing linux-image-amd64 only drops the meta package; the kernel image it
+# pulled in stays installed and keeps taking updates. The names carry a version,
+# so they have to be discovered rather than listed.
+- name: Find any Debian kernel images still installed
+  ansible.builtin.shell:
+    cmd: |
+      set -o pipefail
+      dpkg-query -W -f='${Package}\n' 'linux-image-*' 2>/dev/null \
+        | grep -vE 'proxmox|pve' || true
+    executable: /bin/bash
+  register: proxmox_debian_kernels
+  changed_when: false
+
+# Guard against removing the kernel that is currently running. If the server
+# somehow booted the Debian one, leave everything alone and say so.
+- name: Refuse to remove the running kernel
+  ansible.builtin.assert:
+    that: ansible_facts.kernel is search('pve')
+    fail_msg: >-
+      Running kernel {{ ansible_facts.kernel }} is not a Proxmox kernel.
+      Reboot into the Proxmox kernel before removing the Debian one.
+  when: proxmox_debian_kernels.stdout_lines | length > 0
+
+- name: Remove the Debian kernel images
+  ansible.builtin.apt:
+    name: "{{ proxmox_debian_kernels.stdout_lines }}"
+    state: absent
+    purge: true
+  when: proxmox_debian_kernels.stdout_lines | length > 0
 
 - name: Disable the subscription repositories
   ansible.builtin.file:
