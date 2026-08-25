@@ -30,7 +30,7 @@ like names and network ranges, belong in `README.md`, not in the manual.
   Never repeat a literal in a task or a template.
 - **Never write the server's public IP anywhere.** It lives in the Cloudflare
   DNS records. Ansible reaches the server by name; templates use the
-  `ansible_default_ipv4` facts.
+  `ansible_facts.default_ipv4` facts.
 - **Check `README.md` before allocating a network range**, and add the new range
   to the table there.
 - **Every role has the same shape**: `defaults/`, `tasks/`, `handlers/`,

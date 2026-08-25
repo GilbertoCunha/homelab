@@ -1,7 +1,6 @@
 ---
 common_packages:
   - ca-certificates
-  - chrony
   - curl
   - gnupg
   - htop

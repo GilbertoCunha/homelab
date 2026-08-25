@@ -1,8 +1,12 @@
 ---
+# Runs even under --check. Downloading the package index changes no system
+# state, and a fresh server has no index at all, so without this a check run
+# cannot resolve a single package name.
 - name: Update the apt cache
   ansible.builtin.apt:
     update_cache: true
     cache_valid_time: 3600
+  check_mode: false
 
 - name: Install base packages
   ansible.builtin.apt:
@@ -23,7 +27,7 @@
   ansible.builtin.lineinfile:
     path: /etc/hosts
     regexp: '^\S+\s+{{ server_fqdn | regex_escape }}\b|^127\.0\.1\.1\s'
-    line: "{{ ansible_default_ipv4.address }} {{ server_fqdn }} {{ server_hostname }}"
+    line: "{{ ansible_facts.default_ipv4.address }} {{ server_fqdn }} {{ server_hostname }}"
     owner: root
     group: root
     mode: "0644"

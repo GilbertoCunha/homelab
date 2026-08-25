@@ -26,9 +26,25 @@ Useful flags to add after the tag:
 
 | Flag | What it does |
 | --- | --- |
-| `--check` | Changes nothing. Shows what would happen. |
 | `-vv` | Shows the command that ran and what it returned. |
 | `--start-at-task "<name>"` | Resumes from a named task instead of the top. |
+| `--check` | Changes nothing. Shows what would happen. Read the warning below. |
+
+### `--check` does not work on a fresh server
+
+`--check` never writes anything, which sounds safe but makes it useless the
+first time round. A role that adds an apt repository never gets to add it, so
+every package in that role then fails to resolve. You get a wall of
+`No package matching ... is available` that says nothing about your actual
+problem.
+
+| Role | Does `--check` work? |
+| --- | --- |
+| `common` | Yes. It refreshes the package index for real first. |
+| everything else | Only after that role has been applied for real once. |
+
+So on a new server, apply each role for real and check the result afterwards.
+Use `--check` later, to preview changes on a server that is already set up.
 
 ## The order
 
@@ -51,7 +67,6 @@ firewall or the SSH change is wrong, that open session is how you fix it without
 a trip to the Hetzner console.
 
 ```bash
-task ansible:role -- common --check
 task ansible:role -- common
 ```
 
@@ -213,6 +228,87 @@ prints the public address, and the site answers `403`. Both are correct.
 1. Read the name of the failed task. It says what it was doing.
 2. Run that role again with `-vv` to see the command and its output.
 3. Skip ahead with `--start-at-task "<the task name>"` once you have fixed it.
+
+## When you are stuck
+
+### Ansible does not roll back
+
+There is no undo. A playbook describes the state you want, not the steps taken
+to get there, so there is nothing to reverse. Running it again re-applies the
+same state; it does not return the server to how it was before.
+
+That is fine, because nothing here is precious. The server is described entirely
+by this repo and can be rebuilt from bare metal in about fifteen minutes. Treat
+rebuilding as a normal move, not a defeat.
+
+### Undoing one piece
+
+If a single role went wrong and the server is otherwise healthy, undo just that
+piece and run it again. All of these are run on the server.
+
+| Role | How to undo it |
+| --- | --- |
+| `common` | `systemctl stop nftables && nft flush ruleset` clears the firewall. This leaves every port open, so only do it while you are fixing something. |
+| `caddy` | `apt purge caddy && rm -rf /etc/caddy` |
+| `headscale` | `apt purge headscale && rm -rf /var/lib/headscale`. **Every device has to join again.** |
+| `mesh` | `tailscale logout && apt purge tailscale && rm -rf /var/lib/tailscale` |
+| `proxmox` | Not realistically undoable. See below. |
+
+Proxmox replaces the kernel and takes over the network configuration. There is
+no clean way back. This is why it runs last: everything else is proven before
+the step you cannot reverse.
+
+### Locked out of SSH
+
+If the firewall or the SSH change locked you out, you do not need a rebuild.
+
+1. In the [Hetzner Robot console](https://robot.hetzner.com/server), open
+   **Rescue**, enable the Linux rescue system, and reset the server
+2. SSH in with the rescue password Hetzner shows you
+3. Mount the disk and fix the file that locked you out, usually
+   `/etc/nftables.conf` or `/etc/ssh/sshd_config`
+4. Reboot back into the normal system
+
+This is also why step 1 tells you to keep a second SSH session open. It is much
+faster than the above.
+
+### Rebuilding from scratch
+
+When the server is beyond fixing, reinstall it. Start again from
+[Bootstrap](../manual/1-bootstrap.md), then work through this document.
+
+Before you do, know what is not in this repo and will not come back:
+
+| What | Effect of losing it |
+| --- | --- |
+| `/var/lib/headscale/db.sqlite` | Users, nodes, keys. Every device joins again. |
+| Headscale's noise and DERP keys | Regenerated. Harmless once devices re-join. |
+| Caddy's certificates | Re-issued automatically. See the rate limit below. |
+| Proxmox guests and their disks | **Gone.** Back them up first. |
+
+**The DNS records stay.** They point at the server, not at an installation, so
+there is nothing to redo in Cloudflare.
+
+**Watch the Let's Encrypt rate limit.** You may issue five certificates for the
+same set of names per week. Each rebuild uses one per name. If you are
+reinstalling repeatedly, you can lock yourself out of new certificates for days,
+and Caddy will fail in a way that looks like a DNS problem. If you expect
+several rebuilds, point Caddy at the staging service first by adding this to the
+global block of `/etc/caddy/Caddyfile`:
+
+```
+acme_ca https://acme-staging-v02.api.letsencrypt.org/directory
+```
+
+Staging certificates are not trusted by browsers, so remove that line for the
+real run.
+
+**After a reinstall the host key changes**, so clear the old one on your own
+machine:
+
+```bash
+ssh-keygen -R homelab.grncunha.com
+```
 
 ## Finishing
 

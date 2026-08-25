@@ -1,7 +1,7 @@
 #!/usr/sbin/nft -f
 # Managed by Ansible (roles/common). Do not edit on the server.
 #
-# Public interface: {{ ansible_default_ipv4.interface }}
+# Public interface: {{ ansible_facts.default_ipv4.interface }}
 # Only {{ public_tcp_ports | join(', ') }} are reachable from the internet.
 # The Proxmox UI is reachable over the mesh only.
 
@@ -19,8 +19,8 @@ table inet filter {
     icmpv6 type { echo-request, nd-neighbor-solicit, nd-neighbor-advert, nd-router-advert } accept
 
     # --- public ---
-    iifname "{{ ansible_default_ipv4.interface }}" tcp dport { {{ public_tcp_ports | join(', ') }} } accept
-    iifname "{{ ansible_default_ipv4.interface }}" udp dport { {{ common_derp_stun_port }}, {{ common_wireguard_port }} } accept
+    iifname "{{ ansible_facts.default_ipv4.interface }}" tcp dport { {{ public_tcp_ports | join(', ') }} } accept
+    iifname "{{ ansible_facts.default_ipv4.interface }}" udp dport { {{ common_derp_stun_port }}, {{ common_wireguard_port }} } accept
 
     # --- mesh ---
     # Packets only reach tailscale0 after WireGuard authenticates them, so this
@@ -37,7 +37,7 @@ table inet filter {
     ct state established,related accept
 
     # Guests reach the internet; the internet does not reach guests.
-    iifname "{{ pve_bridge }}" oifname "{{ ansible_default_ipv4.interface }}" accept
+    iifname "{{ pve_bridge }}" oifname "{{ ansible_facts.default_ipv4.interface }}" accept
 
     # Guests are reachable over the mesh.
     iifname "tailscale0" oifname "{{ pve_bridge }}" accept
@@ -56,6 +56,6 @@ table ip nat {
   chain postrouting {
     type nat hook postrouting priority srcnat; policy accept;
 
-    ip saddr {{ pve_guest_subnet }} oifname "{{ ansible_default_ipv4.interface }}" masquerade
+    ip saddr {{ pve_guest_subnet }} oifname "{{ ansible_facts.default_ipv4.interface }}" masquerade
   }
 }
