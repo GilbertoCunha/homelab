@@ -27,6 +27,8 @@ Standalone procedures. Read the one you need.
 
 ## Elsewhere
 
+- For how the system is put together: [Architecture](../architecture/index.md)
 - When something breaks: [Applying step by step](../troubleshooting/step-by-step.md)
 - For how a piece works rather than how to run it: [Concepts](../concepts/)
 - For the commands you reach for most: [Cheatsheet](../cheatsheet.md)
+- For what is not built yet: [Backlog](../backlog.md)

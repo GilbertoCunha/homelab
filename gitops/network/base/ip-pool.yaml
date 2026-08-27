@@ -3,8 +3,8 @@
 # These are extra addresses that belong to Services rather than to machines,
 # so they do not collide with the nodes at .11-.13 and .21-.23.
 #
-# See README.md for the guest address table, and docs/concepts/ingress.md for
-# how an address here becomes reachable from the mesh.
+# See docs/architecture/networks.md for the guest address table, and
+# docs/concepts/ingress.md for how an address here becomes reachable.
 apiVersion: cilium.io/v2
 kind: CiliumLoadBalancerIPPool
 metadata:

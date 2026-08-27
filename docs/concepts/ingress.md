@@ -172,4 +172,4 @@ should not.
 | kgateway itself | `gitops/system/base/kgateway/` |
 | Issuer and the two certificates | `gitops/network/base/` |
 | cert-manager, external-dns | `gitops/system/base/` |
-| Address allocation table | [`README.md`](../../README.md) |
+| Address allocation table | [Networks and addresses](../architecture/networks.md) |

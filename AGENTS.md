@@ -28,7 +28,13 @@ Documentation is split by the question it answers:
 | `docs/concepts/` | "How does this work, and why?" | Secrets with SOPS |
 | `docs/troubleshooting/` | "It is broken, now what?" | Applying step by step |
 | `docs/cheatsheet.md` | "What was that command?" | — |
-| `README.md` | "What is the system?" | Names, network ranges |
+| `docs/architecture/` | "What is the system, and why this shape?" | Names, network ranges |
+| `docs/backlog.md` | "What is not built yet?" | Public access |
+| `README.md` | "Where do I click?" | Links to Proxmox, ArgoCD |
+
+`README.md` is a front door, not a document: links to the things you actually
+open, and pointers to everything else. Facts about the system live in
+`docs/architecture/`, so the README does not drift.
 
 The manual is split by when you need it. **Provisioning is numbered** and read in
 order, once. **Maintenance is not numbered**: each document is a standalone
@@ -54,8 +60,9 @@ stays a procedure, and the explanation gets a concepts document.
 - **Never write the server's public IP anywhere.** It lives in the Cloudflare
   DNS records. Ansible reaches the server by name; templates use the
   `ansible_facts.default_ipv4` facts.
-- **Check `README.md` before allocating a network range**, and add the new range
-  to the table there.
+- **Check [`docs/architecture/networks.md`](docs/architecture/networks.md)
+  before allocating a network range or a guest address**, and add what you
+  allocate to the table there.
 - **Every role has the same shape**: `defaults/`, `tasks/`, `handlers/`,
   `templates/`. Keep `tasks/main.yaml` to about a screenful. When a role has
   real phases, `main.yaml` becomes a list of `import_tasks` and each phase gets
