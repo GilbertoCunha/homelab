@@ -11,7 +11,8 @@ CNI, and nothing else. To run the bootstrap, see
 gitops/
 ├── crds/        CRDs, which nothing else may install
 ├── network/     Address pool, L2 announcement, Gateways
-└── system/      ArgoCD itself, kgateway
+├── secrets/     SopsSecrets: encrypted values, committed
+└── system/      ArgoCD itself, kgateway, cert-manager, external-dns
     ├── base/            what exists
     └── overlays/        which branch and path each environment reads
 ```
@@ -54,21 +55,22 @@ wave before starting the next. This is the dependency order:
 | Wave | Component | Depends on |
 | --- | --- | --- |
 | -1 | `crds` | — |
-| 0 | kgateway CRDs | — |
+| 0 | kgateway CRDs, sops-secrets-operator | — |
 | 1 | kgateway, cert-manager | Their CRDs, established |
 | 2 | `network`, external-dns | `GatewayParameters`, a kind kgateway registers |
+| 3 | `secrets` | The operator, and the namespaces the Secrets land in |
 
 Within a wave the order is undefined, so anything that must come first needs a
 wave of its own.
 
 ## One thing is not in git
 
-The Cloudflare API token. cert-manager and external-dns both read it, and
-`task cluster:cloudflare-token` creates it from the encrypted secrets file.
+The age key. Every secret this cluster needs is committed to `gitops/secrets/`
+encrypted, and sops-secrets-operator decrypts each into a plain `Secret`. The
+key that does the decrypting is what cannot be committed alongside them.
 
-That is a step to repeat after a rebuild, and the reason it exists is that
-nothing may hold a secret in plaintext in this repo. Making it git-native means
-`sops-secrets-operator` and a second age key, which is not set up yet.
+`task cluster:sops-key` puts it in, and it is the only step to repeat after a
+rebuild. [Secrets with SOPS](./sops.md) covers what that key can reach.
 
 ## ArgoCD owns part of kube-system
 

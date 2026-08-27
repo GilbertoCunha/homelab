@@ -49,11 +49,39 @@ Both overlays render.
 
 This needs no cluster and catches most mistakes. Run it before every commit.
 
-## 3. Putting the Cloudflare token in the cluster
+## 3. Putting the age key in the cluster
 
-cert-manager and external-dns both need a Cloudflare API token. It is the only
-thing in this cluster that does not come from git, because nothing in this repo
-may hold a secret in plaintext.
+Every secret this cluster needs is committed to this repo, encrypted, and
+decrypted in the cluster by sops-secrets-operator. The key that does that
+decrypting is the one thing that cannot be committed: it would be the lock and
+the key in the same box.
+
+`task secrets:init` created it, at `~/.config/sops/age/keys.txt`. Push it in:
+
+```bash
+task cluster:sops-key
+```
+
+```
+namespace/sops created
+secret/sops-age-key created
+Cluster key in place. Every other secret comes from git.
+```
+
+This is the only command in this guide that moves a secret by hand, and the
+only one to repeat after a rebuild.
+
+**This is the same key that decrypts `secrets.enc.yaml`**, so the cluster can
+read every credential in this repo, including the Proxmox root password and the
+R2 state credentials. That is a deliberate choice in favour of one key to hold
+and back up. It means a compromise of the cluster is a compromise of those
+credentials too, and rotating means re-encrypting everything rather than just
+`gitops/`. [Secrets with SOPS](../../concepts/sops.md) has the alternative.
+
+## 4. Filling in the Cloudflare token
+
+cert-manager and external-dns both need a Cloudflare API token. The encrypted
+file holding it is committed with an empty value, so this is a one-time edit.
 
 Create the token first, in the [Cloudflare
 dashboard](https://dash.cloudflare.com) under **My Profile**, **API Tokens**:
@@ -63,39 +91,32 @@ dashboard](https://dash.cloudflare.com) under **My Profile**, **API Tokens**:
 | Permissions | `Zone` - `DNS` - `Edit` |
 | Zone Resources | Include - Specific zone - `grncunha.com` |
 
-Cloudflare shows it once. Put it straight into the encrypted file:
+Cloudflare shows it once. Put it straight in:
 
 ```bash
-task secrets:edit
+task secrets:edit:cluster -- gitops/secrets/base/cloudflare-cert-manager.sops.yaml
+task secrets:edit:cluster -- gitops/secrets/base/cloudflare-external-dns.sops.yaml
 ```
 
-Add a `CLOUDFLARE_API_TOKEN` line and paste the token as its value. A secrets
-file created before this step will not have the key yet; `task secrets:init`
-only writes the list into a file that does not exist.
-
-It has to be in the file, not just in your shell. `sops exec-env` adds the
-file's keys to the environment it inherits, so a `CLOUDFLARE_API_TOKEN` already
-exported in your profile would be used instead and the cluster would get a value
-that no other machine can reproduce. The task refuses to run until the key is in
-the file for exactly this reason.
-
-Then push it into the cluster:
+Your editor opens on the decrypted file. Set `api-token`, then save; SOPS
+re-encrypts on close. One file per namespace, because a `Secret` is only
+readable in its own.
 
 ```bash
-task cluster:cloudflare-token
+task secrets:check
 ```
 
 ```
-namespace/cert-manager created
-secret/cloudflare-api-token created
-namespace/external-dns created
-secret/cloudflare-api-token created
-Token in place. ArgoCD owns everything that reads it.
+secrets.enc.yaml is encrypted.
+gitops/secrets/base/cloudflare-cert-manager.sops.yaml is encrypted.
+gitops/secrets/base/cloudflare-external-dns.sops.yaml is encrypted.
 ```
 
-Repeat this one command after a rebuild. Everything else comes back from git.
+Commit the file. It is meant to be committed: the value inside is ciphertext,
+and only the two age keys open it.
 
-## 4. Bootstrapping
+## 5. Bootstrapping
+
 
 ```bash
 task cluster:bootstrap
@@ -110,7 +131,7 @@ Bootstrapped. Check it with: kubectl -n argocd get applications
 This applies the same manifests ArgoCD then syncs, so it is repeatable: run it
 again and nothing changes. That is also how you repair a broken ArgoCD.
 
-## 5. Watching it converge
+## 6. Watching it converge
 
 The first sync takes a few minutes. kgateway's CRDs have to be established
 before its controller starts, and the Gateways cannot be created until both are
@@ -136,7 +157,7 @@ creates `GatewayParameters` before kgateway has registered that kind. ArgoCD
 retries on its own. If it is still degraded after five minutes, something is
 actually wrong.
 
-## 6. Checking an address became live
+## 7. Checking an address became live
 
 This is the step that proves the load balancer works. See
 [Getting traffic into the cluster](../../concepts/ingress.md) for what is
@@ -181,7 +202,7 @@ talosctl --nodes 10.10.10.21 get addresses | grep 10.10.10.21/24
 The last column must match `interfaces` in
 `gitops/network/base/l2-announcement.yaml`.
 
-## 7. Checking DNS and certificates happened on their own
+## 8. Checking DNS and certificates happened on their own
 
 Both wildcards must be issued. The first pair takes a couple of minutes: a
 DNS-01 challenge waits for a Cloudflare record to propagate.
@@ -221,7 +242,7 @@ outside its domain filter. Its log says which:
 kubectl -n external-dns logs deploy/external-dns | tail -20
 ```
 
-## 8. Reaching the ArgoCD UI
+## 9. Reaching the ArgoCD UI
 
 From a device on the mesh, open
 [`argocd.k8s.homelab.grncunha.com`](https://argocd.k8s.homelab.grncunha.com).
@@ -278,14 +299,32 @@ kubectl -n gateway-system describe certificate wildcard-k8s
 kubectl -n gateway-system get challenge
 ```
 
-`propagation check failed` means the token cannot write the zone. Confirm it is
-scoped to `Zone` - `DNS` - `Edit` on `grncunha.com`, and that
-`task cluster:cloudflare-token` ran after the value was filled in.
+`propagation check failed` means the token cannot write the zone. Check the
+Secret the operator produced actually holds a value:
+
+```bash
+kubectl -n cert-manager get secret cloudflare-api-token \
+  -o jsonpath='{.data.api-token}' | base64 -d | wc -c
+```
+
+Zero means the encrypted file still has the placeholder. Anything else means
+the token is wrong, or not scoped to `Zone` - `DNS` - `Edit` on `grncunha.com`.
 
 **A Gateway serves the wrong certificate, or none.** The `Secret` cert-manager
 writes must be in the same namespace as the Gateway. Both are `gateway-system`;
 `kubectl -n gateway-system get secret` should list both `-tls` secrets.
 
+**No Secret appears from a `SopsSecret`.** The operator could not decrypt it.
+
+```bash
+kubectl -n sops logs deploy/sops-secrets-operator | tail -20
+kubectl get sopssecret -A
+```
+
+`no matching keys found` means the key is missing from the cluster, or is not a
+recipient of that file. `task cluster:sops-key` puts it back; if `.sops.yaml`
+changed since the file was encrypted, re-encrypt it with `sops updatekeys <file>`.
+
 **Starting over.** `task tofu:destroy` and `task tofu:apply` rebuild the cluster
-from nothing, then `task cluster:cloudflare-token` and `task cluster:bootstrap`.
-Nothing else here is stored only in the cluster.
+from nothing, then `task cluster:sops-key` and `task cluster:bootstrap`. Nothing
+else here is stored only in the cluster: every other secret comes back from git.

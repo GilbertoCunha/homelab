@@ -1,0 +1,44 @@
+---
+# Decrypts the SopsSecret resources committed in gitops/secrets/ and turns each
+# into a plain Kubernetes Secret. This is what lets an encrypted value live in
+# git rather than being copied in by hand.
+#
+# Wave 0: cert-manager and external-dns cannot start usefully without the
+# secrets it produces.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: sops-secrets-operator
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  project: default
+  destination:
+    namespace: sops
+    server: https://kubernetes.default.svc
+  source:
+    chart: sops-secrets-operator
+    repoURL: https://isindir.github.io/sops-secrets-operator/
+    targetRevision: 0.28.1
+    helm:
+      # The CRD comes from gitops/crds instead. Keep that copy in step with
+      # targetRevision above.
+      skipCrds: true
+      valuesObject:
+        # The age key itself, put here by `task cluster:sops-key`. It is the
+        # only secret in this cluster that does not come from git.
+        secretsAsFiles:
+          - name: sops-age-key
+            mountPath: /etc/sops-age
+            secretName: sops-age-key
+        extraEnv:
+          - name: SOPS_AGE_KEY_FILE
+            value: /etc/sops-age/keys.txt
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
