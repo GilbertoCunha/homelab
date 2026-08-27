@@ -40,7 +40,6 @@
     executable: /bin/bash
   register: proxmox_debian_kernels
   changed_when: false
-  check_mode: false
 
 # Guard against removing the kernel that is currently running. If the server
 # somehow booted the Debian one, leave everything alone and say so.

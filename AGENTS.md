@@ -130,15 +130,15 @@ Nothing writes state to this repo.
 
 ```bash
 task ansible:lint
-task ansible:check
 task cluster:render
 task tofu:fmt
 task tofu:validate
 task secrets:check
 ```
 
-`ansible:lint` must pass with no failures. `ansible:check` must show only the
-changes you intended. A second `task ansible:site` must report nothing changed.
+`ansible:lint` must pass with no failures. A second `task ansible:site` must
+report nothing changed: that, not a dry run, is what proves a role is
+idempotent.
 `cluster:render` must render both overlays; it needs no cluster, so there is no
 excuse for skipping it. `tofu:validate` must pass with no warnings; a
 deprecation warning means the provider has renamed something and the code should

@@ -35,7 +35,6 @@
   register: mesh_node_status
   changed_when: false
   failed_when: false
-  check_mode: false
 
 - name: Record mesh membership
   ansible.builtin.set_fact:
@@ -59,7 +58,6 @@
   ansible.builtin.command: tailscale ip -4
   register: mesh_node_address
   changed_when: false
-  check_mode: false
 
 - name: Publish the mesh DNS records
   ansible.builtin.template:

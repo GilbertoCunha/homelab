@@ -7,7 +7,7 @@ In this repo, I configure a dedicated server I have running:
 - **OS**: debian 13
 - **Mesh Network**: Headscale
 - **Virtualization**: Proxmox
-- **Public Access**: Caddy on the host; Cloudflare tunnels for the cluster
+- **Public Access**: Caddy on the host. Cloudflare tunnels for the cluster, planned
 - **Container Orchestration**: Kubernetes, on Talos Linux
 - **Provisioning**: OpenTofu
 
@@ -50,7 +50,7 @@ internet ──▶ 22, 80, 443 ──▶ homelab.grncunha.com
                                                         ├── cp-1..3      ──▶ etcd, kube-apiserver
                                                         └── worker-1..3  ──▶ workloads
 
-internet ──▶ cloudflare edge ──▶ tunnel ──▶ cloudflared (in cluster)
+internet ──▶ cloudflare edge ──▶ tunnel ──▶ cloudflared (in cluster)   [planned]
                                              └──▶ gw-public ──▶ public apps
 
 your laptop ──▶ mesh ──▶ proxmox UI :8006
@@ -60,8 +60,10 @@ your laptop ──▶ mesh ──▶ proxmox UI :8006
                            └──▶ .201  gw-internal-dev  ──▶ dev apps
 ```
 
-The tunnel opens itself, outbound. Nothing new listens on the host, and the
-cluster's own names never touch Caddy.
+The mesh half is running. The public half is not: `gw-public` exists but
+nothing dials it yet, so `*.apps.homelab.grncunha.com` resolves to nothing. When
+it lands, the tunnel opens itself outbound, so nothing new listens on the host
+and the cluster's own names never touch Caddy.
 
 ### Names and links
 

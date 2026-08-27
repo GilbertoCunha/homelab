@@ -107,6 +107,37 @@ a `Local` service from nodes that are running one of its pods. Each Gateway
 therefore runs two Envoy replicas; with one, the address goes dark whenever that
 node reboots.
 
+## Names and certificates are automatic
+
+Adding a service is one `HTTPRoute`. Two controllers watch those routes and do
+the rest.
+
+| Controller | Watches | Creates |
+| --- | --- | --- |
+| **external-dns** | `HTTPRoute` hostnames, and the Gateway's address | The Cloudflare DNS record |
+| **cert-manager** | The two `Certificate` resources | The wildcard certificates the Gateways serve |
+
+**external-dns** writes an `A` record straight to `10.10.10.200`, DNS only and
+not proxied. That puts a private address in public DNS, which is deliberate: the
+name resolves for everyone, and only a mesh device can route to it. It also
+means no split-horizon entry in Headscale's `extra-records.json`.
+
+Two limits keep it away from everything else. It is filtered to
+`k8s.homelab.grncunha.com` and `apps.homelab.grncunha.com`, so the hand-made
+records for `homelab`, `vpn.homelab` and `proxmox.homelab` are out of reach by
+construction. And it only deletes records carrying its own ownership `TXT`,
+which is why cert-manager's `_acme-challenge` records survive it.
+
+**cert-manager** solves **DNS-01**, not HTTP-01. Two reasons, and either alone
+would be enough: the mesh names point at an address Let's Encrypt cannot reach,
+and DNS-01 is the only challenge that issues wildcards. It is told to check the
+challenge against public resolvers rather than the cluster's, because CoreDNS
+knows nothing about `grncunha.com` and would time out every time.
+
+Both read one Cloudflare API token, scoped to `Zone:DNS:Edit` on
+`grncunha.com`. That token is the **only** thing here that is not in git; it is
+created by `task cluster:cloudflare-token`.
+
 ## Why the public Gateway needs no certificate
 
 Cloudflare terminates TLS at the edge. `cloudflared` makes an outbound
@@ -138,4 +169,6 @@ should not.
 | Service type per Gateway | `gitops/network/base/gateway-parameters.yaml` |
 | The Gateways | `gitops/network/base/gateways.yaml` |
 | kgateway itself | `gitops/system/base/kgateway/` |
+| Issuer and the two certificates | `gitops/network/base/` |
+| cert-manager, external-dns | `gitops/system/base/` |
 | Address allocation table | [`README.md`](../../README.md) |

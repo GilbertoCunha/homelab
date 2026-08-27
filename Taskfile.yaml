@@ -38,11 +38,6 @@ tasks:
     cmds:
       - ansible-lint ansible/
 
-  ansible:check:
-    desc: Dry runs the playbook, showing what would change
-    cmds:
-      - ansible-playbook ansible/site.yaml --check --diff
-
   ansible:site:
     desc: Configures the server
     cmds:
@@ -92,6 +87,7 @@ tasks:
         PROXMOX_VE_API_TOKEN: ""
         AWS_ACCESS_KEY_ID: ""
         AWS_SECRET_ACCESS_KEY: ""
+        CLOUDFLARE_API_TOKEN: ""
         EOF
           sops -e -i "{{.SECRETS}}"
           echo "Created {{.SECRETS}}, encrypted and empty. Fill it with: task secrets:edit"
@@ -226,3 +222,27 @@ tasks:
         kustomize build --enable-helm {{.GITOPS_DIR}}/system/overlays/production \
           | kubectl apply --server-side --force-conflicts -f -
       - 'echo "Bootstrapped. Check it with: kubectl -n argocd get applications"'
+
+  cluster:cloudflare-token:
+    desc: Creates the Cloudflare API token Secret, which cannot come from git
+    env:
+      KUBECONFIG: '{{.KUBECONFIG_FILE}}'
+    cmds:
+      # cert-manager and external-dns both read this, and a ClusterIssuer
+      # resolves its secret from cert-manager's own namespace, so there are two
+      # copies of one value. Piping through `apply` rather than `create` keeps
+      # the task repeatable.
+      - |
+        {{.WITH_SECRETS}} 'set -eu
+        if [ -z "${CLOUDFLARE_API_TOKEN:-}" ]; then
+          echo "CLOUDFLARE_API_TOKEN is empty or missing from the secrets file."
+          echo "Add it with: task secrets:edit"
+          exit 1
+        fi
+        for ns in cert-manager external-dns; do
+          kubectl create namespace "$ns" --dry-run=client -o yaml | kubectl apply -f -
+          kubectl -n "$ns" create secret generic cloudflare-api-token \
+            --from-literal=api-token="$CLOUDFLARE_API_TOKEN" \
+            --dry-run=client -o yaml | kubectl apply -f -
+        done'
+      - 'echo "Token in place. ArgoCD owns everything that reads it."'

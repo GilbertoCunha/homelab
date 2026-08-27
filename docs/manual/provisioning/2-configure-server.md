@@ -25,16 +25,7 @@ task ansible:ping
 You should see `SUCCESS` and `"ping": "pong"`. If it hangs or reports
 `UNREACHABLE`, the DNS record or your SSH key is the problem.
 
-## 3. Previewing the changes
-
-```bash
-task ansible:check
-```
-
-This changes nothing. It prints what a real run would do. On a fresh server
-almost everything is reported as changed, which is expected.
-
-## 4. Configuring the server
+## 3. Configuring the server
 
 Run this on **your own machine**, from the repo:
 
@@ -68,7 +59,7 @@ To configure everything except the mesh in the meantime:
 task ansible:site:no-mesh
 ```
 
-## 5. Checking it worked
+## 4. Checking it worked
 
 On **your own machine**:
 
@@ -89,7 +80,7 @@ headscale nodes list
 All four services should be `active (running)`. The node list should show
 `homelab` with an address starting `100.64.`, tagged `tag:infra`.
 
-## 6. Reaching the Proxmox interface
+## 5. Reaching the Proxmox interface
 
 The Proxmox interface is served at `https://proxmox.homelab.grncunha.com`, with
 a real certificate, and only to devices on the mesh. Joining takes one step on

@@ -55,11 +55,33 @@ wave before starting the next. This is the dependency order:
 | --- | --- | --- |
 | -1 | `crds` | — |
 | 0 | kgateway CRDs | — |
-| 1 | kgateway | Its own CRDs, established |
-| 2 | `network` | `GatewayParameters`, a kind kgateway registers |
+| 1 | kgateway, cert-manager | Their CRDs, established |
+| 2 | `network`, external-dns | `GatewayParameters`, a kind kgateway registers |
 
 Within a wave the order is undefined, so anything that must come first needs a
 wave of its own.
+
+## One thing is not in git
+
+The Cloudflare API token. cert-manager and external-dns both read it, and
+`task cluster:cloudflare-token` creates it from the encrypted secrets file.
+
+That is a step to repeat after a rebuild, and the reason it exists is that
+nothing may hold a secret in plaintext in this repo. Making it git-native means
+`sops-secrets-operator` and a second age key, which is not set up yet.
+
+## ArgoCD owns part of kube-system
+
+Only one field of it: the `env: prod` label, so Hubble's UI can attach a route
+to the prod Gateway. Two things keep that from being reckless:
+
+| Guard | What it stops |
+| --- | --- |
+| Server-side apply | ArgoCD owns the fields it names and no others, so nothing else on the namespace is disturbed |
+| `Prune=false` | Deleting the manifest can never delete `kube-system`, which would take the control plane's workload with it |
+
+Adding any other field to `gitops/network/base/kube-system.yaml` hands ArgoCD
+ownership of that field too. Do not.
 
 ## CRDs are never pruned
 

@@ -1,4 +1,7 @@
 ---
+# CRDs live here rather than coming from each chart, because Helm installs CRDs
+# once and then never upgrades them. Keep every version in step with the chart
+# that uses it.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
@@ -8,3 +11,6 @@ resources:
 
   # ArgoCD CRDs
   - https://github.com/argoproj/argo-cd/manifests/crds?ref=v3.5.1
+
+  # cert-manager CRDs
+  - https://github.com/cert-manager/cert-manager/releases/download/v1.21.1/cert-manager.crds.yaml

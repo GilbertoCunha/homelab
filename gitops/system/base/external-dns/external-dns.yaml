@@ -1,0 +1,57 @@
+---
+# Writes the DNS records for every HTTPRoute, so adding a service means adding
+# a route and nothing else. See docs/concepts/ingress.md.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: external-dns
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  project: default
+  destination:
+    namespace: external-dns
+    server: https://kubernetes.default.svc
+  source:
+    chart: external-dns
+    repoURL: https://kubernetes-sigs.github.io/external-dns/
+    targetRevision: 1.21.1
+    helm:
+      valuesObject:
+        provider:
+          name: cloudflare
+
+        # Records follow the routes, rather than only ever being added. Safe
+        # because of the two limits below: external-dns will not touch a name
+        # outside these domains, and will not delete a record it does not own.
+        policy: sync
+
+        # The hand-made records for homelab, vpn.homelab and proxmox.homelab
+        # sit outside these domains, so they are out of reach by construction
+        # rather than by ownership alone.
+        domainFilters:
+          - k8s.homelab.grncunha.com
+          - apps.homelab.grncunha.com
+
+        # Ownership is recorded in a TXT record carrying this id. Anything
+        # without it -- including the _acme-challenge records cert-manager
+        # creates -- is left alone.
+        txtOwnerId: homelab-k8s
+
+        sources:
+          - gateway-httproute
+
+        env:
+          - name: CF_API_TOKEN
+            valueFrom:
+              secretKeyRef:
+                name: cloudflare-api-token
+                key: api-token
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

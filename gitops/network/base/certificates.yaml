@@ -1,0 +1,31 @@
+---
+# Two certificates, because wildcards do not nest: *.k8s.homelab.grncunha.com
+# does not cover app.dev.k8s.homelab.grncunha.com.
+#
+# Only the mesh Gateways need one. Cloudflare terminates TLS for the public
+# path, so gw-public has no certificate at all.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: wildcard-k8s
+  namespace: gateway-system
+spec:
+  secretName: wildcard-k8s-tls
+  issuerRef:
+    name: letsencrypt
+    kind: ClusterIssuer
+  dnsNames:
+    - "*.k8s.homelab.grncunha.com"
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: wildcard-dev-k8s
+  namespace: gateway-system
+spec:
+  secretName: wildcard-dev-k8s-tls
+  issuerRef:
+    name: letsencrypt
+    kind: ClusterIssuer
+  dnsNames:
+    - "*.dev.k8s.homelab.grncunha.com"

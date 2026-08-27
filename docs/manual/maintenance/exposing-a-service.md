@@ -85,18 +85,31 @@ Conditions:
 environment for that Gateway. `NoMatchingListenerHostname` means the hostname is
 outside the listener's wildcard.
 
-Then reach it. Once external-dns is running the name resolves on its own; until
-then, by address and `Host` header:
+Then wait about a minute and open it. external-dns writes the record and the
+Gateway already has the wildcard certificate, so there is nothing else to add:
 
 ```bash
-curl -sS -o /dev/null -w '%{http_code}\n' \
-  -H 'Host: my-app.k8s.homelab.grncunha.com' http://10.10.10.200
+curl -sS -o /dev/null -w '%{http_code}\n' https://my-app.k8s.homelab.grncunha.com
 ```
 
 ```
 200
 ```
 
-A `404` means Envoy answered but no route matched: the hostname in the header
-and the one in the route disagree. A `503` means the route matched and the
-backend is not answering, so the problem is the workload, not this.
+Reading the failures:
+
+| Result | Meaning |
+| --- | --- |
+| `could not resolve host` | external-dns has not written the record yet, or the hostname is outside its domain filter. `kubectl -n external-dns logs deploy/external-dns` |
+| Certificate warning | The hostname is not under a wildcard the Gateway serves. Wildcards do not nest: `a.dev.k8s...` needs the dev Gateway, not the prod one |
+| `404` | Envoy answered, no route matched. The hostname in the route and the one you asked for disagree |
+| `503` | The route matched and the backend is not answering. The problem is the workload, not this |
+
+To separate a DNS problem from everything else, ask the Gateway by address:
+
+```bash
+curl -skS -o /dev/null -w '%{http_code}\n' \
+  -H 'Host: my-app.k8s.homelab.grncunha.com' http://10.10.10.200
+```
+
+A `200` here with a failure above means DNS, and nothing else.

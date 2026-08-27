@@ -29,7 +29,6 @@ order. They narrow the problem down fast.
 | `task ansible:ping` | Check the server answers before anything else |
 | `task ansible:site` | Apply everything |
 | `task ansible:role -- <tag>` | Apply one role: `common`, `caddy`, `headscale`, `mesh`, `proxmox`, `reboot` |
-| `task ansible:check` | Preview changes. Only works on a server already set up |
 | `task ansible:site:no-mesh` | Apply everything except the roles needing a certificate |
 | `task ansible:lint` | Check the code before committing |
 
@@ -284,6 +283,10 @@ Everything reachable by name goes through a Gateway. See
 | `kubectl get ciliuml2announcementpolicy` | `guest-bridge` |
 | `kubectl get httproute -A` | Every route you expect, and no others |
 | `kubectl -n <ns> describe httproute <name>` | `Accepted: True`. `NotAllowedByListeners` means the namespace is missing its `env` label |
+| `kubectl -n gateway-system get certificate` | Both wildcards `READY: True` |
+| `kubectl -n gateway-system get challenge` | Empty. Anything lingering is a DNS-01 that is not completing |
+| `kubectl -n external-dns logs deploy/external-dns \| tail -20` | The records it last wrote |
+| `dig +short <app>.k8s.homelab.grncunha.com` | `10.10.10.200` |
 | `curl -o /dev/null -w '%{http_code}\n' http://10.10.10.200` | `404`, from Envoy. A timeout means nothing is answering ARP for the address |
 
 A `Service` stuck at `<pending>` and an address that never answers look the same
@@ -300,7 +303,8 @@ The cluster's contents come from `gitops/`, applied by ArgoCD. See
 | `task cluster:render` | `Both overlays render.` Needs no cluster; run before committing |
 | `task cluster:diff` | Only the change you meant to make |
 | `task cluster:bootstrap` | Installs ArgoCD, or repairs it. Safe to re-run |
-| `kubectl -n argocd get applications` | `crds`, `network` and `system`, all `Synced` and `Healthy` |
+| `task cluster:cloudflare-token` | The one secret ArgoCD cannot supply. Re-run after a rebuild |
+| `kubectl -n argocd get applications` | Seven, all `Synced` and `Healthy` |
 | `kubectl -n argocd get pods` | Everything `Running` |
 
 The UI is at `argocd.k8s.homelab.grncunha.com`, on the mesh, read-only without
@@ -312,7 +316,7 @@ logging in.
 | --- | --- |
 | Locked out by SSH or the firewall | Hetzner rescue mode. See [step by step](./troubleshooting/step-by-step.md) |
 | A role went wrong | Undo that piece, then run it again. Same document |
-| The cluster is wrong | `task tofu:destroy` then `task tofu:apply`, then `task cluster:bootstrap`. It is disposable |
+| The cluster is wrong | `task tofu:destroy`, `task tofu:apply`, `task cluster:cloudflare-token`, `task cluster:bootstrap`. It is disposable |
 | ArgoCD is wrong | `task cluster:bootstrap`. It applies the same manifests ArgoCD syncs, so it repairs rather than reinstalls |
 | Beyond fixing | Reinstall and start from [Bootstrap](./manual/provisioning/1-bootstrap.md) |
 

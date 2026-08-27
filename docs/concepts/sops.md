@@ -127,6 +127,19 @@ be wired up by hand.
 | `PROXMOX_VE_API_TOKEN` | OpenTofu, to create guests |
 | `AWS_ACCESS_KEY_ID` | The state backend, against Cloudflare R2 |
 | `AWS_SECRET_ACCESS_KEY` | The state backend, against Cloudflare R2 |
+| `CLOUDFLARE_API_TOKEN` | cert-manager and external-dns, through `task cluster:cloudflare-token` |
+
+### Getting one into the cluster
+
+`sops exec-env` puts a value in an environment variable for the life of one
+command. Nothing inside Kubernetes can read that, so a secret the cluster needs
+has to be copied in. `task cluster:cloudflare-token` does exactly that, and no
+more: it reads the encrypted file and writes a `Secret`, without ever putting
+the value on disk in the clear.
+
+That copy is a step to repeat after a rebuild. The way to remove it is
+`sops-secrets-operator` and a second age key, so the encrypted value can live in
+git and be decrypted in the cluster. That is not set up yet.
 
 ### Some secrets are still never stored
 
