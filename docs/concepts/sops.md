@@ -127,19 +127,49 @@ be wired up by hand.
 | `PROXMOX_VE_API_TOKEN` | OpenTofu, to create guests |
 | `AWS_ACCESS_KEY_ID` | The state backend, against Cloudflare R2 |
 | `AWS_SECRET_ACCESS_KEY` | The state backend, against Cloudflare R2 |
-| `CLOUDFLARE_API_TOKEN` | cert-manager and external-dns, through `task cluster:cloudflare-token` |
 
-### Getting one into the cluster
+### Secrets the cluster needs
 
-`sops exec-env` puts a value in an environment variable for the life of one
-command. Nothing inside Kubernetes can read that, so a secret the cluster needs
-has to be copied in. `task cluster:cloudflare-token` does exactly that, and no
-more: it reads the encrypted file and writes a `Secret`, without ever putting
-the value on disk in the clear.
+`secrets.enc.yaml` is read by commands you run: OpenTofu, Ansible, `kubectl`.
+Nothing inside Kubernetes can read it, because `sops exec-env` puts a value in
+one process's environment and nowhere else.
 
-That copy is a step to repeat after a rebuild. The way to remove it is
-`sops-secrets-operator` and a second age key, so the encrypted value can live in
-git and be decrypted in the cluster. That is not set up yet.
+So secrets the cluster needs live somewhere else: `gitops/secrets/`, as
+`SopsSecret` resources. Those are committed encrypted, and
+**sops-secrets-operator** decrypts them in the cluster and writes a plain
+`Secret` from each. Adding one is a file, not a procedure.
+
+```
+gitops/secrets/*.sops.yaml  --(committed, encrypted)-->  ArgoCD
+                                                           |
+                                              sops-secrets-operator
+                                                           |
+                                                    Secret, in the cluster
+```
+
+Two details make this work:
+
+| Detail | Why |
+| --- | --- |
+| `encrypted_suffix: Templates` | SOPS encrypts values, not keys. Left at its default it would encrypt the value of `kind:` too, and Kubernetes could not tell what the resource was. This limits encryption to `secretTemplates`. |
+| The key is not in git | It is the one thing that cannot be, so `task cluster:sops-key` puts it in the cluster. Everything else comes back from a `git clone`. |
+
+### The cluster holds your key
+
+`task cluster:sops-key` mounts `~/.config/sops/age/keys.txt` — the same key that
+decrypts `secrets.enc.yaml`. Anything able to read a `Secret` in the `sops`
+namespace, exec into the operator pod, or read etcd can therefore decrypt every
+credential in this repo, including `PROXMOX_ROOT_PASSWORD` and the R2
+credentials that hold the cluster's state.
+
+That is a chosen trade: one key to hold, back up and remember, against a larger
+blast radius if the cluster is compromised.
+
+The alternative is a second age key, generated for the cluster and listed as a
+recipient only on the `gitops/**/*.sops.yaml` rule. `secrets.enc.yaml` would
+keep only the personal recipient, so the cluster could not decrypt it at all,
+and the cluster key could be rotated on its own. It costs a second file to back
+up. If the trade ever stops being worth it, that is the change to make.
 
 ### Some secrets are still never stored
 

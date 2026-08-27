@@ -1,5 +1,12 @@
-# Managed by `task secrets:init`. Names the key that may decrypt each file.
-# The recipient is a public key: safe to commit, useless on its own.
+# Managed by `task secrets:init`. Names the key that may decrypt each
+# file. The recipient is a public key: safe to commit, useless on its own.
 creation_rules:
+  # Read in the cluster by sops-secrets-operator. encrypted_suffix limits
+  # encryption to secretTemplates, leaving apiVersion and kind readable
+  # -- without which Kubernetes cannot tell what the resource is.
+  - path_regex: gitops/.*\.sops\.yaml$
+    encrypted_suffix: Templates
+    age: age16y8uf79y5gmc6zpm07mrd5exkuf58pl24gc6ucf4pe6uwvp834hs6k59pk
+
   - path_regex: secrets\.enc\.yaml$
     age: age16y8uf79y5gmc6zpm07mrd5exkuf58pl24gc6ucf4pe6uwvp834hs6k59pk

@@ -3,8 +3,8 @@
 # address Let's Encrypt cannot reach, and DNS-01 is the only challenge that
 # issues wildcards.
 #
-# The token is created by `task cluster:cloudflare-token`, not by ArgoCD. It is
-# the one thing here that is not in git.
+# The token itself is committed, encrypted, in gitops/secrets/, and decrypted in
+# the cluster by sops-secrets-operator.
 apiVersion: cert-manager.io/v1
 kind: ClusterIssuer
 metadata:

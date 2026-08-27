@@ -79,8 +79,10 @@ follow when changing this repo.
 files, role defaults, and anything a `.gitignore` entry is the only thing
 protecting.
 
-- **One encrypted file for the whole repo.** Both Ansible and OpenTofu read from
-  it, so it sits at the root rather than inside either tree.
+- **Two homes, split by who reads it.** `secrets.enc.yaml` at the root is for
+  commands you run; Ansible and OpenTofu both read it, so it belongs to neither
+  tree. `gitops/**/*.sops.yaml` is for secrets the cluster reads, decrypted in
+  place by sops-secrets-operator. A value belongs in exactly one of them.
 - **Secrets reach a command as environment variables**, through
   `sops exec-env`. Never decrypt to a file.
 - **The age key that decrypts it is not in the repo** and never will be. It is

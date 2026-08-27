@@ -135,8 +135,9 @@ challenge against public resolvers rather than the cluster's, because CoreDNS
 knows nothing about `grncunha.com` and would time out every time.
 
 Both read one Cloudflare API token, scoped to `Zone:DNS:Edit` on
-`grncunha.com`. That token is the **only** thing here that is not in git; it is
-created by `task cluster:cloudflare-token`.
+`grncunha.com`. It lives in `gitops/secrets/`, committed and encrypted, and
+sops-secrets-operator turns it into a `Secret` in each namespace that needs
+one. See [Secrets with SOPS](./sops.md).
 
 ## Why the public Gateway needs no certificate
 

@@ -64,11 +64,22 @@ How this works, and what to do when it does not:
 | --- | --- |
 | `task secrets:edit` | Open the encrypted file in your editor |
 | `task secrets:show` | Print the decrypted values, to check your age key works |
+| `task secrets:edit:cluster -- <file>` | Open an encrypted `SopsSecret` from `gitops/secrets/` |
+| `task cluster:sops-key` | Put the age key in the cluster, so the operator can decrypt |
 | `age-keygen -o ~/.config/sops/age/keys.txt` | Create the key. Once, ever |
-| `sops updatekeys secrets.enc.yaml` | Re-encrypt after changing `.sops.yaml` |
+| `sops updatekeys <file>` | Re-encrypt after changing `.sops.yaml` |
+
+Two places hold secrets, and the difference is who reads them:
+
+| Where | Read by | Reaches it via |
+| --- | --- | --- |
+| `secrets.enc.yaml` | Commands you run | `sops exec-env` |
+| `gitops/secrets/*.sops.yaml` | The cluster | sops-secrets-operator |
 
 The age key at `~/.config/sops/age/keys.txt` is not in the repo and cannot be
-recovered from it. If it is gone, every secret has to be created again.
+recovered from it. If it is gone, every secret has to be created again. The
+cluster holds a copy of it, so it can also read `secrets.enc.yaml`; see
+[Secrets with SOPS](./concepts/sops.md).
 
 ### Applying without rebooting
 
@@ -303,9 +314,11 @@ The cluster's contents come from `gitops/`, applied by ArgoCD. See
 | `task cluster:render` | `Both overlays render.` Needs no cluster; run before committing |
 | `task cluster:diff` | Only the change you meant to make |
 | `task cluster:bootstrap` | Installs ArgoCD, or repairs it. Safe to re-run |
-| `task cluster:cloudflare-token` | The one secret ArgoCD cannot supply. Re-run after a rebuild |
-| `kubectl -n argocd get applications` | Seven, all `Synced` and `Healthy` |
+| `task cluster:sops-key` | The one secret ArgoCD cannot supply. Re-run after a rebuild |
+| `kubectl -n argocd get applications` | Nine, all `Synced` and `Healthy` |
 | `kubectl -n argocd get pods` | Everything `Running` |
+| `kubectl get sopssecret -A` | Every committed secret, and no error in the operator's log |
+| `task secrets:edit:cluster -- <file>` | Edits an encrypted `SopsSecret` in place |
 
 The UI is at `argocd.k8s.homelab.grncunha.com`, on the mesh, read-only without
 logging in.
@@ -316,7 +329,7 @@ logging in.
 | --- | --- |
 | Locked out by SSH or the firewall | Hetzner rescue mode. See [step by step](./troubleshooting/step-by-step.md) |
 | A role went wrong | Undo that piece, then run it again. Same document |
-| The cluster is wrong | `task tofu:destroy`, `task tofu:apply`, `task cluster:cloudflare-token`, `task cluster:bootstrap`. It is disposable |
+| The cluster is wrong | `task tofu:destroy`, `task tofu:apply`, `task cluster:sops-key`, `task cluster:bootstrap`. It is disposable |
 | ArgoCD is wrong | `task cluster:bootstrap`. It applies the same manifests ArgoCD syncs, so it repairs rather than reinstalls |
 | Beyond fixing | Reinstall and start from [Bootstrap](./manual/provisioning/1-bootstrap.md) |
 
