@@ -144,6 +144,16 @@ Nothing writes state to this repo.
   `HTTPRoute` you need, enable it in `values.yaml` rather than writing a second
   one; the hostname is then written once.
 
+## Git
+
+- **Never commit or push to `main` on your own.** ArgoCD tracks `main`, so a
+  push to it is a deployment, not a save. Leave the changes in the working tree
+  and say they are ready; committing them is the human's call.
+- **Work on a branch** when a change is big enough to want a commit before it is
+  finished. Open a pull request; do not merge it yourself.
+- This holds even after the change has been reviewed in conversation. Agreeing
+  that a fix is correct is not the same as agreeing to deploy it now.
+
 ## Before you finish
 
 ```bash
