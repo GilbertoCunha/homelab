@@ -33,3 +33,4 @@ Standalone procedures. Read the one you need.
 - For how a piece works rather than how to run it: [Concepts](../concepts/)
 - For the commands you reach for most: [Cheatsheet](../cheatsheet.md)
 - For what is not built yet: [Backlog](../backlog.md)
+- For what runs but is not right yet: [Improvements](../improvements.md)

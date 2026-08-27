@@ -33,3 +33,4 @@ The server itself is `homelab.grncunha.com`, over SSH.
 - For how the system is put together, see [Architecture](./docs/architecture/index.md).
 - For how a piece of it works rather than how to run it, see [Concepts](./docs/concepts/).
 - For what is not built yet, see the [Backlog](./docs/backlog.md).
+- For what runs but is not right yet, see [Improvements](./docs/improvements.md).
