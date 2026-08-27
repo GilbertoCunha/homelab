@@ -34,6 +34,13 @@ configs:
     # server serves TLS and redirects, which turns into a redirect loop.
     server.insecure: true
 
+    # Every Application applies server-side, so it must diff server-side too.
+    # Without this the fields the Gateway API CRDs default -- parentRefs.kind,
+    # backendRefs.weight, certificateRefs.group -- read as drift, and a synced
+    # Gateway or HTTPRoute goes straight back to OutOfSync. The controller
+    # reads this as an environment variable, so it restarts when it changes.
+    controller.diff.server.side: "true"
+
   rbac:
     # Everyone starts read-only, including the anonymous user above.
     policy.default: role:readonly
