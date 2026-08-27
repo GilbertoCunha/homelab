@@ -73,6 +73,12 @@ Add a `CLOUDFLARE_API_TOKEN` line and paste the token as its value. A secrets
 file created before this step will not have the key yet; `task secrets:init`
 only writes the list into a file that does not exist.
 
+It has to be in the file, not just in your shell. `sops exec-env` adds the
+file's keys to the environment it inherits, so a `CLOUDFLARE_API_TOKEN` already
+exported in your profile would be used instead and the cluster would get a value
+that no other machine can reproduce. The task refuses to run until the key is in
+the file for exactly this reason.
+
 Then push it into the cluster:
 
 ```bash

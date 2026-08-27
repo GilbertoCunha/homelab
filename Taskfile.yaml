@@ -232,11 +232,23 @@ tasks:
       # resolves its secret from cert-manager's own namespace, so there are two
       # copies of one value. Piping through `apply` rather than `create` keeps
       # the task repeatable.
+      # `sops exec-env` adds the file's keys to the environment it inherits, so
+      # a variable already exported in your shell satisfies it and the value
+      # used is not the one in the file. Checking the file itself is what makes
+      # this reproducible on a machine that does not happen to have it set.
+      # SOPS encrypts values and not keys, so this needs no decryption.
+      - |
+        set -eu
+        if ! grep -q '^CLOUDFLARE_API_TOKEN:' {{.SECRETS}}; then
+          echo "CLOUDFLARE_API_TOKEN is not in {{.SECRETS}}."
+          echo "Add it with: task secrets:edit"
+          exit 1
+        fi
       - |
         {{.WITH_SECRETS}} 'set -eu
         if [ -z "${CLOUDFLARE_API_TOKEN:-}" ]; then
-          echo "CLOUDFLARE_API_TOKEN is empty or missing from the secrets file."
-          echo "Add it with: task secrets:edit"
+          echo "CLOUDFLARE_API_TOKEN is present but empty."
+          echo "Fill it in with: task secrets:edit"
           exit 1
         fi
         for ns in cert-manager external-dns; do
