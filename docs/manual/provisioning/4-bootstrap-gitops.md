@@ -80,10 +80,15 @@ and back up. It means a compromise of the cluster is a compromise of those
 credentials too, and rotating means re-encrypting everything rather than just
 `gitops/`. [Secrets with SOPS](../../concepts/sops.md) has the alternative.
 
-## 4. Filling in the Cloudflare token
+## 4. Filling in the Cloudflare DNS token
 
 cert-manager and external-dns both need a Cloudflare API token. The encrypted
 file holding it is committed with an empty value, so this is a one-time edit.
+
+This is the **DNS** token, and it is the only Cloudflare token the cluster
+holds. The public path needs a second one, scoped to the account rather than the
+zone, because a tunnel is an account resource; it is created later and is not
+needed to bootstrap. See [the backlog](../../backlog.md).
 
 Create the token first, in the [Cloudflare
 dashboard](https://dash.cloudflare.com) under **My Profile**, **API Tokens**:
@@ -305,7 +310,7 @@ kubectl -n gateway-system get challenge
 Secret the operator produced actually holds a value:
 
 ```bash
-kubectl -n cert-manager get secret cloudflare-api-token \
+kubectl -n cert-manager get secret cloudflare-api-dns-token \
   -o jsonpath='{.data.api-token}' | base64 -d | wc -c
 ```
 

@@ -141,8 +141,13 @@ knows nothing about `grncunha.com` and would time out every time.
 
 Both read one Cloudflare API token, scoped to `Zone:DNS:Edit` on
 `grncunha.com`. It lives in `gitops/secrets/`, committed and encrypted, and
-sops-secrets-operator turns it into a `Secret` in each namespace that needs
-one. See [Secrets with SOPS](./sops.md).
+sops-secrets-operator turns it into a `Secret` named `cloudflare-api-dns-token`
+in each namespace that needs one. See [Secrets with SOPS](./sops.md).
+
+A tunnel is an account resource, not a zone one, so it cannot be reached by a
+zone-scoped token at all. The public path therefore gets a second token rather
+than a wider one, which keeps these two off the account entirely. See
+[the backlog](../backlog.md).
 
 ## Why the public Gateway needs no certificate
 
