@@ -12,7 +12,7 @@ gitops/
 ├── crds/        CRDs, which nothing else may install
 ├── network/     Address pool, L2 announcement, Gateways
 ├── secrets/     SopsSecrets: encrypted values, committed
-└── system/      ArgoCD itself, kgateway, cert-manager, external-dns
+└── system/      ArgoCD itself, kgateway, cert-manager, external-dns, cloudflared
     ├── base/            what exists
     └── overlays/        which branch and path each environment reads
 ```
@@ -59,6 +59,7 @@ wave before starting the next. This is the dependency order:
 | 1 | kgateway, cert-manager | Their CRDs, established |
 | 2 | `network`, external-dns | `GatewayParameters`, a kind kgateway registers |
 | 3 | `secrets` | The operator, and the namespaces the Secrets land in |
+| 4 | `cloudflared` | Its credentials, and `gw-public` to dial |
 
 Within a wave the order is undefined, so anything that must come first needs a
 wave of its own.

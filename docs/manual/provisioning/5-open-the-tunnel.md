@@ -47,8 +47,7 @@ Tunnel credentials written to /Users/you/.cloudflared/<tunnel-id>.json.
 Created tunnel homelab with id <tunnel-id>
 ```
 
-Keep the id. It is needed three times below, and it is an identifier rather than
-a secret, so it is committed in the clear.
+Keep the id. It is an identifier, not a secret, and is committed in the clear.
 
 ```bash
 cloudflared tunnel list
@@ -65,10 +64,9 @@ No connections yet is expected. Nothing is running the connector.
 and external-dns owns DNS for this cluster. Two writers on one name is a
 conflict; step 4 is how the record gets made.
 
-Creating the tunnel with the CLI rather than the dashboard also makes it
-*locally managed*: Cloudflare holds no ingress rules for it and expects the
-connector to carry its own. That is what makes the ConfigMap in step 3 the
-routing table rather than a copy of one.
+The CLI makes the tunnel *locally managed*: Cloudflare holds no ingress rules
+for it, so the ConfigMap in step 3 is the routing table rather than a copy of
+one. A tunnel made in the dashboard is not.
 
 ## 2. Putting the credentials in git
 
@@ -94,12 +92,11 @@ task secrets:check
 gitops/secrets/base/cloudflared.sops.yaml is encrypted.
 ```
 
-`secrets:check` must name the file. It is deliberately not gitignored, so a
-plaintext one would be committed. [Secrets with SOPS](../../concepts/sops.md)
-explains the scheme.
+`secrets:check` must name the file: it is not gitignored, so a plaintext one
+would be committed. See [Secrets with SOPS](../../concepts/sops.md).
 
-The local copy under `~/.cloudflared/` is now a duplicate and can be deleted.
-Keep `cert.pem`: without it you cannot manage the tunnel later.
+Delete the local copy under `~/.cloudflared/`. Keep `cert.pem`, or you cannot
+manage the tunnel later.
 
 ## 3. Pointing the connector at the Gateway
 
@@ -112,9 +109,7 @@ for yours:
 | `gitops/network/base/gateways.yaml` | the `target` annotation on `gw-public` |
 | `gitops/secrets/base/cloudflared.sops.yaml` | `TunnelID`, inside the credentials |
 
-The id is stated rather than shared because the three are read by different
-things, in different namespaces, from different manifests. It changes only if
-the tunnel is deleted.
+It changes only if the tunnel is deleted.
 
 ## 4. Deploying
 
@@ -139,15 +134,13 @@ kubectl -n cloudflared logs -l app=cloudflared | grep -c "Registered tunnel conn
 8
 ```
 
-Four connections per pod, across two Cloudflare datacenters, is `cloudflared`'s
-own high-availability default rather than something configured here.
+Four connections per pod is `cloudflared`'s own default, not something set here.
 
 ## 5. Checking it end to end
 
-`examples/web-public/` is a throwaway app for exactly this: `traefik/whoami`, a
-`Service`, a namespace labelled `env: prod`, and an `HTTPRoute` on `gw-public`
-carrying no annotations. Apply it by hand. ArgoCD does not sync `examples/`, so
-nothing here is a deployment and nothing needs a commit.
+`examples/web-public/` is a throwaway app for this: `traefik/whoami` on
+`gw-public`, with no annotations on the route. ArgoCD does not sync `examples/`,
+so applying it is not a deployment.
 
 ```bash
 kubectl apply -k examples/web-public
@@ -158,7 +151,7 @@ kubectl -n web-public rollout status deploy/whoami
 deployment "whoami" successfully rolled out
 ```
 
-First, that the route attached. This is the API server's answer, not a guess:
+First, that the route attached:
 
 ```bash
 kubectl -n web-public get httproute whoami \
@@ -183,10 +176,8 @@ dig +short whoami.grncunha.com
 172.67.180.22
 ```
 
-Cloudflare's own addresses are what proves it is proxied. A
-`<tunnel-id>.cfargotunnel.com` line in the answer instead means the record was
-written unproxied, the name will not resolve for a browser, and the two
-external-dns instances are not split correctly. Check which one claimed it:
+Cloudflare's addresses prove it is proxied. A `.cfargotunnel.com` line instead
+means the record was written unproxied and will not resolve for a browser:
 
 ```bash
 kubectl -n external-dns logs deploy/external-dns-tunnel | grep whoami
@@ -208,10 +199,9 @@ Host: whoami.grncunha.com
 X-Forwarded-Proto: https
 ```
 
-The `Host` line is the one to read. It must be the public name, not
-`gw-public.gateway-system.svc`: `cloudflared` passes the original host through,
-and `gw-public` matches the route on it. Anything else there means the routing
-in the ConfigMap is wrong, and you would see a 404 rather than this output.
+Read the `Host` line: it must be the public name. `cloudflared` passes the
+original host through and `gw-public` matches the route on it, so anything else
+is a 404.
 
 Then confirm nothing new is listening:
 
@@ -236,29 +226,26 @@ kubectl delete -k examples/web-public
 dig +short whoami.grncunha.com
 ```
 
-The second command should print nothing within a minute or so. external-dns
-owns the record, so deleting the route deletes it; a name that still resolves
-means `policy: sync` is not pruning and the record will have to go by hand.
+The second should print nothing within a minute: external-dns owns the record
+and prunes it. If it still resolves, remove it by hand.
 
 ## When it does not work
 
-**HTTPS fails but HTTP works.** The clearest signal, and the easiest to
-misread:
+**HTTPS fails, HTTP works.** The name has no edge certificate, which means it is
+too deep: Universal SSL covers the apex and one level only. `whoami.grncunha.com`
+is covered, `whoami.apps.homelab.grncunha.com` is not. See
+[Names](../../architecture/names.md).
 
 ```bash
 curl -sS  https://whoami.grncunha.com    # curl: (35) ... handshake failure
 curl -sSI http://whoami.grncunha.com     # 200
 ```
 
-Nothing appears in the `cloudflared` logs, because the handshake is refused at
-the edge and no request is ever made. It means the name has no edge
-certificate, which almost always means it is too deep: Universal SSL covers the
-apex and one level only. `whoami.grncunha.com` is covered,
-`whoami.apps.homelab.grncunha.com` is not. See
-[Names](../../architecture/names.md).
+The `cloudflared` logs stay empty: the handshake is refused at the edge and no
+request is made.
 
 **Cloudflare error 1033.** The record resolves but no connector is registered.
-The tunnel exists and nothing is dialling it: check step 4, then the credentials.
+Check step 4, then the credentials.
 
 ```bash
 kubectl -n cloudflared logs -l app=cloudflared | tail -20
@@ -267,9 +254,8 @@ kubectl -n cloudflared logs -l app=cloudflared | tail -20
 `Couldn't decode credentials` means the JSON in the `SopsSecret` is malformed or
 was pasted across several lines.
 
-**A 502 from Cloudflare.** `cloudflared` connected and `gw-public` refused it,
-which is almost always a hostname that matches no `HTTPRoute`. Check from inside
-the cluster, bypassing the tunnel:
+**A 502 from Cloudflare.** `gw-public` refused the request, almost always a
+hostname matching no `HTTPRoute`. Check from inside the cluster:
 
 ```bash
 kubectl -n cloudflared exec deploy/cloudflared -- \
@@ -282,9 +268,8 @@ kubectl -n cloudflared exec deploy/cloudflared -- \
 kubectl -n external-dns logs deploy/external-dns-tunnel | tail -20
 ```
 
-The tunnel instance only considers Gateways labelled `dns-mode: tunnel`. If it
-logs nothing about your hostname, check that label on `gw-public`.
+It only considers Gateways labelled `dns-mode: tunnel`. If it logs nothing about
+your hostname, check that label on `gw-public`.
 
-**A record appears, unproxied.** The route was picked up by the wrong instance.
-Both instances log which records they own; the one that should not have it is
-`external-dns`, filtered to `dns-mode: direct`.
+**A record appears, unproxied.** The wrong instance picked the route up. Check
+the same log on `external-dns`, which is filtered to `dns-mode: direct`.

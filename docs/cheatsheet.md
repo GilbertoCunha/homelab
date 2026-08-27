@@ -296,8 +296,10 @@ Everything reachable by name goes through a Gateway. See
 | `kubectl -n <ns> describe httproute <name>` | `Accepted: True`. `NotAllowedByListeners` means the namespace is missing its `env` label |
 | `kubectl -n gateway-system get certificate` | Both wildcards `READY: True` |
 | `kubectl -n gateway-system get challenge` | Empty. Anything lingering is a DNS-01 that is not completing |
-| `kubectl -n external-dns logs deploy/external-dns \| tail -20` | The records it last wrote |
+| `kubectl -n external-dns logs deploy/external-dns \| tail -20` | The mesh records it last wrote. The public ones are `deploy/external-dns-tunnel` |
 | `dig +short <app>.k8s.homelab.grncunha.com` | `10.10.10.200` |
+| `dig +short <app>.grncunha.com` | Cloudflare addresses, `104.*` or `172.67.*`. A `.cfargotunnel.com` line means the record went out unproxied |
+| `kubectl -n cloudflared logs -l app=cloudflared \| grep -c "Registered tunnel connection"` | `8`, four per pod |
 | `curl -o /dev/null -w '%{http_code}\n' http://10.10.10.200` | `404`, from Envoy. A timeout means nothing is answering ARP for the address |
 
 A `Service` stuck at `<pending>` and an address that never answers look the same
@@ -315,7 +317,7 @@ The cluster's contents come from `gitops/`, applied by ArgoCD. See
 | `task cluster:diff` | Only the change you meant to make |
 | `task cluster:bootstrap` | Installs ArgoCD, or repairs it. Safe to re-run |
 | `task cluster:sops-key` | The one secret ArgoCD cannot supply. Re-run after a rebuild |
-| `kubectl -n argocd get applications` | Nine, all `Synced` and `Healthy` |
+| `kubectl -n argocd get applications` | Eleven, all `Synced` and `Healthy` |
 | `kubectl -n argocd get pods` | Everything `Running` |
 | `kubectl get sopssecret -A` | Every committed secret, and no error in the operator's log |
 | `task secrets:edit:cluster -- <file>` | Edits an encrypted `SopsSecret` in place |

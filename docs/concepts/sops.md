@@ -309,4 +309,6 @@ encryption is the answer, and it does mean accepting a second key to protect.
   root password.
 - [Provision the cluster](../manual/provisioning/3-provision-cluster.md) sets the file up and
   fills in the rest.
+- [Opening the tunnel](../manual/provisioning/5-open-the-tunnel.md) adds the
+  tunnel credentials as a `SopsSecret`.
 - [Cheatsheet](../cheatsheet.md) lists the commands on their own.

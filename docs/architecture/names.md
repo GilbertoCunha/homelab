@@ -29,13 +29,11 @@ runs it:
 | `<app>.dev.k8s.homelab.grncunha.com` | The cluster, dev | cert-manager, DNS-01 wildcard |
 | `<app>.grncunha.com` | The cluster, published | Cloudflare, at the edge |
 
-Private things nest under `homelab`. Public things sit at the top, one level
-under the apex, and that is not a style choice: **Cloudflare's Universal SSL
-covers the apex and first-level subdomains only.** A published name any deeper
-has no certificate at the edge, and the TLS handshake fails before a request
-exists. Covering `<app>.apps.homelab.grncunha.com` would mean buying Advanced
-Certificate Manager. See
-[Getting traffic into the cluster](../concepts/ingress.md).
+Private things nest under `homelab`; public things sit one level under the apex.
+That is not style: **Universal SSL covers the apex and first-level subdomains
+only**, so a deeper published name has no certificate at the edge and the
+handshake fails. Covering one would mean buying Advanced Certificate Manager.
+See [Getting traffic into the cluster](../concepts/ingress.md).
 
 A name under `homelab` is added by hand: a Cloudflare record, and a Caddy site.
 A name under `k8s`, and any published name, is not added at all -- external-dns
@@ -43,12 +41,11 @@ writes the record from the `HTTPRoute`, and the Gateway already holds the
 certificate. See
 [Exposing a service](../manual/maintenance/exposing-a-service.md).
 
-Public names therefore share one namespace with the hand-made records, and a
-name can only mean one thing. Check this table before publishing an app.
+Published names share a namespace with the hand-made ones above, so check this
+table before picking one.
 
 Records made by hand must be **DNS only**, the grey cloud. Cloudflare's proxy
 breaks certificate issuance for Caddy and drops the UDP the mesh needs. The
 exception is the public cluster path, which only works proxied because a tunnel
-CNAME requires it -- and that record is not made by hand either. external-dns
-writes it, proxied, decided by the Gateway the route attaches to. See
-[Getting traffic into the cluster](../concepts/ingress.md).
+CNAME requires it. external-dns writes that one, and the Gateway the route
+attaches to is what makes it proxied.

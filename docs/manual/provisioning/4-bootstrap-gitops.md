@@ -1,8 +1,8 @@
 # Manual 4 - Bootstrap GitOps
 
 This installs ArgoCD, and through it kgateway and the Gateways that make
-workloads reachable. It is the last provisioning step; everything after it is a
-commit to this repo.
+workloads reachable. After it, changing what runs in the cluster is a commit to
+this repo.
 
 Before you start, finish
 [Provision the Kubernetes cluster](./3-provision-cluster.md). All six nodes must
@@ -125,7 +125,6 @@ and only the two age keys open it.
 
 ## 5. Bootstrapping
 
-
 ```bash
 task cluster:bootstrap
 ```
@@ -150,14 +149,18 @@ kubectl -n argocd get applications
 ```
 
 ```
-NAME                 SYNC STATUS   HEALTH STATUS
-cert-manager         Synced        Healthy
-crds                 Synced        Healthy
-external-dns         Synced        Healthy
-kgateway-crds-helm   Synced        Healthy
-kgateway-helm        Synced        Healthy
-network              Synced        Healthy
-system               Synced        Healthy
+NAME                    SYNC STATUS   HEALTH STATUS
+cert-manager            Synced        Healthy
+cilium                  Synced        Healthy
+crds                    Synced        Healthy
+external-dns            Synced        Healthy
+external-dns-tunnel     Synced        Healthy
+kgateway-crds-helm      Synced        Healthy
+kgateway-helm           Synced        Healthy
+network                 Synced        Healthy
+secrets                 Synced        Healthy
+sops-secrets-operator   Synced        Healthy
+system                  Synced        Healthy
 ```
 
 `network` sits `OutOfSync` or `Degraded` for the first minute or two, because it
@@ -336,3 +339,8 @@ changed since the file was encrypted, re-encrypt it with `sops updatekeys <file>
 **Starting over.** `task tofu:destroy` and `task tofu:apply` rebuild the cluster
 from nothing, then `task cluster:sops-key` and `task cluster:bootstrap`. Nothing
 else here is stored only in the cluster: every other secret comes back from git.
+
+## Next
+
+The cluster serves the mesh. To publish a workload to the internet, continue
+with [Opening the tunnel](./5-open-the-tunnel.md).

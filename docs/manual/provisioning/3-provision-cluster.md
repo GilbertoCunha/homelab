@@ -359,3 +359,8 @@ talosctl --nodes 10.10.10.11 service etcd status
 **Starting over.** `task tofu:destroy` removes every guest, then `task
 tofu:apply` rebuilds from nothing. The cluster is disposable; anything stored in
 it is not.
+
+## Next
+
+The cluster is running but empty. Fill it from git with
+[Bootstrap GitOps](./4-bootstrap-gitops.md).

@@ -16,15 +16,13 @@ For how any of this works, see
 
 Default to a mesh Gateway. Public is for something that has a reason to be.
 
-The Gateway is the only thing that decides how the DNS record is written. A
-route on `gw-public` gets a proxied `CNAME` through the tunnel; one on a mesh
-Gateway gets an unproxied `A` record. Either way the route itself needs no
-annotations.
+The Gateway decides how the DNS record is written: `gw-public` gets a proxied
+`CNAME` through the tunnel, a mesh Gateway an unproxied `A` record. The route
+needs no annotations either way.
 
-A public name must be **first-level**, `<app>.grncunha.com`, or Cloudflare has
-no certificate for it at the edge and HTTPS fails while plain HTTP still works.
-That also means public names share a namespace with the hand-made records:
-check [Names](../../architecture/names.md) before picking one.
+A public name must be first-level, or Cloudflare has no certificate for it and
+HTTPS fails while HTTP still works. It also shares a namespace with the
+hand-made records, so check [Names](../../architecture/names.md) first.
 
 ## 2. Labelling the namespace
 
@@ -110,7 +108,7 @@ Reading the failures:
 
 | Result | Meaning |
 | --- | --- |
-| `could not resolve host` | external-dns has not written the record yet, or the hostname is outside its domain filter. `kubectl -n external-dns logs deploy/external-dns` |
+| `could not resolve host` | external-dns has not written the record yet. `kubectl -n external-dns logs deploy/external-dns`, or `deploy/external-dns-tunnel` for a public name |
 | Certificate warning | The hostname is not under a wildcard the Gateway serves. Wildcards do not nest: `a.dev.k8s...` needs the dev Gateway, not the prod one |
 | `404` | Envoy answered, no route matched. The hostname in the route and the one you asked for disagree |
 | `503` | The route matched and the backend is not answering. The problem is the workload, not this |
