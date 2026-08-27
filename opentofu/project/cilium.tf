@@ -31,6 +31,22 @@ data "helm_template" "cilium" {
 
     kubeProxyReplacement = true
 
+    # Lets a Service of `type: LoadBalancer` get a real address: LB IPAM picks
+    # one out of a CiliumLoadBalancerIPPool, and one agent wins a lease and
+    # answers ARP for it on the guest bridge. There is no appliance and no BGP
+    # here, so without this a LoadBalancer Service stays <pending> forever.
+    # `docs/concepts/ingress.md` has the whole path.
+    l2announcements = {
+      enabled = true
+    }
+
+    # L2 leases are renewed constantly. The chart's default client rate limit
+    # is too low for that and the agent starts logging throttle warnings.
+    k8sClientRateLimit = {
+      qps   = 20
+      burst = 100
+    }
+
     # Replacing kube-proxy means Cilium cannot reach the API server through a
     # Service, because Services are the thing it has not set up yet. KubePrism
     # is the local proxy Talos runs for exactly this bootstrap problem.

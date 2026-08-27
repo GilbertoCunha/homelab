@@ -1,0 +1,28 @@
+---
+# CRDs sync ahead of everything else, so resources depending on them have their
+# types registered first.
+#
+# spec.source.path and targetRevision are set per environment
+# ../../overlays/production/applications/.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: crds
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/GilbertoCunha/homelab
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      # No prune. Deleting a CRD deletes every custom resource of that kind, so
+      # removing one stays a deliberate manual act.
+      prune: false
+      selfHeal: true
+    syncOptions:
+      - ServerSideApply=true

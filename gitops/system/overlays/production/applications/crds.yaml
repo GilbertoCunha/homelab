@@ -1,0 +1,10 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: crds
+  namespace: argocd
+spec:
+  source:
+    path: gitops/crds/overlays/production
+    targetRevision: main

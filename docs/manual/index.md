@@ -14,11 +14,14 @@ Follow these in order. Each one assumes the ones above it are done.
 1. [Bootstraping](./provisioning/1-bootstrap.md): how to get the homelab up and running
 2. [Configuring](./provisioning/2-configure-server.md): how to install and configure everything on the server
 3. [Provisioning](./provisioning/3-provision-cluster.md): how to build the Kubernetes cluster on the server
+4. [Bootstrapping GitOps](./provisioning/4-bootstrap-gitops.md): how to install ArgoCD, so the cluster's contents come from git
 
 ## Maintenance
 
 Standalone procedures. Read the one you need.
 
+- [Exposing a service](./maintenance/exposing-a-service.md): making a workload
+  reachable by name, which is one `HTTPRoute` and nothing else
 - [Upgrading Cilium](./maintenance/upgrading-cilium.md): the CNI, which is also
   the thing every pod depends on to have a network at all
 

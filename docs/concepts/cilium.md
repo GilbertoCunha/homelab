@@ -82,6 +82,22 @@ cannot be used here, for two reasons that are really the same reason:
 Setting `hubble.tls.auto.method: cronJob` moves certificate generation into the
 cluster. The render is then byte-identical every time, and carries no secrets.
 
+## Load balancer addresses
+
+`l2announcements` is on. That is what lets a `Service` of `type: LoadBalancer`
+get a real address on the guest bridge, instead of sitting `<pending>` forever
+with no cloud to ask.
+
+| Setting | Why |
+| --- | --- |
+| `l2announcements.enabled: true` | One agent wins a lease and answers ARP for each assigned address. |
+| `k8sClientRateLimit` | Leases are renewed constantly, and the chart's default limit is too low for that. Left alone, the agent logs throttle warnings. |
+
+Cilium's own `gatewayAPI` is deliberately **off**: kgateway is the Gateway API
+implementation here. These are separate features, and
+[Getting traffic into the cluster](./ingress.md) explains why turning one off
+does not remove the need for the other.
+
 ## What this costs
 
 Cilium is the network *and* the Service implementation. When it is broken, both
@@ -95,4 +111,5 @@ Where the pieces live:
 | --- | --- |
 | Chart version | `opentofu/project/terraform.tfvars` |
 | Chart values | `opentofu/project/cilium.tf` |
+| Address pool, L2 announcement policy | `gitops/network/base/` |
 | CNI off, kube-proxy off, KubePrism port | `opentofu/project/cluster.tf` |

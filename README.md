@@ -7,7 +7,7 @@ In this repo, I configure a dedicated server I have running:
 - **OS**: debian 13
 - **Mesh Network**: Headscale
 - **Virtualization**: Proxmox
-- **Public Access**: Cloudflare tunnels
+- **Public Access**: Caddy on the host; Cloudflare tunnels for the cluster
 - **Container Orchestration**: Kubernetes, on Talos Linux
 - **Provisioning**: OpenTofu
 
@@ -16,7 +16,7 @@ In this repo, I configure a dedicated server I have running:
 - To get it running, read the [Operator Manual](./docs/manual/index.md).
 - When something breaks, read [Applying step by step](./docs/troubleshooting/step-by-step.md).
 - For the commands you reach for most, see the [Cheatsheet](./docs/cheatsheet.md).
-- For how a piece of this works rather than how to run it, see [Concepts](./docs/concepts/), starting with [The mesh network](./docs/concepts/mesh.md), [The cluster's networking](./docs/concepts/cilium.md) and [Secrets with SOPS](./docs/concepts/sops.md).
+- For how a piece of this works rather than how to run it, see [Concepts](./docs/concepts/), starting with [The mesh network](./docs/concepts/mesh.md), [The cluster's networking](./docs/concepts/cilium.md), [Getting traffic into the cluster](./docs/concepts/ingress.md), [GitOps with ArgoCD](./docs/concepts/gitops.md) and [Secrets with SOPS](./docs/concepts/sops.md).
 
 ## Architecture
 
@@ -50,9 +50,18 @@ internet ──▶ 22, 80, 443 ──▶ homelab.grncunha.com
                                                         ├── cp-1..3      ──▶ etcd, kube-apiserver
                                                         └── worker-1..3  ──▶ workloads
 
+internet ──▶ cloudflare edge ──▶ tunnel ──▶ cloudflared (in cluster)
+                                             └──▶ gw-public ──▶ public apps
+
 your laptop ──▶ mesh ──▶ proxmox UI :8006
-                     └──▶ 10.10.10.0/24, routed by the server ──▶ guests
+                     └──▶ 10.10.10.0/24, routed by the server
+                           ├──▶ guests
+                           ├──▶ .200  gw-internal-prod ──▶ prod apps
+                           └──▶ .201  gw-internal-dev  ──▶ dev apps
 ```
+
+The tunnel opens itself, outbound. Nothing new listens on the host, and the
+cluster's own names never touch Caddy.
 
 ### Names and links
 
@@ -66,6 +75,9 @@ record.
 | [`vpn.homelab.grncunha.com`](https://vpn.homelab.grncunha.com) | Headscale, where devices join the mesh | anywhere, by design |
 | `homelab.grncunha.com` | The server itself, over SSH | anywhere |
 | `<node>.mesh.homelab.grncunha.com` | Any mesh node, by name | the mesh only |
+| `<app>.k8s.homelab.grncunha.com` | Any cluster workload, prod | the mesh only |
+| `<app>.dev.k8s.homelab.grncunha.com` | Any cluster workload, dev | the mesh only |
+| `<app>.apps.homelab.grncunha.com` | Any cluster workload published to the internet | anywhere |
 | `grncunha.com` | Apex domain | — |
 
 The server's public IP is not recorded anywhere in this repo. It lives in the
@@ -107,7 +119,9 @@ Check this table before giving a new guest an address.
 | `10.10.10.10` | Kubernetes API | Virtual, shared by the control planes |
 | `10.10.10.11`-`.13` | `cp-1` to `cp-3` | Control planes: 2 vCPU, 4 GB, 40 GB |
 | `10.10.10.21`-`.23` | `worker-1` to `worker-3` | Workers: 4 vCPU, 20 GB, 100 GB |
-| `10.10.10.100`-`.254` | Free | For anything that is not a cluster node |
+| `10.10.10.100`-`.199` | Free | For anything that is not a cluster node |
+| `10.10.10.200`-`.250` | Kubernetes LoadBalancers | Assigned by Cilium, not by a machine. See [Getting traffic into the cluster](./docs/concepts/ingress.md) |
+| `10.10.10.251`-`.254` | Free | |
 
 The cluster uses 18 vCPU against the host's 12 threads and 72 GB of its 125 GB.
 That leaves roughly 53 GB for the server itself.

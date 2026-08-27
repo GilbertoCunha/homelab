@@ -1,0 +1,83 @@
+---
+# Reachable from the mesh at 10.10.10.200. See docs/concepts/ingress.md.
+#
+# HTTP only for now. The HTTPS listener and its certificate arrive with
+# cert-manager; until then a browser will warn, which is expected.
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: gw-internal-prod
+  namespace: gateway-system
+spec:
+  gatewayClassName: kgateway
+  infrastructure:
+    parametersRef:
+      group: gateway.kgateway.dev
+      kind: GatewayParameters
+      name: internal-prod
+  listeners:
+    - name: http
+      protocol: HTTP
+      port: 80
+      hostname: "*.k8s.homelab.grncunha.com"
+      allowedRoutes:
+        namespaces:
+          # The isolation boundary. A namespace without this label cannot
+          # attach a route here, and the API server is what enforces it.
+          from: Selector
+          selector:
+            matchLabels:
+              env: prod
+---
+# Reachable from the mesh at 10.10.10.201. Mesh only: there is no public dev
+# zone and no dev tunnel, by design.
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: gw-internal-dev
+  namespace: gateway-system
+spec:
+  gatewayClassName: kgateway
+  infrastructure:
+    parametersRef:
+      group: gateway.kgateway.dev
+      kind: GatewayParameters
+      name: internal-dev
+  listeners:
+    - name: http
+      protocol: HTTP
+      port: 80
+      hostname: "*.dev.k8s.homelab.grncunha.com"
+      allowedRoutes:
+        namespaces:
+          from: Selector
+          selector:
+            matchLabels:
+              env: dev
+---
+# Inert until cloudflared exists to dial it. Cloudflare terminates TLS at the
+# edge and the tunnel carries its own, so this listener stays plain HTTP even
+# once the public path is finished.
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: gw-public
+  namespace: gateway-system
+spec:
+  gatewayClassName: kgateway
+  infrastructure:
+    parametersRef:
+      group: gateway.kgateway.dev
+      kind: GatewayParameters
+      name: public
+  listeners:
+    - name: http
+      protocol: HTTP
+      port: 80
+      hostname: "*.apps.homelab.grncunha.com"
+      allowedRoutes:
+        namespaces:
+          from: Selector
+          selector:
+            matchLabels:
+              env: prod

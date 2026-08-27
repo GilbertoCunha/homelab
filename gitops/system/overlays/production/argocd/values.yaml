@@ -1,0 +1,52 @@
+---
+# Values for the argo-cd chart.
+
+# CRDs come from gitops/crds instead, because Helm does not upgrade them.
+crds:
+  install: false
+
+configs:
+  cm:
+    # Used for ArgoCD generated links. The mesh zone, not the public one: the
+    # anonymous read-only access below is meant for devices on the mesh, and
+    # this name only resolves to an address a mesh device can route to.
+    # It must match server.httproute.hostnames.
+    url: https://argocd.k8s.homelab.grncunha.com
+
+    # Without this ArgoCD cannot render a kustomization that inflates a Helm
+    # chart -- which is exactly what it does to manage itself.
+    kustomize.buildOptions: --enable-helm
+
+    # No admin user
+    admin.enabled: "false"
+
+    # Read only access without login
+    users.anonymous.enabled: "true"
+
+    # Chart defaults, stated explicitly
+    # To make syncs feel quicker use a GitHub webhook,
+    # because it makes them event-driven.
+    timeout.reconciliation: 120s
+    timeout.reconciliation.jitter: 60s
+
+  params:
+    # The Gateway speaks plain HTTP to this Service. Left on its default the
+    # server serves TLS and redirects, which turns into a redirect loop.
+    server.insecure: true
+
+  rbac:
+    # Everyone starts read-only, including the anonymous user above.
+    policy.default: role:readonly
+
+server:
+  # The chart owns this HTTPRoute, so the hostname is not written twice.
+  # Attaching here is only permitted because the argocd namespace carries
+  # `env: prod`; see gitops/system/base/argocd/namespace.yaml.
+  httproute:
+    enabled: true
+    parentRefs:
+      - name: gw-internal-prod
+        namespace: gateway-system
+        sectionName: http
+    hostnames:
+      - argocd.k8s.homelab.grncunha.com

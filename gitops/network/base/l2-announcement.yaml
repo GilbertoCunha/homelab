@@ -1,0 +1,27 @@
+---
+# Makes one cilium-agent answer ARP for each assigned load balancer address on
+# the guest bridge. Without this a Service gets an address that nothing on the
+# network claims, and it fails silently: no error, the address simply never
+# answers.
+apiVersion: cilium.io/v2alpha1
+kind: CiliumL2AnnouncementPolicy
+metadata:
+  name: guest-bridge
+spec:
+  # Workers only. The control planes carry etcd and the API server, and an
+  # announcement lease adds traffic they do not need.
+  nodeSelector:
+    matchExpressions:
+      - key: node-role.kubernetes.io/control-plane
+        operator: DoesNotExist
+
+  # The interface holding 10.10.10.0/24 on a worker. Confirmed with
+  # `talosctl --nodes 10.10.10.21 get addresses`; a wrong value here is the
+  # single most likely cause of an address that never answers.
+  interfaces:
+    - ^eth0$
+
+  # Only announce addresses this cluster was given from the pool above. External
+  # IPs are addresses someone set by hand, which is not how anything here works.
+  loadBalancerIPs: true
+  externalIPs: false

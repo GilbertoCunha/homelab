@@ -1,0 +1,10 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: system
+  namespace: argocd
+spec:
+  source:
+    path: gitops/system/overlays/production
+    targetRevision: main

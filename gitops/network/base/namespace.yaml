@@ -1,0 +1,8 @@
+---
+# Holds the Gateways and the Envoy deployments kgateway provisions for them.
+# Separate from kgateway-system, which holds the controller: the controller is
+# installed from a chart, the Gateways are written by hand.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: gateway-system

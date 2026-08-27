@@ -111,11 +111,27 @@ Nothing writes state to this repo.
 - **Never run `tofu` directly.** The Taskfile wraps every command in
   `sops exec-env`, which is what supplies the credentials.
 
+## GitOps
+
+- **`gitops/` is everything inside the cluster**, and ArgoCD is the only thing
+  that applies it. OpenTofu stops at the cluster's edge. How the tree is laid
+  out and why is in [GitOps with ArgoCD](docs/concepts/gitops.md).
+- **Every tree has `base/` and `overlays/<environment>/`.** `base` says what a
+  component is; the overlay says where this cluster reads it from. A value that
+  differs per environment belongs in the overlay and nowhere else.
+- **Ordering is a sync wave, not a file order.** Anything that must exist before
+  something else gets its own `argocd.argoproj.io/sync-wave`, with a comment
+  saying what it is waiting for.
+- **A chart's own resource beats a hand-written copy.** If a chart templates the
+  `HTTPRoute` you need, enable it in `values.yaml` rather than writing a second
+  one; the hostname is then written once.
+
 ## Before you finish
 
 ```bash
 task ansible:lint
 task ansible:check
+task cluster:render
 task tofu:fmt
 task tofu:validate
 task secrets:check
@@ -123,7 +139,9 @@ task secrets:check
 
 `ansible:lint` must pass with no failures. `ansible:check` must show only the
 changes you intended. A second `task ansible:site` must report nothing changed.
-`tofu:validate` must pass with no warnings; a deprecation warning means the
-provider has renamed something and the code should follow. `secrets:check` must
+`cluster:render` must render both overlays; it needs no cluster, so there is no
+excuse for skipping it. `tofu:validate` must pass with no warnings; a
+deprecation warning means the provider has renamed something and the code should
+follow. `secrets:check` must
 say the file is encrypted: it is deliberately not gitignored, so a plaintext one
 would be committed.

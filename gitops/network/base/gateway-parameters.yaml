@@ -1,0 +1,59 @@
+---
+# What kind of Service kgateway gives each Gateway. This is the only place the
+# Cilium load balancer and kgateway meet: kgateway provisions the Service, and
+# Cilium fills in the address of any Service that asks to be a LoadBalancer.
+# docs/concepts/ingress.md has the full path.
+apiVersion: gateway.kgateway.dev/v1alpha1
+kind: GatewayParameters
+metadata:
+  name: internal-prod
+  namespace: gateway-system
+spec:
+  kube:
+    service:
+      type: LoadBalancer
+      # The client's mesh address survives to the backend, so a policy can be
+      # written against it. The cost is that Cilium only announces the address
+      # from nodes running an Envoy pod, which is why there are two replicas.
+      externalTrafficPolicy: Local
+    deployment:
+      replicas: 2
+    serviceOverlay:
+      metadata:
+        annotations:
+          # Pinned. LB IPAM gives no ordering guarantee, so without this the
+          # prod and dev Gateways could swap addresses across a rebuild and the
+          # DNS records would quietly follow.
+          lbipam.cilium.io/ips: "10.10.10.200"
+---
+apiVersion: gateway.kgateway.dev/v1alpha1
+kind: GatewayParameters
+metadata:
+  name: internal-dev
+  namespace: gateway-system
+spec:
+  kube:
+    service:
+      type: LoadBalancer
+      externalTrafficPolicy: Local
+    deployment:
+      replicas: 2
+    serviceOverlay:
+      metadata:
+        annotations:
+          lbipam.cilium.io/ips: "10.10.10.201"
+---
+# No address from the pool. Nothing outside the cluster dials this Gateway
+# directly: cloudflared reaches it over the cluster network, and Cloudflare
+# reaches cloudflared over a tunnel it opens itself.
+apiVersion: gateway.kgateway.dev/v1alpha1
+kind: GatewayParameters
+metadata:
+  name: public
+  namespace: gateway-system
+spec:
+  kube:
+    service:
+      type: ClusterIP
+    deployment:
+      replicas: 2

@@ -1,0 +1,27 @@
+---
+# ArgoCD managing itself. Syncing this applies the same manifests used to
+# bootstrap it, so the running install and git converge.
+#
+# spec.source.path and targetRevision are set per environment
+# ../../overlays/production/applications/.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: system
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/GilbertoCunha/homelab
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      # ArgoCD's CRDs are far past the annotation size limit a client-side apply
+      # would try to store.
+      - ServerSideApply=true
+      - CreateNamespace=true

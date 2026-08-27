@@ -246,6 +246,8 @@ Talos has no SSH and no shell. `talosctl` is the only way in.
 | `10.10.10.10` | The Kubernetes API. Virtual, moves between control planes |
 | `10.10.10.11`-`.13` | `cp-1` to `cp-3` |
 | `10.10.10.21`-`.23` | `worker-1` to `worker-3` |
+| `10.10.10.200` | `gw-internal-prod`, every prod workload on the mesh |
+| `10.10.10.201` | `gw-internal-dev`, every dev workload on the mesh |
 
 Restarting a node is `talosctl --nodes <ip> reboot`. Draining first is polite but
 not required; Talos brings the node back into the cluster on its own.
@@ -268,13 +270,50 @@ Upgrading it has its own procedure:
 **Nothing has persistent storage yet.** A pod asking for a volume stays
 `Pending`, and that is expected rather than broken.
 
+### Getting in and out
+
+Everything reachable by name goes through a Gateway. See
+[Getting traffic into the cluster](./concepts/ingress.md), and
+[Exposing a service](./manual/maintenance/exposing-a-service.md) to add one.
+
+| Command | Good result |
+| --- | --- |
+| `kubectl -n gateway-system get svc` | `10.10.10.200` and `.201` under `EXTERNAL-IP`, never `<pending>` |
+| `kubectl -n gateway-system get gateway` | Three Gateways, `PROGRAMMED: True` |
+| `kubectl get ciliumloadbalancerippool` | `guest-bridge`, not `Disabled` |
+| `kubectl get ciliuml2announcementpolicy` | `guest-bridge` |
+| `kubectl get httproute -A` | Every route you expect, and no others |
+| `kubectl -n <ns> describe httproute <name>` | `Accepted: True`. `NotAllowedByListeners` means the namespace is missing its `env` label |
+| `curl -o /dev/null -w '%{http_code}\n' http://10.10.10.200` | `404`, from Envoy. A timeout means nothing is answering ARP for the address |
+
+A `Service` stuck at `<pending>` and an address that never answers look the same
+from `kubectl get gateway`, and they are different faults. The `curl` above is
+what tells them apart.
+
+### GitOps
+
+The cluster's contents come from `gitops/`, applied by ArgoCD. See
+[GitOps with ArgoCD](./concepts/gitops.md).
+
+| Command | Good result |
+| --- | --- |
+| `task cluster:render` | `Both overlays render.` Needs no cluster; run before committing |
+| `task cluster:diff` | Only the change you meant to make |
+| `task cluster:bootstrap` | Installs ArgoCD, or repairs it. Safe to re-run |
+| `kubectl -n argocd get applications` | `crds`, `network` and `system`, all `Synced` and `Healthy` |
+| `kubectl -n argocd get pods` | Everything `Running` |
+
+The UI is at `argocd.k8s.homelab.grncunha.com`, on the mesh, read-only without
+logging in.
+
 ## Recovering
 
 | Situation | What to do |
 | --- | --- |
 | Locked out by SSH or the firewall | Hetzner rescue mode. See [step by step](./troubleshooting/step-by-step.md) |
 | A role went wrong | Undo that piece, then run it again. Same document |
-| The cluster is wrong | `task tofu:destroy` then `task tofu:apply`. It is disposable |
+| The cluster is wrong | `task tofu:destroy` then `task tofu:apply`, then `task cluster:bootstrap`. It is disposable |
+| ArgoCD is wrong | `task cluster:bootstrap`. It applies the same manifests ArgoCD syncs, so it repairs rather than reinstalls |
 | Beyond fixing | Reinstall and start from [Bootstrap](./manual/provisioning/1-bootstrap.md) |
 
 Ansible has no undo. Running the playbook again re-applies the wanted state; it

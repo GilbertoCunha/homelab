@@ -5,6 +5,10 @@ vars:
   # The tofu tasks run inside the root module, so the secrets file is named by
   # absolute path rather than relative to the working directory.
   TOFU_DIR: opentofu/project
+  # The kustomize overlays ArgoCD syncs. `cluster:bootstrap` applies the same
+  # ones, which is what lets ArgoCD adopt what it finds already running.
+  GITOPS_DIR: gitops
+  KUBECONFIG_FILE: '{{.ROOT_DIR}}/kubeconfig'
   SECRETS: '{{.ROOT_DIR}}/secrets.enc.yaml'
   SOPS_CONFIG: '{{.ROOT_DIR}}/.sops.yaml'
   AGE_KEY: '{{.HOME}}/.config/sops/age/keys.txt'
@@ -171,9 +175,9 @@ tasks:
     desc: Writes ./kubeconfig, for kubectl
     dir: "{{.TOFU_DIR}}"
     cmds:
-      - '{{.WITH_SECRETS}} "tofu output -raw kubeconfig" > {{.ROOT_DIR}}/kubeconfig'
-      - chmod 600 {{.ROOT_DIR}}/kubeconfig
-      - 'echo "Wrote kubeconfig. Use it with: export KUBECONFIG={{.ROOT_DIR}}/kubeconfig"'
+      - '{{.WITH_SECRETS}} "tofu output -raw kubeconfig" > {{.KUBECONFIG_FILE}}'
+      - chmod 600 {{.KUBECONFIG_FILE}}
+      - 'echo "Wrote kubeconfig. Use it with: export KUBECONFIG={{.KUBECONFIG_FILE}}"'
 
   tofu:talosconfig:
     desc: Writes ./talosconfig, for talosctl
@@ -182,3 +186,43 @@ tasks:
       - '{{.WITH_SECRETS}} "tofu output -raw talosconfig" > {{.ROOT_DIR}}/talosconfig'
       - chmod 600 {{.ROOT_DIR}}/talosconfig
       - 'echo "Wrote talosconfig. Use it with: export TALOSCONFIG={{.ROOT_DIR}}/talosconfig"'
+
+  cluster:render:
+    desc: Renders the GitOps overlays without a cluster. Run before committing
+    cmds:
+      - kustomize build --enable-helm {{.GITOPS_DIR}}/crds/overlays/production > /dev/null
+      - kustomize build --enable-helm {{.GITOPS_DIR}}/system/overlays/production > /dev/null
+      - 'echo "Both overlays render."'
+
+  cluster:diff:
+    desc: Shows what `task cluster:bootstrap` would change
+    env:
+      KUBECONFIG: '{{.KUBECONFIG_FILE}}'
+    cmds:
+      # `kubectl diff` exits 1 when it finds a difference. That is not a
+      # failure here, so the exit code is discarded and only the diff matters.
+      - |
+        kustomize build --enable-helm {{.GITOPS_DIR}}/crds/overlays/production \
+          | kubectl diff --server-side --force-conflicts -f - || true
+      - |
+        kustomize build --enable-helm {{.GITOPS_DIR}}/system/overlays/production \
+          | kubectl diff --server-side --force-conflicts -f - || true
+
+  cluster:bootstrap:
+    desc: Applies the GitOps overlays once, so ArgoCD can take over from git
+    env:
+      KUBECONFIG: '{{.KUBECONFIG_FILE}}'
+    cmds:
+      # CRDs go first and separately. The system overlay creates Applications,
+      # a kind the API server does not know until this apply is accepted.
+      - |
+        kustomize build --enable-helm {{.GITOPS_DIR}}/crds/overlays/production \
+          | kubectl apply --server-side --force-conflicts -f -
+      - kubectl wait --for=condition=Established crd/applications.argoproj.io --timeout=60s
+      # --force-conflicts because on every run after the first the fields belong
+      # to ArgoCD's field manager rather than kubectl's. Applying the manifests
+      # ArgoCD itself syncs is the point: this task is repeatable, not one-shot.
+      - |
+        kustomize build --enable-helm {{.GITOPS_DIR}}/system/overlays/production \
+          | kubectl apply --server-side --force-conflicts -f -
+      - 'echo "Bootstrapped. Check it with: kubectl -n argocd get applications"'
