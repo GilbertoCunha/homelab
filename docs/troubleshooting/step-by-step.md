@@ -28,23 +28,12 @@ Useful flags to add after the tag:
 | --- | --- |
 | `-vv` | Shows the command that ran and what it returned. |
 | `--start-at-task "<name>"` | Resumes from a named task instead of the top. |
-| `--check` | Changes nothing. Shows what would happen. Read the warning below. |
 
-### `--check` does not work on a fresh server
-
-`--check` never writes anything, which sounds safe but makes it useless the
-first time round. A role that adds an apt repository never gets to add it, so
-every package in that role then fails to resolve. You get a wall of
-`No package matching ... is available` that says nothing about your actual
-problem.
-
-| Role | Does `--check` work? |
-| --- | --- |
-| `common` | Yes. It refreshes the package index for real first. |
-| everything else | Only after that role has been applied for real once. |
-
-So on a new server, apply each role for real and check the result afterwards.
-Use `--check` later, to preview changes on a server that is already set up.
+There is no dry run. Ansible's `--check` never writes anything, which makes it
+useless here: a role that adds an apt repository never gets to add it, so every
+package in that role then fails to resolve, and the wall of
+`No package matching ... is available` says nothing about the actual problem.
+Apply a role for real and check the result afterwards.
 
 ## The order
 

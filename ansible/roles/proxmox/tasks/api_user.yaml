@@ -6,7 +6,6 @@
   ansible.builtin.command: pveum role list --output-format json
   register: proxmox_roles
   changed_when: false
-  check_mode: false
 
 - name: Create the OpenTofu API role
   ansible.builtin.command: >-
@@ -28,7 +27,6 @@
   ansible.builtin.command: pveum user list --output-format json
   register: proxmox_api_users
   changed_when: false
-  check_mode: false
 
 - name: Create the OpenTofu API user
   ansible.builtin.command: pveum user add {{ proxmox_api_user }}
@@ -45,14 +43,11 @@
 # The token secret is shown once and never again, so it cannot be created
 # idempotently. `docs/manual/3-provision-cluster.md` has the command to run by
 # hand, and the result belongs in the encrypted secrets file.
-# Fails outright when the user does not exist yet, which is the normal state
-# under --check on a server that has never had this role applied for real.
 - name: Report whether the OpenTofu user has a token
   ansible.builtin.command: pveum user token list {{ proxmox_api_user }} --output-format json
   register: proxmox_api_tokens
   changed_when: false
   failed_when: false
-  check_mode: false
 
 - name: Say so when the API token is still missing
   ansible.builtin.debug:

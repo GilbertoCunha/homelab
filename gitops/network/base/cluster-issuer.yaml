@@ -1,0 +1,24 @@
+---
+# DNS-01 rather than HTTP-01, for two reasons. The mesh names point at an
+# address Let's Encrypt cannot reach, and DNS-01 is the only challenge that
+# issues wildcards.
+#
+# The token is created by `task cluster:cloudflare-token`, not by ArgoCD. It is
+# the one thing here that is not in git.
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    # `email:` is optional and deliberately unset, so no address is committed
+    # here. Add one to get expiry warnings from Let's Encrypt.
+    privateKeySecretRef:
+      name: letsencrypt-account-key
+    solvers:
+      - dns01:
+          cloudflare:
+            apiTokenSecretRef:
+              name: cloudflare-api-token
+              key: api-token

@@ -1,0 +1,21 @@
+---
+# Labels kube-system so Hubble's UI can attach a route to the prod Gateway.
+#
+# ArgoCD manages this namespace, which needs care. Two things make it safe:
+#
+#  - The Application applies server-side, so ArgoCD owns only the fields named
+#    here. Every other label and annotation on kube-system stays with whoever
+#    set it.
+#  - Prune=false. Deleting this file must never delete kube-system, which would
+#    take the whole control plane's workload with it.
+#
+# Do not add anything else to this manifest. Every field added is a field
+# ArgoCD takes ownership of.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kube-system
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false
+  labels:
+    env: prod

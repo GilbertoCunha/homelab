@@ -4,7 +4,11 @@ kind: Kustomization
 
 resources:
   - namespace.yaml
+  - kube-system.yaml
   - ip-pool.yaml
   - l2-announcement.yaml
   - gateway-parameters.yaml
   - gateways.yaml
+  - cluster-issuer.yaml
+  - certificates.yaml
+  - hubble-route.yaml

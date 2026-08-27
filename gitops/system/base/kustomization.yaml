@@ -5,5 +5,7 @@ kind: Kustomization
 resources:
   - applications
   - argocd
+  - cert-manager
+  - external-dns
   - kgateway
   - sops

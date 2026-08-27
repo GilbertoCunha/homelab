@@ -1,13 +1,14 @@
 ---
 # Reachable from the mesh at 10.10.10.200. See docs/concepts/ingress.md.
-#
-# HTTP only for now. The HTTPS listener and its certificate arrive with
-# cert-manager; until then a browser will warn, which is expected.
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
   name: gw-internal-prod
   namespace: gateway-system
+  annotations:
+    # A record straight to 10.10.10.200, not proxied. The address is private,
+    # so the name resolves for everyone and only a mesh device can route to it.
+    external-dns.alpha.kubernetes.io/cloudflare-proxied: "false"
 spec:
   gatewayClassName: kgateway
   infrastructure:
@@ -16,14 +17,31 @@ spec:
       kind: GatewayParameters
       name: internal-prod
   listeners:
+    - name: https
+      protocol: HTTPS
+      port: 443
+      hostname: "*.k8s.homelab.grncunha.com"
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: wildcard-k8s-tls
+      allowedRoutes:
+        namespaces:
+          # The isolation boundary. A namespace without this label cannot
+          # attach a route here, and the API server is what enforces it.
+          from: Selector
+          selector:
+            matchLabels:
+              env: prod
+    # Kept alongside HTTPS rather than redirecting to it. A route attaches to
+    # both, so a curl by address and Host header still works when a certificate
+    # is the thing being debugged.
     - name: http
       protocol: HTTP
       port: 80
       hostname: "*.k8s.homelab.grncunha.com"
       allowedRoutes:
         namespaces:
-          # The isolation boundary. A namespace without this label cannot
-          # attach a route here, and the API server is what enforces it.
           from: Selector
           selector:
             matchLabels:
@@ -36,6 +54,8 @@ kind: Gateway
 metadata:
   name: gw-internal-dev
   namespace: gateway-system
+  annotations:
+    external-dns.alpha.kubernetes.io/cloudflare-proxied: "false"
 spec:
   gatewayClassName: kgateway
   infrastructure:
@@ -44,6 +64,20 @@ spec:
       kind: GatewayParameters
       name: internal-dev
   listeners:
+    - name: https
+      protocol: HTTPS
+      port: 443
+      hostname: "*.dev.k8s.homelab.grncunha.com"
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: wildcard-dev-k8s-tls
+      allowedRoutes:
+        namespaces:
+          from: Selector
+          selector:
+            matchLabels:
+              env: dev
     - name: http
       protocol: HTTP
       port: 80

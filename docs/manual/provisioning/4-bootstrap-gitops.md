@@ -49,7 +49,53 @@ Both overlays render.
 
 This needs no cluster and catches most mistakes. Run it before every commit.
 
-## 3. Bootstrapping
+## 3. Putting the Cloudflare token in the cluster
+
+cert-manager and external-dns both need a Cloudflare API token. It is the only
+thing in this cluster that does not come from git, because nothing in this repo
+may hold a secret in plaintext.
+
+Create the token first, in the [Cloudflare
+dashboard](https://dash.cloudflare.com) under **My Profile**, **API Tokens**:
+
+| Field | Value |
+| --- | --- |
+| Permissions | `Zone` - `DNS` - `Edit` |
+| Zone Resources | Include - Specific zone - `grncunha.com` |
+
+Cloudflare shows it once. Put it straight into the encrypted file:
+
+```bash
+task secrets:edit
+```
+
+Add a `CLOUDFLARE_API_TOKEN` line and paste the token as its value. A secrets
+file created before this step will not have the key yet; `task secrets:init`
+only writes the list into a file that does not exist.
+
+It has to be in the file, not just in your shell. `sops exec-env` adds the
+file's keys to the environment it inherits, so a `CLOUDFLARE_API_TOKEN` already
+exported in your profile would be used instead and the cluster would get a value
+that no other machine can reproduce. The task refuses to run until the key is in
+the file for exactly this reason.
+
+Then push it into the cluster:
+
+```bash
+task cluster:cloudflare-token
+```
+
+```
+namespace/cert-manager created
+secret/cloudflare-api-token created
+namespace/external-dns created
+secret/cloudflare-api-token created
+Token in place. ArgoCD owns everything that reads it.
+```
+
+Repeat this one command after a rebuild. Everything else comes back from git.
+
+## 4. Bootstrapping
 
 ```bash
 task cluster:bootstrap
@@ -64,7 +110,7 @@ Bootstrapped. Check it with: kubectl -n argocd get applications
 This applies the same manifests ArgoCD then syncs, so it is repeatable: run it
 again and nothing changes. That is also how you repair a broken ArgoCD.
 
-## 4. Watching it converge
+## 5. Watching it converge
 
 The first sync takes a few minutes. kgateway's CRDs have to be established
 before its controller starts, and the Gateways cannot be created until both are
@@ -75,10 +121,14 @@ kubectl -n argocd get applications
 ```
 
 ```
-NAME      SYNC STATUS   HEALTH STATUS
-crds      Synced        Healthy
-network   Synced        Healthy
-system    Synced        Healthy
+NAME                 SYNC STATUS   HEALTH STATUS
+cert-manager         Synced        Healthy
+crds                 Synced        Healthy
+external-dns         Synced        Healthy
+kgateway-crds-helm   Synced        Healthy
+kgateway-helm        Synced        Healthy
+network              Synced        Healthy
+system               Synced        Healthy
 ```
 
 `network` sits `OutOfSync` or `Degraded` for the first minute or two, because it
@@ -86,7 +136,7 @@ creates `GatewayParameters` before kgateway has registered that kind. ArgoCD
 retries on its own. If it is still degraded after five minutes, something is
 actually wrong.
 
-## 5. Checking an address became live
+## 6. Checking an address became live
 
 This is the step that proves the load balancer works. See
 [Getting traffic into the cluster](../../concepts/ingress.md) for what is
@@ -131,23 +181,68 @@ talosctl --nodes 10.10.10.21 get addresses | grep 10.10.10.21/24
 The last column must match `interfaces` in
 `gitops/network/base/l2-announcement.yaml`.
 
-## 6. Reaching the ArgoCD UI
+## 7. Checking DNS and certificates happened on their own
 
-The UI is on the mesh, at `argocd.k8s.homelab.grncunha.com`. Until external-dns
-and cert-manager are in place, that name does not resolve and there is no
-certificate, so reach it by address and `Host` header:
+Both wildcards must be issued. The first pair takes a couple of minutes: a
+DNS-01 challenge waits for a Cloudflare record to propagate.
 
 ```bash
-curl -sS -o /dev/null -w '%{http_code}\n' \
+kubectl -n gateway-system get certificate
+```
+
+```
+NAME               READY   SECRET                 AGE
+wildcard-dev-k8s   True    wildcard-dev-k8s-tls   3m
+wildcard-k8s       True    wildcard-k8s-tls       3m
+```
+
+`READY: False` for more than five minutes means the token is wrong or too
+narrowly scoped. cert-manager says which:
+
+```bash
+kubectl -n gateway-system describe certificate wildcard-k8s
+kubectl -n cert-manager logs deploy/cert-manager | tail -20
+```
+
+Then check external-dns wrote the records:
+
+```bash
+dig +short argocd.k8s.homelab.grncunha.com
+```
+
+```
+10.10.10.200
+```
+
+Nothing back means external-dns has not run yet, or the route's hostname falls
+outside its domain filter. Its log says which:
+
+```bash
+kubectl -n external-dns logs deploy/external-dns | tail -20
+```
+
+## 8. Reaching the ArgoCD UI
+
+From a device on the mesh, open
+[`argocd.k8s.homelab.grncunha.com`](https://argocd.k8s.homelab.grncunha.com).
+The page loads over HTTPS with no certificate warning, and Hubble's UI is at
+[`hubble.k8s.homelab.grncunha.com`](https://hubble.k8s.homelab.grncunha.com).
+
+Anonymous access is read-only and there is no admin user, which is deliberate:
+see [GitOps with ArgoCD](../../concepts/gitops.md).
+
+If the name does not resolve, your device is not on the mesh, or is not
+accepting subnet routes. The Gateways still answer by address, which is how you
+tell a DNS problem from a routing one:
+
+```bash
+curl -skS -o /dev/null -w '%{http_code}\n' \
   -H 'Host: argocd.k8s.homelab.grncunha.com' http://10.10.10.200
 ```
 
 ```
 200
 ```
-
-Anonymous access is read-only and there is no admin user, which is deliberate:
-see [GitOps with ArgoCD](../../concepts/gitops.md).
 
 ## Troubleshooting
 
@@ -176,6 +271,21 @@ No Gateway at all means kgateway is not running. A Gateway but no Service means
 kgateway has not accepted it, and `kubectl -n gateway-system describe gateway`
 says why. A Service stuck `<pending>` means the pool is missing.
 
+**A `Certificate` stays `READY: False`.** Work outward from the challenge:
+
+```bash
+kubectl -n gateway-system describe certificate wildcard-k8s
+kubectl -n gateway-system get challenge
+```
+
+`propagation check failed` means the token cannot write the zone. Confirm it is
+scoped to `Zone` - `DNS` - `Edit` on `grncunha.com`, and that
+`task cluster:cloudflare-token` ran after the value was filled in.
+
+**A Gateway serves the wrong certificate, or none.** The `Secret` cert-manager
+writes must be in the same namespace as the Gateway. Both are `gateway-system`;
+`kubectl -n gateway-system get secret` should list both `-tls` secrets.
+
 **Starting over.** `task tofu:destroy` and `task tofu:apply` rebuild the cluster
-from nothing, then `task cluster:bootstrap` again. Nothing here is stored only
-in the cluster.
+from nothing, then `task cluster:cloudflare-token` and `task cluster:bootstrap`.
+Nothing else here is stored only in the cluster.

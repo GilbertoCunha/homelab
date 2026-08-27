@@ -44,9 +44,10 @@ server:
   # `env: prod`; see gitops/system/base/argocd/namespace.yaml.
   httproute:
     enabled: true
+    # No sectionName, so the route attaches to both the HTTPS and the HTTP
+    # listener rather than only one of them.
     parentRefs:
       - name: gw-internal-prod
         namespace: gateway-system
-        sectionName: http
     hostnames:
       - argocd.k8s.homelab.grncunha.com

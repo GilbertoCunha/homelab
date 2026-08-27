@@ -6,7 +6,6 @@
   ansible.builtin.command: tailscale debug prefs
   register: mesh_node_prefs
   changed_when: false
-  check_mode: false
 
 - name: Advertise the guest subnet
   ansible.builtin.command: >-
@@ -20,7 +19,6 @@
   ansible.builtin.command: headscale nodes list --output json
   register: mesh_node_list
   changed_when: false
-  check_mode: false
 
 - name: Read the routes headscale has approved for this host
   ansible.builtin.set_fact:

@@ -23,4 +23,3 @@
   ansible.builtin.apt:
     update_cache: true
   when: proxmox_repo.changed
-  check_mode: false
