@@ -116,6 +116,10 @@ Nothing writes state to this repo.
   `opentofu/modules` holds anything reused.
 - **A node is described in `locals.tf` and nowhere else.** Adding a worker is one
   line there.
+- **Cilium is the exception to where values live.** Its chart version and values
+  are in `gitops/system/base/cilium/cilium.yaml`, because ArgoCD owns it, and
+  `cilium.tf` reads that file to render the copy Talos creates at bootstrap.
+  Never write one of those values in the OpenTofu tree.
 - **Providers are pinned** to a minor version in `versions.tf`.
 - **Never run `tofu` directly.** The Taskfile wraps every command in
   `sops exec-env`, which is what supplies the credentials.
@@ -125,6 +129,11 @@ Nothing writes state to this repo.
 - **`gitops/` is everything inside the cluster**, and ArgoCD is the only thing
   that applies it. OpenTofu stops at the cluster's edge. How the tree is laid
   out and why is in [GitOps with ArgoCD](docs/concepts/gitops.md).
+- **Talos creates the CNI, it does not maintain it.** Its manifest controller
+  skips any object that already exists, so a change to Cilium's render reaches a
+  new cluster and never a running one. Cilium is configured through its ArgoCD
+  `Application` like everything else; see
+  [The cluster's networking](docs/concepts/cilium.md).
 - **Every tree has `base/` and `overlays/<environment>/`.** `base` says what a
   component is; the overlay says where this cluster reads it from. A value that
   differs per environment belongs in the overlay and nowhere else.

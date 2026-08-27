@@ -25,7 +25,7 @@ Being honest about the reasons, because they are not the usual ones:
 Replacing kube-proxy is likewise not about throughput at this size. It is about
 having one thing implement Services rather than two.
 
-## Why Talos installs it, and not OpenTofu
+## Talos creates it, ArgoCD owns it
 
 Turning Flannel off means nodes come up **NotReady** and stay there until a CNI
 exists. The run ends with `data.talos_cluster_health`, which is what makes
@@ -33,21 +33,40 @@ exists. The run ends with `data.talos_cluster_health`, which is what makes
 
 So installing Cilium as a step after the cluster was built would deadlock. Health
 would wait for nodes that cannot become Ready until Cilium is installed, and the
-apply would fail before ever getting to the step that installs it.
+apply would fail before ever getting to the step that installs it. ArgoCD cannot
+do it either: ArgoCD runs on the network Cilium provides.
 
 Instead the chart is rendered at plan time and handed to the control planes as a
-`cluster.inlineManifests` entry in their machine configuration. Talos applies it
+`cluster.inlineManifests` entry in their machine configuration. Talos creates it
 while the control plane comes up, nodes go Ready on their own, and the health
 check passes as it always did.
 
 ```
 tofu plan   → helm renders the chart to a string
 tofu apply  → the string is part of the control plane machine configuration
-Talos boots → applies it before the cluster is finished coming up
+Talos boots → creates it before the cluster is finished coming up
+ArgoCD      → owns it from then on
 ```
 
 Only the three control planes carry it. Workers never apply inline manifests, and
 the render is some 75 KB.
+
+**Talos only ever creates.** Its manifest controller checks whether each object
+exists and skips it if it does; it never updates one. So the inline manifest is
+what a cluster is born with, and it can never be what a cluster is changed with.
+Editing the render and running `tofu apply` writes a new machine configuration
+that no running cluster will ever read — a change that looks applied and is not.
+
+That is also what makes the handoff safe. Because Talos cannot update, it cannot
+revert, so ArgoCD can own Cilium outright with nothing fighting it. The
+`Application` at `gitops/system/base/cilium/cilium.yaml` holds the chart version
+and every value, and `cilium.tf` reads that same file to produce the bootstrap
+render. One definition, two deliveries:
+
+| When | Who | Reads |
+| --- | --- | --- |
+| Cluster is born | Talos, once | The render OpenTofu made from the Application |
+| Every change after | ArgoCD | The Application itself |
 
 ## KubePrism, and the bootstrap problem
 
@@ -58,7 +77,8 @@ not running yet. Nothing can resolve that Service.
 Talos runs **KubePrism** for exactly this: a local load balancer on
 `localhost:7445`, on every node, that reaches the API server without Kubernetes
 Services existing. Cilium is pointed at it. It is enabled by default, and the
-port is written once in `cluster.tf` because `cilium.tf` reads the same value.
+port is written once — as Cilium's `k8sServicePort` in the Application, which
+`cluster.tf` reads back to pin it in the machine configuration.
 
 ## Talos-specific settings
 
@@ -109,7 +129,7 @@ Where the pieces live:
 
 | What | Where |
 | --- | --- |
-| Chart version | `opentofu/project/terraform.tfvars` |
-| Chart values | `opentofu/project/cilium.tf` |
+| Chart version and values | `gitops/system/base/cilium/cilium.yaml` |
+| The bootstrap render, from that file | `opentofu/project/cilium.tf` |
 | Address pool, L2 announcement policy | `gitops/network/base/` |
-| CNI off, kube-proxy off, KubePrism port | `opentofu/project/cluster.tf` |
+| CNI off, kube-proxy off | `opentofu/project/cluster.tf` |

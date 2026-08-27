@@ -1,0 +1,105 @@
+---
+# Cilium is the CNI, and it also replaces kube-proxy. This file is the only
+# place its chart version and values are written: ArgoCD syncs it here, and
+# `opentofu/project/cilium.tf` reads it to render the copy Talos creates at
+# bootstrap. See [The cluster's networking](../../../../docs/concepts/cilium.md)
+# for why it arrives twice.
+#
+# No sync wave. A wave orders things that must exist before other things, and
+# nothing in this set can precede the CNI: it is already running before ArgoCD
+# exists to sync anything at all.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cilium
+  namespace: argocd
+spec:
+  project: default
+  destination:
+    namespace: kube-system
+    server: https://kubernetes.default.svc
+  source:
+    chart: cilium
+    repoURL: https://helm.cilium.io/
+    # Move one minor version at a time, and read the upstream notes first:
+    # https://docs.cilium.io/en/stable/operations/upgrade/
+    targetRevision: 1.20.1
+    helm:
+      valuesObject:
+        # Pod addresses come from the podCIDR Kubernetes gives each node, which
+        # is carved out of `pod_subnet`. Cilium does not need its own address
+        # management on top of that.
+        ipam:
+          mode: kubernetes
+
+        kubeProxyReplacement: true
+
+        # Lets a Service of `type: LoadBalancer` get a real address: LB IPAM
+        # picks one out of a CiliumLoadBalancerIPPool, and one agent wins a
+        # lease and answers ARP for it on the guest bridge. There is no
+        # appliance and no BGP here, so without this a LoadBalancer Service
+        # stays <pending> forever. `docs/concepts/ingress.md` has the whole path.
+        l2announcements:
+          enabled: true
+
+        # L2 leases are renewed constantly. The chart's default client rate
+        # limit is too low for that and the agent starts logging throttle
+        # warnings.
+        k8sClientRateLimit:
+          qps: 20
+          burst: 100
+
+        # Replacing kube-proxy means Cilium cannot reach the API server through
+        # a Service, because Services are the thing it has not set up yet.
+        # KubePrism is the local proxy Talos runs for exactly this bootstrap
+        # problem. `opentofu/project/cluster.tf` reads the port back from here
+        # to pin it in the machine configuration, so it is written once.
+        k8sServiceHost: localhost
+        k8sServicePort: 7445
+
+        # Talos mounts the cgroup filesystem itself and gives out capabilities
+        # rather than blanket privilege, so the chart's defaults do not apply.
+        cgroup:
+          autoMount:
+            enabled: false
+          hostRoot: /sys/fs/cgroup
+        securityContext:
+          capabilities:
+            ciliumAgent:
+              - CHOWN
+              - KILL
+              - NET_ADMIN
+              - NET_RAW
+              - IPC_LOCK
+              - SYS_ADMIN
+              - SYS_RESOURCE
+              - DAC_OVERRIDE
+              - FOWNER
+              - SETGID
+              - SETUID
+            cleanCiliumState:
+              - NET_ADMIN
+              - SYS_ADMIN
+              - SYS_RESOURCE
+
+        hubble:
+          relay:
+            enabled: true
+          ui:
+            enabled: true
+          # Certificates are minted in the cluster by a job. The chart's default
+          # is to mint them while rendering, which would put a fresh private key
+          # in the machine configuration on every plan: a secret in the state
+          # and a change to apply every single run.
+          tls:
+            auto:
+              enabled: true
+              method: cronJob
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      # Talos created these objects with its own field manager. A server-side
+      # apply is what lets ArgoCD take the fields over rather than conflict.
+      - ServerSideApply=true

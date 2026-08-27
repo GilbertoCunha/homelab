@@ -2,92 +2,39 @@
 # default; `cluster.tf` turns both that and kube-proxy off, which leaves every
 # node NotReady until something installs a CNI.
 #
-# That something is Talos itself. The chart is rendered here at plan time and
-# handed to the control planes as an inline manifest, so the cluster comes up
-# with networking already in it and `tofu apply` still means "the cluster is up".
-# Installing it afterwards would deadlock: the health check at the end of
-# `cluster.tf` waits for nodes that cannot go Ready until Cilium exists.
+# That something is Talos itself, but only once. The chart is rendered here at
+# plan time and handed to the control planes as an inline manifest, so the
+# cluster comes up with networking already in it and `tofu apply` still means
+# "the cluster is up". Installing it afterwards would deadlock: the health check
+# at the end of `cluster.tf` waits for nodes that cannot go Ready until Cilium
+# exists.
+#
+# Talos creates those objects and never updates them, so this render is the
+# bootstrap copy and nothing else. ArgoCD owns Cilium from then on. The version
+# and the values both live in the Application read below, which is why there is
+# no `values` block here. `docs/concepts/cilium.md` explains the whole shape.
 
 provider "helm" {}
 
+locals {
+  cilium_app = yamldecode(file("${path.root}/../../gitops/system/base/cilium/cilium.yaml"))
+
+  # The local API server proxy Talos runs on every node. Cilium is pointed at it
+  # by the values above, and `cluster.tf` pins it in the machine configuration,
+  # so the port is read from there rather than written in both places.
+  kubeprism_port = local.cilium_app.spec.source.helm.valuesObject.k8sServicePort
+}
+
 data "helm_template" "cilium" {
   name       = "cilium"
-  repository = "https://helm.cilium.io/"
-  chart      = "cilium"
-  version    = var.cilium_version
-  namespace  = "kube-system"
+  repository = local.cilium_app.spec.source.repoURL
+  chart      = local.cilium_app.spec.source.chart
+  version    = local.cilium_app.spec.source.targetRevision
+  namespace  = local.cilium_app.spec.destination.namespace
 
   # The chart refuses to render without a Kubernetes version, and defaults to
   # one far older than this cluster. It reads the same pin the nodes do.
   kube_version = var.kubernetes_version
 
-  values = [yamlencode({
-    # Pod addresses come from the podCIDR Kubernetes gives each node, which is
-    # carved out of `pod_subnet`. Cilium does not need its own address
-    # management on top of that.
-    ipam = {
-      mode = "kubernetes"
-    }
-
-    kubeProxyReplacement = true
-
-    # Lets a Service of `type: LoadBalancer` get a real address: LB IPAM picks
-    # one out of a CiliumLoadBalancerIPPool, and one agent wins a lease and
-    # answers ARP for it on the guest bridge. There is no appliance and no BGP
-    # here, so without this a LoadBalancer Service stays <pending> forever.
-    # `docs/concepts/ingress.md` has the whole path.
-    l2announcements = {
-      enabled = true
-    }
-
-    # L2 leases are renewed constantly. The chart's default client rate limit
-    # is too low for that and the agent starts logging throttle warnings.
-    k8sClientRateLimit = {
-      qps   = 20
-      burst = 100
-    }
-
-    # Replacing kube-proxy means Cilium cannot reach the API server through a
-    # Service, because Services are the thing it has not set up yet. KubePrism
-    # is the local proxy Talos runs for exactly this bootstrap problem.
-    k8sServiceHost = "localhost"
-    k8sServicePort = local.kubeprism_port
-
-    # Talos mounts the cgroup filesystem itself and gives out capabilities
-    # rather than blanket privilege, so the chart's defaults do not apply.
-    cgroup = {
-      autoMount = {
-        enabled = false
-      }
-      hostRoot = "/sys/fs/cgroup"
-    }
-    securityContext = {
-      capabilities = {
-        ciliumAgent = [
-          "CHOWN", "KILL", "NET_ADMIN", "NET_RAW", "IPC_LOCK", "SYS_ADMIN",
-          "SYS_RESOURCE", "DAC_OVERRIDE", "FOWNER", "SETGID", "SETUID",
-        ]
-        cleanCiliumState = ["NET_ADMIN", "SYS_ADMIN", "SYS_RESOURCE"]
-      }
-    }
-
-    hubble = {
-      relay = {
-        enabled = true
-      }
-      ui = {
-        enabled = true
-      }
-      # Certificates are minted in the cluster by a job. The chart's default is
-      # to mint them while rendering, which would put a fresh private key in
-      # the machine configuration on every plan: a secret in the state and a
-      # change to apply every single run.
-      tls = {
-        auto = {
-          enabled = true
-          method  = "cronJob"
-        }
-      }
-    }
-  })]
+  values = [yamlencode(local.cilium_app.spec.source.helm.valuesObject)]
 }

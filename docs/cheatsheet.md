@@ -271,7 +271,7 @@ as well. See [The cluster's networking](./concepts/cilium.md).
 | --- | --- |
 | `kubectl -n kube-system get pods -l k8s-app=cilium` | Six pods, `Running`, `1/1` |
 | `kubectl -n kube-system exec ds/cilium -- cilium-dbg status --brief` | `OK` |
-| `kubectl -n kube-system get daemonset cilium -o jsonpath='{.spec.template.spec.containers[0].image}'` | The version pinned in `terraform.tfvars` |
+| `kubectl -n kube-system get daemonset cilium -o jsonpath='{.spec.template.spec.containers[0].image}'` | The version pinned in `gitops/system/base/cilium/cilium.yaml` |
 | `kubectl -n kube-system get pods -l k8s-app=kube-proxy` | **No resources found.** There is no kube-proxy, on purpose |
 
 Upgrading it has its own procedure:

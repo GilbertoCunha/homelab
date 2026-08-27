@@ -15,11 +15,9 @@ cluster_name = "homelab"
 talos_version      = "v1.13.9"
 kubernetes_version = "v1.36.2"
 
-# The CNI. Talos ships Flannel by default; this cluster replaces it with Cilium,
-# which also replaces kube-proxy. Upgrading is a documented procedure rather than
-# a bump of this line alone:
-# https://docs.cilium.io/en/stable/operations/upgrade/
-cilium_version = "1.20.1"
+# The CNI is not here. Talos ships Flannel by default; this cluster replaces it
+# with Cilium, whose version and values live in
+# gitops/system/base/cilium/cilium.yaml, because ArgoCD owns it.
 
 # Guest network. These mirror the values in ansible/group_vars/all.yaml and the
 # network table in README.md, which is the registry for both.

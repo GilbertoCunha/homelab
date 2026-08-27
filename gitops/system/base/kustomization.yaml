@@ -6,6 +6,7 @@ resources:
   - applications
   - argocd
   - cert-manager
+  - cilium
   - external-dns
   - kgateway
   - sops

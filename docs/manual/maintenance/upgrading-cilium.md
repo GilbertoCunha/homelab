@@ -28,43 +28,31 @@ quay.io/cilium/cilium:v1.20.1@sha256:...
 
 ## The procedure
 
-Cilium is delivered to this cluster as a Talos inline manifest, rendered from the
-chart at plan time. So the upgrade is a machine configuration change, and it goes
-through OpenTofu like every other change here. You do not run `helm upgrade`.
+ArgoCD owns Cilium, so the upgrade is a commit. Talos created the CNI once, when
+the cluster was born, and cannot change it now; see
+[The cluster's networking](../../concepts/cilium.md).
 
-**1. Bump the version**, in `opentofu/project/terraform.tfvars`. It is written
-in exactly one place:
+**1. Bump the version.** It is written in exactly one place,
+`gitops/system/base/cilium/cilium.yaml`:
 
-```hcl
-cilium_version = "1.20.2"
+```yaml
+targetRevision: 1.20.2
 ```
 
-**2. Look at what that changes.**
+**2. Check it still renders.**
 
 ```bash
-task tofu:plan
+task cluster:render
 ```
 
-Expect **three** resources to change, and nothing else: the machine
-configuration of `cp-1`, `cp-2` and `cp-3`. The workers do not carry the
-manifest, so they are untouched.
-
-| What the plan shows | What it means |
-| --- | --- |
-| 3 × `talos_machine_configuration_apply` updated | Correct. This is the upgrade. |
-| 6 × updated | The change touched `common_patch`, not just Cilium. Stop and read the diff. |
-| Any `proxmox_virtual_environment_vm` replaced | Wrong. Nothing here should rebuild a guest. Stop. |
-
-**3. Apply it.**
-
-```bash
-task tofu:apply
+```
+Both overlays render.
 ```
 
-Talos writes the new configuration to the control planes and reconciles the
-manifest into the cluster. The agent DaemonSet then rolls node by node.
+**3. Commit and push.** That is the upgrade. ArgoCD picks it up within the
+reconciliation timeout, or immediately if you press Sync.
 
-**4. Watch the rollout**, in another terminal:
+**4. Watch the rollout.**
 
 ```bash
 kubectl -n kube-system rollout status daemonset/cilium --timeout=10m
@@ -73,6 +61,23 @@ kubectl -n kube-system rollout status daemonset/cilium --timeout=10m
 ```
 daemon set "cilium" successfully rolled out
 ```
+
+**5. Bring the bootstrap render back in step.**
+
+```bash
+task tofu:apply
+```
+
+Expect **three** resources to change, and nothing else: the machine
+configuration of `cp-1`, `cp-2` and `cp-3`. This changes nothing in the running
+cluster — Talos will not re-apply it — but it is what a rebuilt cluster would be
+born with, and skipping it leaves `tofu plan` permanently dirty.
+
+| What the plan shows | What it means |
+| --- | --- |
+| 3 × `talos_machine_configuration_apply` updated | Correct. The workers do not carry the manifest. |
+| 6 × updated | The change touched `common_patch`, not just Cilium. Stop and read the diff. |
+| Any `proxmox_virtual_environment_vm` replaced | Wrong. Nothing here should rebuild a guest. Stop. |
 
 ## Checking it worked
 
@@ -100,31 +105,20 @@ kubectl run net-test --image=nicolaka/netshoot --rm -it --restart=Never -- \
 A resolved address means pod networking, Service resolution and kube-proxy
 replacement are all working, which is the whole surface this change touches.
 
-## If the cluster does not pick it up
-
-Talos reconciles inline manifests when the machine configuration changes. If the
-DaemonSet image has not moved a few minutes after the apply, check that the
-control planes actually took the new configuration:
+Load balancer addresses are a separate surface, and an upgrade can break them
+without breaking anything above:
 
 ```bash
-talosctl -n 10.10.10.11 get machineconfig -o yaml | grep -c 'cilium'
+kubectl get lease -A | grep l2announce
 ```
 
-If the configuration is current but the cluster is not, apply the rendered
-manifest by hand. It comes from the same render, so this is not a second source
-of truth:
-
-```bash
-task tofu:cilium-manifest
-kubectl apply -f cilium.yaml
-```
-
-`cilium.yaml` is generated and git-ignored. Delete it afterwards.
+One lease per Gateway, each held by a worker. None means no address on the guest
+bridge answers ARP, and everything on the mesh stops resolving.
 
 ## Rolling back
 
-Put the old version back in `terraform.tfvars` and apply again. There is nothing
-else to undo, because the version is the only thing that changed.
+Revert the commit and let ArgoCD sync it back. There is nothing else to undo,
+because the version is the only thing that changed.
 
 Downgrades across a minor version are **not** supported by Cilium. If a 1.19 to
 1.20 upgrade goes wrong, rolling back to 1.19 is not guaranteed to work, and the
@@ -138,12 +132,27 @@ task tofu:apply
 This cluster is disposable by design. Anything stored in it is not; see the
 rebuild table in [Applying step by step](../../troubleshooting/step-by-step.md).
 
-## Two things that will surprise you
+## If ArgoCD is what is broken
 
-**Talos does not remove what a new version dropped.** Inline manifests are
-applied, never pruned. If an upgrade deletes a resource from the chart, the old
-one stays in the cluster until you delete it yourself. Compare the rendered
-manifests across versions if an upgrade behaves oddly.
+ArgoCD manages the network it is itself running on, which is the cost of this
+arrangement. If a sync leaves the cluster without a working CNI, ArgoCD cannot
+fix it, because it needs the network to run.
+
+Render the chart yourself and apply it, from the same file ArgoCD reads, so this
+is not a second source of truth:
+
+```bash
+helm template cilium cilium \
+  --repo https://helm.cilium.io/ \
+  --version "$(yq '.spec.source.targetRevision' gitops/system/base/cilium/cilium.yaml)" \
+  --namespace kube-system \
+  -f <(yq '.spec.source.helm.valuesObject' gitops/system/base/cilium/cilium.yaml) \
+  | kubectl apply -f -
+```
+
+Then fix the commit that caused it, so ArgoCD agrees with the cluster again.
+
+## One thing that will surprise you
 
 **Hubble's certificates are minted in the cluster**, by a job, not by the chart.
 That is deliberate: rendering them would put a fresh private key into the machine

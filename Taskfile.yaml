@@ -176,13 +176,6 @@ tasks:
     cmds:
       - '{{.WITH_SECRETS}} "tofu force-unlock {{.CLI_ARGS}}"'
 
-  tofu:cilium-manifest:
-    desc: Writes ./cilium.yaml, the rendered CNI manifest, for applying by hand
-    dir: "{{.TOFU_DIR}}"
-    cmds:
-      - '{{.WITH_SECRETS}} "tofu output -raw cilium_manifest" > {{.ROOT_DIR}}/cilium.yaml'
-      - 'echo "Wrote cilium.yaml. Normally Talos applies this for you; see docs/manual/maintenance/upgrading-cilium.md"'
-
   tofu:kubeconfig:
     desc: Writes ./kubeconfig, for kubectl
     dir: "{{.TOFU_DIR}}"

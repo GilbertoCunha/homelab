@@ -31,11 +31,13 @@ Your own device must be on the mesh and accepting subnet routes, as in step 3.
 On **your own machine**, in addition to step 3's tools:
 
 ```bash
-brew install kustomize helm
+brew install kustomize helm yq
 ```
 
 `helm` is never run directly. `kustomize` calls it to inflate the ArgoCD chart,
-and refuses to without it installed.
+and refuses to without it installed. `yq` is only needed to recover a cluster
+whose CNI is broken; see
+[Upgrading Cilium](../maintenance/upgrading-cilium.md).
 
 ## 2. Checking what would be applied
 

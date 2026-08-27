@@ -5,13 +5,6 @@ resource "talos_machine_secrets" "this" {
   talos_version = var.talos_version
 }
 
-# The local API server proxy Talos runs on every node. Cilium is pointed at it in
-# `cilium.tf`, and the machine configuration below pins it, so the port is
-# written here once rather than in both places.
-locals {
-  kubeprism_port = 7445
-}
-
 # Applies to every node regardless of role.
 locals {
   common_patch = {

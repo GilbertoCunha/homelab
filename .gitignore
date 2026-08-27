@@ -12,11 +12,10 @@ __pycache__/
 *.tfstate.*
 *.tfplan
 
-# Written on demand by `task tofu:kubeconfig` / `task tofu:talosconfig`, and by
-# `task tofu:cilium-manifest`. All three are generated; none is a source of truth.
+# Written on demand by `task tofu:kubeconfig` / `task tofu:talosconfig`. Both are
+# generated; neither is a source of truth.
 kubeconfig
 talosconfig
-cilium.yaml
 
 # The age private key must never be in the repo. It is the one secret that
 # cannot itself be stored encrypted here.

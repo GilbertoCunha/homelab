@@ -63,8 +63,3 @@ variable "service_subnet" {
   description = "CIDR for service addresses. Recorded in the README network table."
   type        = string
 }
-
-variable "cilium_version" {
-  description = "Cilium chart version. Rendered at plan time and applied by Talos at bootstrap; see docs/manual/maintenance/upgrading-cilium.md."
-  type        = string
-}
