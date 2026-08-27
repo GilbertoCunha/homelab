@@ -43,6 +43,14 @@ spec:
         sources:
           - gateway-httproute
 
+        # Only the mesh Gateways. external-dns reads cloudflare-proxied from
+        # the HTTPRoute and never from the Gateway, so proxying cannot be set
+        # per Gateway by annotation. Splitting into two instances filtered by
+        # this label is what sets it instead; external-dns-tunnel.yaml is the
+        # other half. See docs/concepts/ingress.md.
+        extraArgs:
+          - --gateway-label-filter=dns-mode==direct
+
         env:
           - name: CF_API_TOKEN
             valueFrom:

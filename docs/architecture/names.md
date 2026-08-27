@@ -37,4 +37,6 @@ record from the `HTTPRoute`, and the Gateway already holds the certificate. See
 Records made by hand must be **DNS only**, the grey cloud. Cloudflare's proxy
 breaks certificate issuance for Caddy and drops the UDP the mesh needs. The
 exception is the public cluster path, which only works proxied because a tunnel
-CNAME requires it.
+CNAME requires it -- and that record is not made by hand either. external-dns
+writes it, proxied, decided by the Gateway the route attaches to. See
+[Getting traffic into the cluster](../concepts/ingress.md).

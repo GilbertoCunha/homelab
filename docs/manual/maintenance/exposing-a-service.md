@@ -16,6 +16,11 @@ For how any of this works, see
 
 Default to a mesh Gateway. Public is for something that has a reason to be.
 
+The Gateway is the only thing that decides how the DNS record is written. A
+route on `gw-public` gets a proxied `CNAME` through the tunnel; one on a mesh
+Gateway gets an unproxied `A` record. Either way the route itself needs no
+annotations.
+
 ## 2. Labelling the namespace
 
 A Gateway only accepts routes from namespaces carrying the matching label. Set

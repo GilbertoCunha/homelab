@@ -37,7 +37,7 @@ internet ──▶ 22, 80, 443 ──▶ homelab.grncunha.com
                                                         ├── cp-1..3      ──▶ etcd, kube-apiserver
                                                         └── worker-1..3  ──▶ workloads
 
-internet ──▶ cloudflare edge ──▶ tunnel ──▶ cloudflared (in cluster)   [planned]
+internet ──▶ cloudflare edge ──▶ tunnel ──▶ cloudflared (in cluster)
                                              └──▶ gw-public ──▶ public apps
 
 your laptop ──▶ mesh ──▶ proxmox UI :8006
@@ -47,9 +47,9 @@ your laptop ──▶ mesh ──▶ proxmox UI :8006
                            └──▶ .201  gw-internal-dev  ──▶ dev apps
 ```
 
-The mesh half is running. The public half is not: `gw-public` exists but
-nothing dials it yet, so `*.apps.homelab.grncunha.com` resolves to nothing. It
-is the first item in the [Backlog](../backlog.md).
+Both halves run. The public one carries no certificate of its own: Cloudflare
+terminates TLS at the edge and the tunnel carries its own inside. See
+[Opening the tunnel](../manual/provisioning/5-open-the-tunnel.md).
 
 ## Where the boundaries are
 

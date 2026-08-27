@@ -29,7 +29,7 @@ Documentation is split by the question it answers:
 | `docs/troubleshooting/` | "It is broken, now what?" | Applying step by step |
 | `docs/cheatsheet.md` | "What was that command?" | — |
 | `docs/architecture/` | "What is the system, and why this shape?" | Names, network ranges |
-| `docs/backlog.md` | "What is not built yet?" | Public access |
+| `docs/backlog.md` | "What is not built yet?" | Persistent storage |
 | `README.md` | "Where do I click?" | Links to Proxmox, ArgoCD |
 
 `README.md` is a front door, not a document: links to the things you actually

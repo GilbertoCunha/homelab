@@ -1,0 +1,75 @@
+---
+# The second external-dns, for the public path only. It writes the proxied
+# CNAMEs that point at the tunnel; external-dns.yaml writes everything else.
+#
+# Two instances rather than one because cloudflare-proxied is read from the
+# HTTPRoute, never from the Gateway, so it cannot be set once per Gateway. A
+# single instance with --cloudflare-proxied would proxy the mesh records too,
+# and Cloudflare will not proxy a private address. See docs/concepts/ingress.md.
+#
+# Same namespace as the other instance, so both read the one
+# cloudflare-api-dns-token Secret. ArgoCD names the Helm release after the
+# Application, so nothing collides.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: external-dns-tunnel
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  project: default
+  destination:
+    namespace: external-dns
+    server: https://kubernetes.default.svc
+  source:
+    chart: external-dns
+    repoURL: https://kubernetes-sigs.github.io/external-dns/
+    targetRevision: 1.21.1
+    helm:
+      valuesObject:
+        provider:
+          name: cloudflare
+
+        policy: sync
+
+        # The zone, for the reason given in external-dns.yaml.
+        domainFilters:
+          - grncunha.com
+
+        # Distinct from the other instance's homelab-k8s. This is what keeps
+        # the two apart: external-dns deletes only records whose ownership TXT
+        # carries its own id, so neither can prune the other's.
+        txtOwnerId: homelab-k8s-tunnel
+
+        # This instance writes CNAMEs, and a TXT at the same name as a CNAME is
+        # invalid, so its ownership records need a name of their own. Set
+        # before the first record and never changed afterwards: changing it
+        # orphans every TXT, and external-dns stops recognising what it owns.
+        # The other instance writes A records, where a TXT can share the name,
+        # and so has no prefix.
+        txtPrefix: edns-
+
+        sources:
+          - gateway-httproute
+
+        # Only gw-public. --cloudflare-proxied then applies to every record
+        # this instance writes, so a public HTTPRoute needs no annotation of
+        # its own: attaching to gw-public is what makes its record proxied.
+        extraArgs:
+          - --gateway-label-filter=dns-mode==tunnel
+          - --cloudflare-proxied
+
+        env:
+          - name: CF_API_TOKEN
+            valueFrom:
+              secretKeyRef:
+                name: cloudflare-api-dns-token
+                key: api-token
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

@@ -262,3 +262,8 @@ tasks:
     desc: Opens an encrypted SopsSecret, e.g. `task secrets:edit:cluster -- gitops/secrets/base/cloudflare.sops.yaml`
     cmds:
       - sops {{.CLI_ARGS}}
+
+  secrets:show:cluster:
+    desc: Shows an unencrypted SopsSecret, e.g. `task secrets:show:cluster -- gitops/secrets/base/cloudflare.sops.yaml`
+    cmds:
+      - sops -d {{.CLI_ARGS}}

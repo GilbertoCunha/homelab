@@ -15,6 +15,7 @@ Follow these in order. Each one assumes the ones above it are done.
 2. [Configuring](./provisioning/2-configure-server.md): how to install and configure everything on the server
 3. [Provisioning](./provisioning/3-provision-cluster.md): how to build the Kubernetes cluster on the server
 4. [Bootstrapping GitOps](./provisioning/4-bootstrap-gitops.md): how to install ArgoCD, so the cluster's contents come from git
+5. [Opening the tunnel](./provisioning/5-open-the-tunnel.md): how to make the cluster reachable from the internet, without opening a port
 
 ## Maintenance
 

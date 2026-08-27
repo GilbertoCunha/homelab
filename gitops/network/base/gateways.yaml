@@ -5,10 +5,12 @@ kind: Gateway
 metadata:
   name: gw-internal-prod
   namespace: gateway-system
-  annotations:
-    # A record straight to 10.10.10.200, not proxied. The address is private,
-    # so the name resolves for everyone and only a mesh device can route to it.
-    external-dns.alpha.kubernetes.io/cloudflare-proxied: "false"
+  labels:
+    # Picks the external-dns instance that writes this Gateway's records.
+    # `direct` is unproxied: an A record straight to 10.10.10.200. The address
+    # is private, so the name resolves for everyone and only a mesh device can
+    # route to it. See docs/concepts/ingress.md.
+    dns-mode: direct
 spec:
   gatewayClassName: kgateway
   infrastructure:
@@ -54,8 +56,8 @@ kind: Gateway
 metadata:
   name: gw-internal-dev
   namespace: gateway-system
-  annotations:
-    external-dns.alpha.kubernetes.io/cloudflare-proxied: "false"
+  labels:
+    dns-mode: direct
 spec:
   gatewayClassName: kgateway
   infrastructure:
@@ -97,6 +99,16 @@ kind: Gateway
 metadata:
   name: gw-public
   namespace: gateway-system
+  labels:
+    # `tunnel` proxies, which a .cfargotunnel.com CNAME needs to resolve at all.
+    # This is the one place in the repo where an orange cloud is correct; see
+    # docs/architecture/names.md.
+    dns-mode: tunnel
+  annotations:
+    # The only external-dns annotation read from a Gateway. Every other one is
+    # read from the HTTPRoute, which is why proxying is a label above rather
+    # than an annotation here. See docs/concepts/ingress.md.
+    external-dns.alpha.kubernetes.io/target: 0fe39bd7-3b36-4059-8151-9bc3c07ce0dd.cfargotunnel.com
 spec:
   gatewayClassName: kgateway
   infrastructure:

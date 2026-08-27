@@ -1,0 +1,9 @@
+---
+# Wave 2, ahead of the secrets Application at 3: the SopsSecret for the tunnel
+# credentials lands in here.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: cloudflared
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"

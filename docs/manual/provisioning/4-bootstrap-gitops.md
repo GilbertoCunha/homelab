@@ -85,10 +85,11 @@ credentials too, and rotating means re-encrypting everything rather than just
 cert-manager and external-dns both need a Cloudflare API token. The encrypted
 file holding it is committed with an empty value, so this is a one-time edit.
 
-This is the **DNS** token, and it is the only Cloudflare token the cluster
-holds. The public path needs a second one, scoped to the account rather than the
-zone, because a tunnel is an account resource; it is created later and is not
-needed to bootstrap. See [the backlog](../../backlog.md).
+This is the **DNS** token, and it is the only Cloudflare token anything here
+holds. The public path needs no second one: a tunnel is an account resource, but
+it is created by hand in
+[Opening the tunnel](./5-open-the-tunnel.md) and its credentials are committed
+encrypted, so no account-scoped token is ever stored.
 
 Create the token first, in the [Cloudflare
 dashboard](https://dash.cloudflare.com) under **My Profile**, **API Tokens**:

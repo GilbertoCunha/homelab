@@ -117,7 +117,8 @@ the rest.
 | **external-dns** | `HTTPRoute` hostnames, and the Gateway's address | The Cloudflare DNS record |
 | **cert-manager** | The two `Certificate` resources | The wildcard certificates the Gateways serve |
 
-**external-dns** writes an `A` record straight to `10.10.10.200`, DNS only and
+**external-dns** writes, for a mesh Gateway, an `A` record straight to
+`10.10.10.200`, DNS only and
 not proxied. That puts a private address in public DNS, which is deliberate: the
 name resolves for everyone, and only a mesh device can route to it. It also
 means no split-horizon entry in Headscale's `extra-records.json`.
@@ -133,6 +134,43 @@ names. A filter narrower than the zone, such as `k8s.homelab.grncunha.com`,
 matches no zone at all, and external-dns then writes nothing and reports no
 error.
 
+### Two external-dns instances, split by Gateway
+
+external-dns reads the `target` annotation from the **Gateway** and every other
+one -- ttl, `cloudflare-proxied` -- from the **`HTTPRoute`**. Proxying therefore
+cannot be set once per Gateway, and the public path needs it: a
+`.cfargotunnel.com` CNAME resolves only when proxied.
+
+Annotating every public route would work, and is not what happens. It is a step
+per app whose failure mode is a record that resolves to nothing rather than an
+error. Instead there are two instances, each filtered to one kind of Gateway by
+`--gateway-label-filter` against a `dns-mode` label:
+
+| Instance | Gateways | Writes |
+| --- | --- | --- |
+| `external-dns` | `dns-mode: direct` | Unproxied `A` records to `10.10.10.200` |
+| `external-dns-tunnel` | `dns-mode: tunnel` | Proxied `CNAME`s to the tunnel |
+
+Attaching a route to `gw-public` is what makes its record proxied, so a public
+route carries no annotations at all. One instance with `--cloudflare-proxied`
+would not do: the flag is global, and Cloudflare will not proxy the private
+address the mesh records point at.
+
+Both run in one namespace and read the one API token. What keeps them apart is a
+distinct `txtOwnerId`, since each deletes only records carrying its own `TXT` --
+the same ownership rule that protects the hand-made records. The tunnel instance
+also sets `txtPrefix`, because a `TXT` cannot share a name with a `CNAME`.
+Neither value can be changed once records exist without orphaning every `TXT`
+written so far.
+
+kgateway ignores all of these. They are not part of the Gateway API; they are
+metadata that external-dns happens to read from an object kgateway also watches.
+
+The annotation prefix is `external-dns.alpha.kubernetes.io/`, the default up to
+chart 1.21.x. It becomes `external-dns.kubernetes.io/` in external-dns v0.22.0,
+so upgrading past that stops every annotation here being read, silently, unless
+`--annotation-prefix` is set.
+
 **cert-manager** solves **DNS-01**, not HTTP-01. Two reasons, and either alone
 would be enough: the mesh names point at an address Let's Encrypt cannot reach,
 and DNS-01 is the only challenge that issues wildcards. It is told to check the
@@ -144,10 +182,11 @@ Both read one Cloudflare API token, scoped to `Zone:DNS:Edit` on
 sops-secrets-operator turns it into a `Secret` named `cloudflare-api-dns-token`
 in each namespace that needs one. See [Secrets with SOPS](./sops.md).
 
-A tunnel is an account resource, not a zone one, so it cannot be reached by a
-zone-scoped token at all. The public path therefore gets a second token rather
-than a wider one, which keeps these two off the account entirely. See
-[the backlog](../backlog.md).
+A tunnel is an account resource, not a zone one, so this token cannot manage
+one. It does not need to. The tunnel is created once by hand and its credentials
+are committed encrypted, so no workload and no stored token ever holds
+account-wide rights. See
+[Opening the tunnel](../manual/provisioning/5-open-the-tunnel.md).
 
 ## Why the public Gateway needs no certificate
 

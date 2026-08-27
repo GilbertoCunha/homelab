@@ -1,0 +1,23 @@
+---
+# cloudflared's own config file. The tunnel is locally managed, so this is the
+# routing table, not a copy of one in the dashboard.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cloudflared
+  namespace: cloudflared
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+data:
+  config.yaml: |
+    tunnel: 0fe39bd7-3b36-4059-8151-9bc3c07ce0dd
+    credentials-file: /etc/cloudflared/creds/credentials.json
+    metrics: 0.0.0.0:2000
+    no-autoupdate: true
+
+    # One catch-all. The Gateway picks the HTTPRoute by Host, which cloudflared
+    # preserves, so adding a public app is one more HTTPRoute and nothing here.
+    ingress:
+      - hostname: "*.apps.homelab.grncunha.com"
+        service: http://gw-public.gateway-system.svc:80
+      - service: http_status:404
