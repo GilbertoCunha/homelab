@@ -12,7 +12,7 @@ To expose a workload once this is running, see
 | --- | --- | --- |
 | Mesh, prod | `<app>.k8s.homelab.grncunha.com` | Devices on the mesh |
 | Mesh, dev | `<app>.dev.k8s.homelab.grncunha.com` | Devices on the mesh |
-| Public | `<app>.apps.homelab.grncunha.com` | Anyone |
+| Public | `<app>.grncunha.com` | Anyone |
 
 ```
 internet ──▶ Cloudflare edge ──▶ tunnel ──▶ cloudflared (in cluster)
@@ -194,6 +194,18 @@ Cloudflare terminates TLS at the edge. `cloudflared` makes an outbound
 connection and carries its own TLS inside it. The last hop is inside the
 cluster. So the public path has no certificate to manage, and the only
 certificates this cluster issues are the two mesh wildcards.
+
+That works only because published names are **first-level**, like
+`<app>.grncunha.com`. Cloudflare's Universal SSL covers the apex and one level
+of subdomain and no more, so a deeper public name has no certificate at the edge
+at all: the handshake is refused, and nothing reaches the tunnel to be logged.
+Plain HTTP still answers, which makes it look like a certificate problem inside
+the cluster rather than at the edge. Covering a deeper name means buying
+Advanced Certificate Manager; keeping public names short costs nothing. See
+[Names](../architecture/names.md).
+
+The mesh names are unaffected. cert-manager issues them over DNS-01, which has
+no depth limit, and they never pass through the edge.
 
 Wildcards do not nest: `*.k8s.homelab.grncunha.com` does not cover
 `app.dev.k8s.homelab.grncunha.com`. Two are genuinely needed.

@@ -18,6 +18,6 @@ data:
     # One catch-all. The Gateway picks the HTTPRoute by Host, which cloudflared
     # preserves, so adding a public app is one more HTTPRoute and nothing here.
     ingress:
-      - hostname: "*.apps.homelab.grncunha.com"
+      - hostname: "*.grncunha.com"
         service: http://gw-public.gateway-system.svc:80
       - service: http_status:404

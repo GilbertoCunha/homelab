@@ -12,7 +12,7 @@ For how any of this works, see
 | --- | --- | --- |
 | `gw-internal-prod` | `<app>.k8s.homelab.grncunha.com` | The mesh |
 | `gw-internal-dev` | `<app>.dev.k8s.homelab.grncunha.com` | The mesh |
-| `gw-public` | `<app>.apps.homelab.grncunha.com` | Anyone |
+| `gw-public` | `<app>.grncunha.com` | Anyone |
 
 Default to a mesh Gateway. Public is for something that has a reason to be.
 
@@ -20,6 +20,11 @@ The Gateway is the only thing that decides how the DNS record is written. A
 route on `gw-public` gets a proxied `CNAME` through the tunnel; one on a mesh
 Gateway gets an unproxied `A` record. Either way the route itself needs no
 annotations.
+
+A public name must be **first-level**, `<app>.grncunha.com`, or Cloudflare has
+no certificate for it at the edge and HTTPS fails while plain HTTP still works.
+That also means public names share a namespace with the hand-made records:
+check [Names](../../architecture/names.md) before picking one.
 
 ## 2. Labelling the namespace
 

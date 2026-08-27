@@ -59,6 +59,11 @@ spec:
         extraArgs:
           - --gateway-label-filter=dns-mode==tunnel
           - --cloudflare-proxied
+          # Public names are first-level, so nothing this instance writes
+          # belongs under `homelab`. gw-public's listener is a suffix match and
+          # would accept a route claiming a mesh name; this is what stops such
+          # a route reaching DNS and overwriting a hand-made record.
+          - --exclude-domains=homelab.grncunha.com
 
         env:
           - name: CF_API_TOKEN

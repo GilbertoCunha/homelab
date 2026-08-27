@@ -30,6 +30,7 @@ Documentation is split by the question it answers:
 | `docs/cheatsheet.md` | "What was that command?" | — |
 | `docs/architecture/` | "What is the system, and why this shape?" | Names, network ranges |
 | `docs/backlog.md` | "What is not built yet?" | Persistent storage |
+| `examples/` | "How do I prove a path works?" | A public app, over the tunnel |
 | `README.md` | "Where do I click?" | Links to Proxmox, ArgoCD |
 
 `README.md` is a front door, not a document: links to the things you actually

@@ -144,12 +144,38 @@ own high-availability default rather than something configured here.
 
 ## 5. Checking it end to end
 
-Expose any workload on `gw-public`, following
-[Exposing a service](../maintenance/exposing-a-service.md). The route needs no
-annotations.
+`examples/web-public/` is a throwaway app for exactly this: `traefik/whoami`, a
+`Service`, a namespace labelled `env: prod`, and an `HTTPRoute` on `gw-public`
+carrying no annotations. Apply it by hand. ArgoCD does not sync `examples/`, so
+nothing here is a deployment and nothing needs a commit.
 
 ```bash
-dig +short <app>.apps.homelab.grncunha.com
+kubectl apply -k examples/web-public
+kubectl -n web-public rollout status deploy/whoami
+```
+
+```
+deployment "whoami" successfully rolled out
+```
+
+First, that the route attached. This is the API server's answer, not a guess:
+
+```bash
+kubectl -n web-public get httproute whoami \
+  -o jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].status}{"\n"}'
+```
+
+```
+True
+```
+
+`False`, or `NotAllowedByListeners` in the full status, means the namespace lost
+its `env: prod` label.
+
+Then that external-dns wrote a **proxied** record. Give it about a minute:
+
+```bash
+dig +short whoami.grncunha.com
 ```
 
 ```
@@ -157,19 +183,35 @@ dig +short <app>.apps.homelab.grncunha.com
 172.67.180.22
 ```
 
-Cloudflare's addresses are what proves the record is proxied. A
-`<tunnel-id>.cfargotunnel.com` line in the answer instead means it was written
-unproxied, and the name will not resolve for a browser.
-
-From a device that is **not** on the mesh:
+Cloudflare's own addresses are what proves it is proxied. A
+`<tunnel-id>.cfargotunnel.com` line in the answer instead means the record was
+written unproxied, the name will not resolve for a browser, and the two
+external-dns instances are not split correctly. Check which one claimed it:
 
 ```bash
-curl -sI https://<app>.apps.homelab.grncunha.com | head -1
+kubectl -n external-dns logs deploy/external-dns-tunnel | grep whoami
+```
+
+Now the tunnel itself, from a device that is **not** on the mesh:
+
+```bash
+curl -sS https://whoami.grncunha.com
 ```
 
 ```
-HTTP/2 200
+Hostname: whoami-5c9d7f8b4d-2xqvw
+IP: 127.0.0.1
+IP: 10.244.2.17
+RemoteAddr: 10.244.1.9:52134
+GET / HTTP/1.1
+Host: whoami.grncunha.com
+X-Forwarded-Proto: https
 ```
+
+The `Host` line is the one to read. It must be the public name, not
+`gw-public.gateway-system.svc`: `cloudflared` passes the original host through,
+and `gw-public` matches the route on it. Anything else there means the routing
+in the ConfigMap is wrong, and you would see a 404 rather than this output.
 
 Then confirm nothing new is listening:
 
@@ -187,7 +229,33 @@ PORT    STATE SERVICE
 Three ports, the same three as before the tunnel. That is the whole reason for
 choosing a tunnel over a port forward.
 
+Then remove the example. It is a test, not a workload:
+
+```bash
+kubectl delete -k examples/web-public
+dig +short whoami.grncunha.com
+```
+
+The second command should print nothing within a minute or so. external-dns
+owns the record, so deleting the route deletes it; a name that still resolves
+means `policy: sync` is not pruning and the record will have to go by hand.
+
 ## When it does not work
+
+**HTTPS fails but HTTP works.** The clearest signal, and the easiest to
+misread:
+
+```bash
+curl -sS  https://whoami.grncunha.com    # curl: (35) ... handshake failure
+curl -sSI http://whoami.grncunha.com     # 200
+```
+
+Nothing appears in the `cloudflared` logs, because the handshake is refused at
+the edge and no request is ever made. It means the name has no edge
+certificate, which almost always means it is too deep: Universal SSL covers the
+apex and one level only. `whoami.grncunha.com` is covered,
+`whoami.apps.homelab.grncunha.com` is not. See
+[Names](../../architecture/names.md).
 
 **Cloudflare error 1033.** The record resolves but no connector is registered.
 The tunnel exists and nothing is dialling it: check step 4, then the credentials.
@@ -205,7 +273,7 @@ the cluster, bypassing the tunnel:
 
 ```bash
 kubectl -n cloudflared exec deploy/cloudflared -- \
-  curl -sI -H 'Host: <app>.apps.homelab.grncunha.com' http://gw-public.gateway-system.svc
+  curl -sI -H 'Host: <app>.grncunha.com' http://gw-public.gateway-system.svc
 ```
 
 **The name does not resolve at all.** external-dns has not written it.

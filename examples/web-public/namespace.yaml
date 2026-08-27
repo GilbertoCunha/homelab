@@ -1,0 +1,10 @@
+---
+# `env: prod` is what lets a route here attach to gw-public. Without it the
+# route is refused by the API server with NotAllowedByListeners; see
+# docs/manual/maintenance/exposing-a-service.md.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: web-public
+  labels:
+    env: prod

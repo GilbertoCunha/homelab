@@ -120,7 +120,15 @@ spec:
     - name: http
       protocol: HTTP
       port: 80
-      hostname: "*.apps.homelab.grncunha.com"
+      # First level under the apex, and it has to be: Cloudflare's Universal
+      # SSL covers the apex and one level, so a deeper name has no edge
+      # certificate and the TLS handshake fails before any request exists.
+      # See docs/architecture/names.md.
+      #
+      # Gateway API reads this as a suffix match, so it also accepts a route
+      # claiming a mesh name. The env: prod selector below is the first guard;
+      # --exclude-domains on external-dns-tunnel is the second.
+      hostname: "*.grncunha.com"
       allowedRoutes:
         namespaces:
           from: Selector

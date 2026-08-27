@@ -38,7 +38,7 @@ internet ──▶ 22, 80, 443 ──▶ homelab.grncunha.com
                                                         └── worker-1..3  ──▶ workloads
 
 internet ──▶ cloudflare edge ──▶ tunnel ──▶ cloudflared (in cluster)
-                                             └──▶ gw-public ──▶ public apps
+                                             └──▶ gw-public ──▶ <app>.grncunha.com
 
 your laptop ──▶ mesh ──▶ proxmox UI :8006
                      └──▶ 10.10.10.0/24, routed by the server
