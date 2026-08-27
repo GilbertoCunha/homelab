@@ -122,11 +122,16 @@ not proxied. That puts a private address in public DNS, which is deliberate: the
 name resolves for everyone, and only a mesh device can route to it. It also
 means no split-horizon entry in Headscale's `extra-records.json`.
 
-Two limits keep it away from everything else. It is filtered to
-`k8s.homelab.grncunha.com` and `apps.homelab.grncunha.com`, so the hand-made
-records for `homelab`, `vpn.homelab` and `proxmox.homelab` are out of reach by
-construction. And it only deletes records carrying its own ownership `TXT`,
-which is why cert-manager's `_acme-challenge` records survive it.
+Ownership is what keeps it away from everything else. It only deletes records
+carrying its own `TXT`, which is why the hand-made records for `homelab`,
+`vpn.homelab` and `proxmox.homelab`, and cert-manager's `_acme-challenge`
+records, all survive it.
+
+Its domain filter is the whole `grncunha.com` zone, which looks wider than it
+needs to be and is not. The filter is matched against **zone** names, not record
+names. A filter narrower than the zone, such as `k8s.homelab.grncunha.com`,
+matches no zone at all, and external-dns then writes nothing and reports no
+error.
 
 **cert-manager** solves **DNS-01**, not HTTP-01. Two reasons, and either alone
 would be enough: the mesh names point at an address Let's Encrypt cannot reach,

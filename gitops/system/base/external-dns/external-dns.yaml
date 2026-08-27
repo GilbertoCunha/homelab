@@ -22,21 +22,22 @@ spec:
         provider:
           name: cloudflare
 
-        # Records follow the routes, rather than only ever being added. Safe
-        # because of the two limits below: external-dns will not touch a name
-        # outside these domains, and will not delete a record it does not own.
+        # Records follow the routes, rather than only ever being added. What
+        # keeps that safe is ownership, below: external-dns will not delete a
+        # record it does not own.
         policy: sync
 
-        # The hand-made records for homelab, vpn.homelab and proxmox.homelab
-        # sit outside these domains, so they are out of reach by construction
-        # rather than by ownership alone.
+        # This is the Cloudflare zone, and it has to be. The filter is matched
+        # against zone names, not record names: a filter narrower than the zone
+        # matches no zone at all, and external-dns then silently writes nothing.
+        # The hand-made records for homelab, vpn.homelab and proxmox.homelab sit
+        # in this zone, and are protected by ownership rather than by scope.
         domainFilters:
-          - k8s.homelab.grncunha.com
-          - apps.homelab.grncunha.com
+          - grncunha.com
 
         # Ownership is recorded in a TXT record carrying this id. Anything
-        # without it -- including the _acme-challenge records cert-manager
-        # creates -- is left alone.
+        # without it -- the hand-made records above, and the _acme-challenge
+        # records cert-manager creates -- is left alone.
         txtOwnerId: homelab-k8s
 
         sources:
