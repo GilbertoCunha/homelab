@@ -52,6 +52,22 @@ resource "proxmox_virtual_environment_vm" "this" {
     discard      = "on"
   }
 
+  # A second disk, on the workers only, so persistent volumes do not share a
+  # partition with container images and logs. Talos claims it as the
+  # `local-path-provisioner` user volume; see `cluster.tf`.
+  dynamic "disk" {
+    for_each = var.data_disk_gb > 0 ? [var.data_disk_gb] : []
+
+    content {
+      datastore_id = var.datastore_id
+      interface    = "virtio1"
+      size         = disk.value
+      file_format  = "qcow2"
+      iothread     = true
+      discard      = "on"
+    }
+  }
+
   # Proxmox puts the cloud-init drive on ide2, so the boot image goes on ide3.
   cdrom {
     file_id   = var.boot_image_id

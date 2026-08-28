@@ -4,7 +4,10 @@
 # Sizing, against a 6-core/12-thread host with 125 GiB of usable memory:
 #   18 vCPU total is 1.5:1 overcommit, which idles comfortably.
 #   72 GiB allocated leaves roughly 53 GiB for the host, Headscale and Caddy.
-# Disks are qcow2 and thin, so the 420 GiB below costs far less until used.
+# Disks are qcow2 and thin, so the 720 GiB below costs far less until used.
+# `data_disk_gb` is the second disk Talos turns into the local-path-provisioner
+# user volume, so a persistent volume never shares a partition with container
+# images. Control planes run no workloads and get none.
 locals {
   control_planes = {
     for i in range(3) :
@@ -14,6 +17,7 @@ locals {
       cpu_cores    = 2
       memory_mb    = 4096
       disk_gb      = 40
+      data_disk_gb = 0
       machine_type = "controlplane"
     }
   }
@@ -26,6 +30,7 @@ locals {
       cpu_cores    = 4
       memory_mb    = 20480
       disk_gb      = 100
+      data_disk_gb = 100
       machine_type = "worker"
     }
   }

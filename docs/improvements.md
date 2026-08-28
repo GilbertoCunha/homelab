@@ -28,13 +28,11 @@ the document or the manifests should change.
 
 ## Persistent storage
 
-There is no persistent storage configuration for either:
+`victoria-metrics`, `victoria-logs` and `grafana` all keep a volume now. Still
+without one, because neither is deployed yet:
 
-- `victoria-metrics`
-- `victoria-logs`
 - `victoria-traces`
 - `otel`
-- `grafana`
 
 ## Grafana integration
 

@@ -11,6 +11,7 @@ resources:
   - external-dns
   - grafana
   - kgateway
+  - local-path-provisioner
   - sops
   - victoria-logs
   - victoria-metrics

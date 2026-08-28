@@ -1,4 +1,7 @@
 ---
+# Log storage. A single server, because one host's logs do not need a cluster.
+#
+# Wave 1: it claims a volume, so the storage class in wave 0 has to exist first.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -14,13 +17,22 @@ spec:
     server: https://kubernetes.default.svc
   project: default
   source:
-    # Use single server victoria metrics
     chart: victoria-logs-single
-    helm:
-      valueFiles:
-        - values.yaml
     repoURL: https://victoriametrics.github.io/helm-charts
     targetRevision: 0.13.9
+    # Values are inlined because the source is a Helm repository rather than
+    # this one: ArgoCD resolves `valueFiles` inside the downloaded chart, so a
+    # file kept here is silently never read.
+    helm:
+      valuesObject:
+        server:
+          # Without this the chart names everything after the release and the
+          # chart both, giving `victoria-logs-victoria-logs-single-server`.
+          fullnameOverride: victoria-logs
+          retentionPeriod: 7d
+          persistentVolume:
+            # No storageClassName anywhere: local-path is the default class.
+            size: 10Gi
   syncPolicy:
     automated:
       # Prune resources during auto-syncing (default is false)

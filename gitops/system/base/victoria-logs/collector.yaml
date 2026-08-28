@@ -1,4 +1,8 @@
 ---
+# Reads every pod's logs off each node and ships them to the server above.
+#
+# Wave 1: the server it writes to is in the same wave, and the collector simply
+# retries until that address answers.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -14,13 +18,34 @@ spec:
     server: https://kubernetes.default.svc
   project: default
   source:
-    # Use single server victoria metrics
     chart: victoria-logs-collector
-    helm:
-      valueFiles:
-        - values.yaml
     repoURL: https://victoriametrics.github.io/helm-charts
     targetRevision: 0.3.7
+    # Inlined for the same reason as the server's values; see application.yaml.
+    helm:
+      valuesObject:
+        remoteWrite:
+          # The service the chart above creates, named by its fullnameOverride.
+          - url: http://victoria-logs.victoria-logs.svc.cluster.local:9428
+        collector:
+          includePodLabels: true
+          includePodAnnotations: false
+          includeNodeLabels: false
+          includeNodeAnnotations: false
+          includeNamespaceLabels: true
+          includeNamespaceAnnotations: false
+          # Anything matching these never reaches storage.
+          ignoreFields:
+            - request.payload*
+            - password
+            - token
+        resources:
+          limits:
+            cpu: 100m
+            memory: 128Mi
+          requests:
+            cpu: 100m
+            memory: 128Mi
   syncPolicy:
     automated:
       # Prune resources during auto-syncing (default is false)

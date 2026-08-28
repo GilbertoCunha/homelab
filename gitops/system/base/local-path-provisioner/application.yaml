@@ -1,0 +1,60 @@
+---
+# The cluster's only storage class. Talos ships none, so before this existed
+# every PersistentVolumeClaim stayed Pending forever.
+#
+# A volume is a directory on the worker that first mounts it, inside the user
+# volume `cluster.tf` carves out of that worker's second disk. That makes a
+# volume node-local: the pod using it is pinned to one worker for as long as
+# the volume lives. `docs/concepts/storage.md` explains the trade.
+#
+# The chart is not published to a Helm repository, so it is read from the
+# project's own tag.
+#
+# Wave 0: the wave 1 applications create claims, and a claim made before a
+# default storage class exists is never retried.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: local-path-provisioner
+  namespace: argocd
+  labels:
+    tier: system
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  project: default
+  destination:
+    namespace: local-path-storage
+    server: https://kubernetes.default.svc
+  source:
+    repoURL: https://github.com/rancher/local-path-provisioner
+    targetRevision: v0.0.37
+    path: deploy/chart/local-path-provisioner
+    helm:
+      valuesObject:
+        storageClass:
+          # Nothing in this repo sets storageClassName. This is what binds
+          # every claim, and the chart leaves it off by default.
+          defaultClass: true
+        nodePathMap:
+          - node: DEFAULT_PATH_FOR_NON_LISTED_NODES
+            paths:
+              # The Talos user volume. `opentofu/project/storage.tf` reads the
+              # last element of this path back as the volume's name, so the
+              # two ends of the mount cannot drift.
+              - /var/mnt/local-path-provisioner
+        helperImage:
+          # The chart asks for `latest`, which is not a version.
+          tag: "1.37.0"
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    # The helper pod that creates and removes a volume's directory mounts the
+    # host path, which a namespace at the default `restricted` level rejects.
+    managedNamespaceMetadata:
+      labels:
+        pod-security.kubernetes.io/enforce: privileged
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

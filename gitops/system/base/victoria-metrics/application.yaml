@@ -1,4 +1,8 @@
 ---
+# Metric storage, and the scraper that fills it. A single server, for the same
+# reason victoria-logs is one.
+#
+# Wave 1: it claims a volume, so the storage class in wave 0 has to exist first.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -14,13 +18,93 @@ spec:
     server: https://kubernetes.default.svc
   project: default
   source:
-    # Use single server victoria metrics
     chart: victoria-metrics-single
-    helm:
-      valueFiles:
-        - values.yaml
     repoURL: https://victoriametrics.github.io/helm-charts
     targetRevision: 0.45.0
+    # Inlined for the same reason as victoria-logs; see that application.yaml.
+    helm:
+      valuesObject:
+        server:
+          # Without this the chart names everything after the release and the
+          # chart both, giving `victoria-metrics-victoria-metrics-single-server`.
+          fullnameOverride: victoria-metrics
+          # The volume keeps the chart's 16Gi default. No storageClassName:
+          # local-path is the default class.
+          extraArgs:
+            # Metrics arriving over OpenTelemetry are named the way Prometheus
+            # names them, so one dashboard query matches both sources.
+            opentelemetry.usePrometheusNaming: true
+          scrape:
+            enabled: true
+            configMap: ""
+            config:
+              global:
+                scrape_interval: 15s
+              scrape_configs:
+                - job_name: victoriametrics
+                  static_configs:
+                    - targets: ["localhost:8428"]
+                - job_name: "kubernetes-apiservers"
+                  kubernetes_sd_configs:
+                    - role: endpoints
+                  scheme: https
+                  tls_config:
+                    ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+                    insecure_skip_verify: true
+                  bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+                  relabel_configs:
+                    - source_labels:
+                        [
+                          __meta_kubernetes_namespace,
+                          __meta_kubernetes_service_name,
+                          __meta_kubernetes_endpoint_port_name,
+                        ]
+                      action: keep
+                      regex: default;kubernetes;https
+                - job_name: "kubernetes-nodes"
+                  scheme: https
+                  tls_config:
+                    ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+                    insecure_skip_verify: true
+                  bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+                  kubernetes_sd_configs:
+                    - role: node
+                  relabel_configs:
+                    - action: labelmap
+                      regex: __meta_kubernetes_node_label_(.+)
+                - job_name: "kubernetes-nodes-cadvisor"
+                  scheme: https
+                  tls_config:
+                    ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+                    insecure_skip_verify: true
+                  bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+                  kubernetes_sd_configs:
+                    - role: node
+                  metrics_path: /metrics/cadvisor
+                  relabel_configs:
+                    - action: labelmap
+                      regex: __meta_kubernetes_node_label_(.+)
+                    - source_labels: [__metrics_path__]
+                      target_label: metrics_path
+                  metric_relabel_configs:
+                    - action: replace
+                      source_labels: [pod]
+                      regex: "(.+)"
+                      target_label: pod_name
+                      replacement: "${1}"
+                    - action: replace
+                      source_labels: [container]
+                      regex: "(.+)"
+                      target_label: container_name
+                      replacement: "${1}"
+                    - action: replace
+                      target_label: name
+                      replacement: k8s_stub
+                    - action: replace
+                      source_labels: [id]
+                      regex: '^/system\.slice/(.+)\.service$'
+                      target_label: systemd_service_name
+                      replacement: "${1}"
   syncPolicy:
     automated:
       # Prune resources during auto-syncing (default is false)

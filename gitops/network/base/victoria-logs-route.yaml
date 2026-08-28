@@ -16,5 +16,5 @@ spec:
             type: PathPrefix
             value: /
       backendRefs:
-        - name: vls-victoria-logs-single-server
+        - name: victoria-logs
           port: 9428

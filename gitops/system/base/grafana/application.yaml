@@ -1,4 +1,8 @@
 ---
+# The dashboards. Grafana stores nothing itself worth keeping except what is
+# clicked into it, which is exactly why it gets a volume.
+#
+# Wave 1: it claims a volume, so the storage class in wave 0 has to exist first.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -14,13 +18,54 @@ spec:
     server: https://kubernetes.default.svc
   project: default
   source:
-    # Use single server victoria metrics
     chart: grafana
-    helm:
-      valueFiles:
-        - values.yaml
     repoURL: https://grafana-community.github.io/helm-charts
     targetRevision: 13.0.0
+    # Inlined for the same reason as victoria-logs; see that application.yaml.
+    helm:
+      valuesObject:
+        persistence:
+          # Off by default, which puts Grafana's database in an emptyDir and
+          # loses every hand-made change on restart. No storageClassName:
+          # local-path is the default class.
+          enabled: true
+
+        datasources:
+          datasources.yaml:
+            apiVersion: 1
+            datasources:
+              - name: victoriametrics
+                type: prometheus
+                orgId: 1
+                # The service the victoria-metrics chart creates, named by
+                # its fullnameOverride.
+                url: http://victoria-metrics.victoria-metrics.svc.cluster.local:8428
+                access: proxy
+                isDefault: true
+                updateIntervalSeconds: 10
+                editable: true
+
+        dashboardProviders:
+          dashboardproviders.yaml:
+            apiVersion: 1
+            providers:
+              - name: "default"
+                orgId: 1
+                folder: ""
+                type: file
+                disableDeletion: true
+                editable: true
+                options:
+                  path: /var/lib/grafana/dashboards/default
+
+        dashboards:
+          default:
+            victoriametrics:
+              gnetId: 10229
+              datasource: victoriametrics
+            kubernetes:
+              gnetId: 14205
+              datasource: victoriametrics
   syncPolicy:
     automated:
       # Prune resources during auto-syncing (default is false)

@@ -28,6 +28,12 @@ variable "disk_gb" {
   type        = number
 }
 
+variable "data_disk_gb" {
+  description = "Size of the data disk, in GiB. Zero leaves the guest with only its system disk."
+  type        = number
+  default     = 0
+}
+
 variable "ip_cidr" {
   description = "Static address of the guest, with prefix length. There is no DHCP on the guest bridge."
   type        = string

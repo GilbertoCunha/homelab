@@ -78,6 +78,28 @@ locals {
     }
   }
 
+  # The workers' second disk, claimed as a user volume. Talos mounts a user
+  # volume at /var/mnt/<name> and propagates that mount into the kubelet
+  # container, which is the whole reason for doing it this way: a plain
+  # directory under /var would need a `machine.kubelet.extraMounts` bind mount
+  # before a hostPath pod could see it. local-path-provisioner writes here; see
+  # docs/concepts/storage.md.
+  #
+  # `!system_disk` matches the only other disk the guest has. No maxSize, so
+  # the volume grows to fill it.
+  user_volume_patches = {
+    for name, node in local.workers : name => {
+      apiVersion = "v1alpha1"
+      kind       = "UserVolumeConfig"
+      name       = local.local_path_volume
+      provisioning = {
+        diskSelector = { match = "!system_disk" }
+        minSize      = "10GB"
+      }
+      filesystem = { type = "xfs" }
+    }
+  }
+
   # Per-node networking. There is no DHCP on the guest bridge, so every address
   # is written out. The interface is matched by driver rather than by name,
   # because predictable names depend on the emulated hardware.
@@ -137,6 +159,7 @@ resource "talos_machine_configuration_apply" "this" {
       yamlencode(local.hostname_patches[each.key]),
     ],
     each.value.machine_type == "controlplane" ? [yamlencode(local.cilium_patch)] : [],
+    each.value.machine_type == "worker" ? [yamlencode(local.user_volume_patches[each.key])] : [],
   )
 
   depends_on = [module.talos_node]

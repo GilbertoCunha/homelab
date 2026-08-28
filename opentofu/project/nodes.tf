@@ -7,6 +7,7 @@ module "talos_node" {
   cpu_cores     = each.value.cpu_cores
   memory_mb     = each.value.memory_mb
   disk_gb       = each.value.disk_gb
+  data_disk_gb  = each.value.data_disk_gb
   ip_cidr       = each.value.ip_cidr
   tags          = [var.cluster_name, each.value.machine_type]
   node_name     = var.proxmox_node_name

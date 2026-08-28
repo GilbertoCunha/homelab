@@ -12,11 +12,15 @@ credentials.
 
 Reloader is the likely answer: one controller, an annotation per workload.
 
-## Persistent storage
+## Replicated storage
 
-Nothing has any. A pod asking for a volume stays `Pending`, and that is expected
-rather than broken. ArgoCD and cert-manager do not need it; most real
-applications do, so this is what blocks the cluster being useful for anything
-that keeps state.
+There is storage, but it is node-local: a volume is a directory on whichever
+worker its pod landed on, and the pod cannot leave that worker. See
+[The cluster's storage](./concepts/storage.md).
 
-No decision made yet on what provides it.
+Longhorn is the likely answer. The `iscsi-tools` Talos extension it needs is
+already in the image, precisely so adding it later does not cost a rolling
+upgrade of every node.
+
+Worth doing once something holds data that is not cheap to lose. Metrics and
+logs are not that.

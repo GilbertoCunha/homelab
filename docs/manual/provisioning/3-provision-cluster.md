@@ -270,12 +270,35 @@ A route on `utun`. If the server side is right and this prints nothing, run
 
 ## 8. Storage
 
-The cluster has no persistent storage yet. Pods that ask for a volume will stay
-`Pending`.
+Each worker gets a second disk, which Talos claims as a user volume. Check one:
 
-This is deliberate. The single `local` directory on the host is the only storage
-Proxmox has, and choosing between Longhorn, a Proxmox CSI driver and plain local
-paths deserves its own decision rather than being settled by default.
+```bash
+talosctl --nodes 10.10.10.21 get uservolumestatus
+```
+
+```
+NODE          NAMESPACE   TYPE               ID                       VERSION   PHASE
+10.10.10.21   runtime     UserVolumeStatus   local-path-provisioner   2         ready
+```
+
+`ready` means the disk is partitioned, formatted and mounted at
+`/var/mnt/local-path-provisioner`. Anything else means the guest has no second
+disk, or has more than one candidate for it.
+
+The storage class itself is installed by ArgoCD in the next document, so it does
+not exist yet. Once it does:
+
+```bash
+kubectl get storageclass
+```
+
+```
+NAME                   PROVISIONER                            RECLAIMPOLICY   VOLUMEBINDINGMODE
+local-path (default)   cluster.local/local-path-provisioner   Delete          WaitForFirstConsumer
+```
+
+A volume lives on one worker and is not replicated, which has consequences worth
+knowing before you put anything in it: [The cluster's storage](../../concepts/storage.md).
 
 ## Troubleshooting
 
