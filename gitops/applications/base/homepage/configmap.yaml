@@ -10,10 +10,18 @@ metadata:
 data:
   settings.yaml: |
     title: Homelab
+
+    # Fetched by the browser, not the pod, so it needs the viewer to have
+    # internet — the same as the tile icons. It must be a direct link to the
+    # image itself: an imgur.com/gallery/... page is HTML, and CSS given HTML
+    # draws nothing.
+    background: https://i.imgur.com/IzrpX9X.jpeg
+    # xs, md, and the rest: https://tailwindcss.com/docs/backdrop-blur
+    # Incompatible with background.blur, so the background is set plain above.
+    cardBlur: xs
+
     # The order tiles appear in. A group discovered from an annotation that is
     # not named here still shows, just after these.
-    backgound: https://imgur.com/gallery/berserk-wallpaper-dump-small-collection-of-favourites-oVqc0#IzrpX9X
-    cardBlur: xs # xs, md, etc... see https://tailwindcss.com/docs/backdrop-blur
     layout:
       Cluster:
         style: row

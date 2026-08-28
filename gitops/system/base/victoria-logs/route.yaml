@@ -10,6 +10,10 @@ metadata:
     gethomepage.dev/group: Observability
     gethomepage.dev/description: What every pod printed
     gethomepage.dev/icon: victoriametrics.png
+    # Without this the tile links to the hostname's root, which serves a bare
+    # index. The log search itself lives one path down, and the trailing slash
+    # avoids a redirect.
+    gethomepage.dev/href: https://victoria-logs.k8s.homelab.grncunha.com/select/vmui/
     # See the note on grafana's route: the route is `victoria-logs-ui`, the
     # pods are `victoria-logs-single`, and the guess from the route name misses.
     gethomepage.dev/pod-selector: app.kubernetes.io/name=victoria-logs-single
