@@ -9,6 +9,8 @@ kind: Application
 metadata:
   name: system
   namespace: argocd
+  labels:
+    tier: system
 spec:
   project: default
   source:

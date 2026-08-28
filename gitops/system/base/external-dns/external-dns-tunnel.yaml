@@ -15,6 +15,8 @@ kind: Application
 metadata:
   name: external-dns-tunnel
   namespace: argocd
+  labels:
+    tier: system
   annotations:
     argocd.argoproj.io/sync-wave: "2"
 spec:

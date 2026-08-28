@@ -9,6 +9,8 @@ kind: Application
 metadata:
   name: cert-manager
   namespace: argocd
+  labels:
+    tier: system
   annotations:
     argocd.argoproj.io/sync-wave: "1"
 spec:

@@ -13,6 +13,8 @@ kind: Application
 metadata:
   name: cilium
   namespace: argocd
+  labels:
+    tier: system
 spec:
   project: default
   destination:
