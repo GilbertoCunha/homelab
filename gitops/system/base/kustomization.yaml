@@ -13,6 +13,7 @@ resources:
   - kgateway
   - kube-state-metrics
   - local-path-provisioner
+  - metrics-server
   - sops
   - victoria-logs
   - victoria-metrics

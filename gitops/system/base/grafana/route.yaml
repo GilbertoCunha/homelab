@@ -4,6 +4,18 @@ kind: HTTPRoute
 metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "2"
+    # A tile on the front page. Declared here rather than in a list Homepage
+    # keeps, so exposing a service and cataloguing it are the same edit.
+    # See gitops/applications/base/homepage/.
+    gethomepage.dev/enabled: "true"
+    gethomepage.dev/name: Grafana
+    gethomepage.dev/group: Observability
+    gethomepage.dev/description: Dashboards, metrics and logs
+    gethomepage.dev/icon: grafana.png
+    # Needs no credentials: it asks VictoriaMetrics how many scrape targets are
+    # up, over the Prometheus API it already serves.
+    gethomepage.dev/widget.type: prometheus
+    gethomepage.dev/widget.url: http://victoria-metrics.victoria-metrics.svc.cluster.local:8428
   name: grafana-ui
   namespace: grafana
 spec:

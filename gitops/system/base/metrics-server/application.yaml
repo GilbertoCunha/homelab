@@ -1,0 +1,49 @@
+---
+# Serves the metrics API: `kubectl top`, and anything that asks the cluster how
+# busy a node is. Nothing provided it before, so `kubectl top nodes` answered
+# "Metrics API not available".
+#
+# This is not the same thing as the metrics VictoriaMetrics scrapes. That is a
+# time series database you query for history; this answers "right now" and keeps
+# nothing.
+#
+# Wave 1: it needs only the API server.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: metrics-server
+  namespace: argocd
+  labels:
+    tier: system
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  project: default
+  destination:
+    namespace: metrics-server
+    server: https://kubernetes.default.svc
+  source:
+    chart: metrics-server
+    repoURL: https://kubernetes-sigs.github.io/metrics-server/
+    targetRevision: 3.14.0
+    helm:
+      valuesObject:
+        args:
+          # Talos kubelets serve a self-signed certificate, which metrics-server
+          # rejects, and it then reports every node as unavailable.
+          #
+          # The alternative is `rotate-server-certificates` in the kubelet plus
+          # a controller whose only job is approving the CSRs that produces: a
+          # Talos machine configuration change and a second component, to verify
+          # a certificate on the private guest bridge. The repo already makes
+          # this same trade in the other direction — the scrape config in
+          # gitops/system/base/victoria-metrics/application.yaml sets
+          # `insecure_skip_verify: true` for the kubelet and cAdvisor jobs.
+          - --kubelet-insecure-tls
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

@@ -49,10 +49,14 @@ both should be a decision rather than one decision and one accident.
 
 ## No node-level metrics
 
-There is no node-exporter, so nothing named `node_*` exists. Host disk usage,
-filesystem pressure and per-node memory breakdown are all invisible. That
-matters more here than it would elsewhere: every volume is node-local, on a
-100 GiB disk, and nothing would warn before it filled.
+There is no node-exporter, so nothing named `node_*` exists. Host disk usage and
+filesystem pressure are invisible, and there is no history for either. That
+matters more here than it would elsewhere: every volume is node-local, and
+nothing would warn before a worker's disk filled.
+
+metrics-server does not close this. It answers what a node is using *now*, which
+is what `kubectl top` and the front page read; it stores nothing and knows
+nothing about disks.
 
 ## Grafana integration
 

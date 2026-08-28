@@ -1,0 +1,11 @@
+---
+# Declared here rather than left to `CreateNamespace`, because the label has to
+# be on it before the route is created.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: homepage
+  labels:
+    # Lets this namespace attach routes to the prod Gateways, and nothing else.
+    # See gitops/system/base/kgateway/gateways.yaml.
+    env: prod

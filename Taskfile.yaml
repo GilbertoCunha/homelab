@@ -197,7 +197,8 @@ tasks:
     cmds:
       - kustomize build --enable-helm {{.GITOPS_DIR}}/crds/overlays/production > /dev/null
       - kustomize build --enable-helm {{.GITOPS_DIR}}/system/overlays/production > /dev/null
-      - 'echo "Both overlays render."'
+      - kustomize build --enable-helm {{.GITOPS_DIR}}/applications/overlays/production > /dev/null
+      - 'echo "All overlays render."'
 
   cluster:diff:
     desc: Shows what `task cluster:bootstrap` would change
@@ -212,6 +213,9 @@ tasks:
       - |
         kustomize build --enable-helm {{.GITOPS_DIR}}/system/overlays/production \
           | kubectl diff --server-side --force-conflicts -f - || true
+      - |
+        kustomize build --enable-helm {{.GITOPS_DIR}}/applications/overlays/production \
+          | kubectl diff --server-side --force-conflicts -f - || true
 
   cluster:bootstrap:
     desc: Applies the GitOps overlays once, so ArgoCD can take over from git
@@ -220,6 +224,10 @@ tasks:
     cmds:
       # CRDs go first and separately. The system overlay creates Applications,
       # a kind the API server does not know until this apply is accepted.
+      #
+      # The applications overlay is deliberately not applied here. ArgoCD
+      # creates it from the `applications` Application in the system overlay;
+      # the bootstrap only has to get ArgoCD itself running.
       - |
         kustomize build --enable-helm {{.GITOPS_DIR}}/crds/overlays/production \
           | kubectl apply --server-side --force-conflicts -f -

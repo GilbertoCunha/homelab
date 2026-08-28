@@ -18,6 +18,7 @@ the page does not load, check that first: `tailscale status`, and
 
 | | What it is | Reachable from |
 | --- | --- | --- |
+| [Home](https://home.k8s.homelab.grncunha.com) | Everything below, on one page | the mesh only |
 | [Proxmox](https://proxmox.homelab.grncunha.com) | Virtual machines, storage and consoles | the mesh only |
 | [Headscale](https://vpn.homelab.grncunha.com) | The mesh itself, where devices join | anywhere, by design |
 | [ArgoCD](https://argocd.k8s.homelab.grncunha.com) | What is deployed in the cluster, and whether it is healthy | the mesh only |

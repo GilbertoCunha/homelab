@@ -86,7 +86,27 @@ If the chart you are deploying already has an `HTTPRoute` template, enable that
 instead of writing this by hand. ArgoCD does exactly that for itself, in
 `gitops/system/overlays/production/argocd/values.yaml`.
 
-## 4. Committing and checking
+## 4. Putting it on the front page
+
+Optional, and one more annotation block on the same route:
+
+```yaml
+    gethomepage.dev/enabled: "true"
+    gethomepage.dev/name: My App
+    gethomepage.dev/group: Applications
+    gethomepage.dev/description: What it is for
+    gethomepage.dev/icon: my-app.png
+```
+
+The tile appears on `home.k8s.homelab.grncunha.com` on its own: Homepage reads
+these annotations off every route in the cluster, so nothing keeps a list of
+links. The icon name comes from [Dashboard Icons](https://dashboardicons.com),
+and your **browser** fetches it rather than the cluster, so a blank tile with a
+working link means the name is wrong.
+
+Homepage itself lives in `gitops/applications/base/homepage/`.
+
+## 5. Committing and checking
 
 Commit, and wait for ArgoCD to sync. Then check the route was accepted:
 

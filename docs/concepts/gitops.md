@@ -9,17 +9,23 @@ CNI, and nothing else. To run the bootstrap, see
 
 ```
 gitops/
-├── crds/        CRDs, which nothing else may install
-└── system/      everything else
+├── crds/          CRDs, which nothing else may install
+├── system/        what makes the cluster work
+└── applications/  what the cluster is for
     ├── base/            one directory per component
     └── overlays/        which branch and path each environment reads
 ```
 
-Both trees have `base/` and `overlays/production/`. `base` says what a component
-is; the overlay says where this cluster reads it from. There is one overlay
+`system` holds the CNI, the Gateways, the certificate issuer, storage and the
+observability stack: remove any of it and the cluster stops working properly.
+`applications` holds workloads you open. If you would not miss it while fixing
+something at midnight, it goes in `applications`.
+
+All three trees have `base/` and `overlays/production/`. `base` says what a
+component is; the overlay says where this cluster reads it from. There is one overlay
 today, and the split is what keeps a second cluster from being a rewrite.
 
-`system/base/applications/` holds the two ArgoCD `Application`s. That is the
+`system/base/applications/` holds the ArgoCD `Application` per tree. That is the
 app-of-apps: syncing `system` creates them, and they sync everything else.
 
 ## A component owns its manifests
@@ -86,6 +92,7 @@ order:
 | 2 | Gateways, `GatewayParameters`, address pool, `ClusterIssuer`, certificates, every `HTTPRoute`, external-dns | `GatewayParameters` is a kind kgateway registers |
 | 3 | every `SopsSecret` | The operator, and the namespaces the Secrets land in |
 | 4 | `cloudflared` | Its credentials, and `gw-public` to dial |
+| 5 | `applications` | The Gateways its routes attach to, and the tunnel anything public arrives through |
 
 Within a wave the order is undefined, so anything that must come first needs a
 wave of its own.

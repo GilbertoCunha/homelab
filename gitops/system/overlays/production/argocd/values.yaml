@@ -51,6 +51,16 @@ server:
   # `env: prod`; see gitops/system/base/argocd/namespace.yaml.
   httproute:
     enabled: true
+    # A tile on the front page. These go on the route rather than in a list
+    # Homepage keeps, and the chart templates the route, so they are set here
+    # instead of on a hand-written copy of it.
+    # See gitops/applications/base/homepage/.
+    annotations:
+      gethomepage.dev/enabled: "true"
+      gethomepage.dev/name: ArgoCD
+      gethomepage.dev/group: Cluster
+      gethomepage.dev/description: What is deployed, and whether it is healthy
+      gethomepage.dev/icon: argo-cd.png
     # No sectionName, so the route attaches to both the HTTPS and the HTTP
     # listener rather than only one of them.
     parentRefs:

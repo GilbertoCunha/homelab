@@ -6,6 +6,13 @@ kind: HTTPRoute
 metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "2"
+    # A tile on the front page; see gitops/applications/base/homepage/.
+    # There is no Hubble icon, so Cilium's stands in for it.
+    gethomepage.dev/enabled: "true"
+    gethomepage.dev/name: Hubble
+    gethomepage.dev/group: Cluster
+    gethomepage.dev/description: What is talking to what
+    gethomepage.dev/icon: cilium.png
   name: hubble-ui
   namespace: kube-system
 spec:

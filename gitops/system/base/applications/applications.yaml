@@ -1,0 +1,32 @@
+---
+# The things the cluster exists to run, as opposed to the things that make it
+# work. `system` holds the CNI, the Gateways, the certificate issuer and the
+# observability stack; anything here is a workload you actually open.
+#
+# Wave 5, last. Its routes attach to Gateways created in wave 2, and anything
+# here published to the internet needs the tunnel from wave 4 to arrive through.
+#
+# spec.source.path and targetRevision are set per environment
+# ../../overlays/production/applications/.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: applications
+  namespace: argocd
+  labels:
+    tier: applications
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/GilbertoCunha/homelab
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - ServerSideApply=true

@@ -7,5 +7,6 @@ resources:
   - argocd
 
 patches:
+  - path: applications/applications.yaml
   - path: applications/crds.yaml
   - path: applications/system.yaml

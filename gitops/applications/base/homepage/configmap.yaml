@@ -1,0 +1,79 @@
+---
+# Homepage reads a directory of YAML files. Every file it expects has to be a
+# key here, because the mount replaces the whole directory: a missing one is
+# read as empty rather than defaulted.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: homepage
+  namespace: homepage
+data:
+  settings.yaml: |
+    title: Homelab
+    # The order tiles appear in. A group discovered from an annotation that is
+    # not named here still shows, just after these.
+    layout:
+      Cluster:
+        style: row
+        columns: 3
+      Observability:
+        style: row
+        columns: 3
+      Host:
+        style: row
+        columns: 3
+
+  kubernetes.yaml: |
+    mode: cluster
+    # Read HTTPRoutes, not just Ingresses. Without this the cluster is scanned
+    # for Ingress objects, of which there are none here, and the page comes up
+    # with only the static entries below.
+    gateway: true
+
+  services.yaml: |
+    # Only what has no HTTPRoute to annotate. Everything inside the cluster
+    # declares itself on its own route; these two run on the host, served by
+    # Caddy, and nothing in the cluster knows they exist.
+    - Host:
+        - Proxmox:
+            href: https://proxmox.homelab.grncunha.com
+            description: Virtual machines, storage and consoles
+            icon: proxmox.png
+        - Headscale:
+            href: https://vpn.homelab.grncunha.com
+            description: The mesh itself, where devices join
+            icon: headscale.png
+
+  widgets.yaml: |
+    - greeting:
+        text_size: xl
+        text: Homelab
+    - datetime:
+        text_size: xl
+        format:
+          dateStyle: short
+          timeStyle: short
+          hour12: false
+    # Reads the metrics API, which is why metrics-server exists. Empty tiles
+    # here mean it is not answering: check `kubectl top nodes`.
+    - kubernetes:
+        cluster:
+          show: true
+          cpu: true
+          memory: true
+          showLabel: true
+          label: cluster
+        nodes:
+          show: true
+          cpu: true
+          memory: true
+          showLabel: true
+    - search:
+        provider: duckduckgo
+        target: _blank
+
+  bookmarks.yaml: |
+    - Repo:
+        - homelab:
+            - href: https://github.com/GilbertoCunha/homelab
+              icon: github.png
