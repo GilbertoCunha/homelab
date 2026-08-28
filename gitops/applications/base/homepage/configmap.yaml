@@ -12,6 +12,8 @@ data:
     title: Homelab
     # The order tiles appear in. A group discovered from an annotation that is
     # not named here still shows, just after these.
+    backgound: https://imgur.com/gallery/berserk-wallpaper-dump-small-collection-of-favourites-oVqc0#IzrpX9X
+    cardBlur: xs # xs, md, etc... see https://tailwindcss.com/docs/backdrop-blur
     layout:
       Cluster:
         style: row
