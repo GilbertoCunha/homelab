@@ -90,8 +90,13 @@ protecting.
 
 - **Two homes, split by who reads it.** `secrets.enc.yaml` at the root is for
   commands you run; Ansible and OpenTofu both read it, so it belongs to neither
-  tree. `gitops/**/*.sops.yaml` is for secrets the cluster reads, decrypted in
-  place by sops-secrets-operator. A value belongs in exactly one of them.
+  tree. `gitops/system/base/<component>/*.sops.yaml` is for secrets the cluster
+  reads, decrypted in place by sops-secrets-operator, and it lives with the
+  component that reads it. A value belongs in exactly one of them.
+- **Never hand-edit an encrypted file**, not even a plaintext key such as an
+  annotation. The MAC covers the whole document, so the file stops decrypting.
+  Use `sops set <file> '["metadata"]["annotations"]' '{...}'`, which recomputes
+  it.
 - **Secrets reach a command as environment variables**, through
   `sops exec-env`. Never decrypt to a file.
 - **The age key that decrypts it is not in the repo** and never will be. It is
@@ -139,6 +144,12 @@ Nothing writes state to this repo.
 - **Every tree has `base/` and `overlays/<environment>/`.** `base` says what a
   component is; the overlay says where this cluster reads it from. A value that
   differs per environment belongs in the overlay and nowhere else.
+- **A component owns its manifests, whatever kind they are.**
+  `system/base/<component>/` holds its chart or `Application`, its namespace,
+  its `HTTPRoute`, its `SopsSecret`. Never group by kind: there is no directory
+  of routes and no directory of secrets. Exposing a service is a file added next
+  to the service. `crds/` is the only exception, because the bootstrap applies
+  it and waits before anything else exists.
 - **Ordering is a sync wave, not a file order.** Anything that must exist before
   something else gets its own `argocd.argoproj.io/sync-wave`, with a comment
   saying what it is waiting for.

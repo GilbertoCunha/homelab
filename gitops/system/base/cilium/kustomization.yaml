@@ -4,3 +4,7 @@ kind: Kustomization
 
 resources:
   - cilium.yaml
+  - ip-pool.yaml
+  - l2-announcement.yaml
+  - kube-system.yaml
+  - route.yaml

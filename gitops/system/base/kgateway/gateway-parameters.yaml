@@ -6,6 +6,8 @@
 apiVersion: gateway.kgateway.dev/v1alpha1
 kind: GatewayParameters
 metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
   name: internal-prod
   namespace: gateway-system
 spec:
@@ -29,6 +31,8 @@ spec:
 apiVersion: gateway.kgateway.dev/v1alpha1
 kind: GatewayParameters
 metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
   name: internal-dev
   namespace: gateway-system
 spec:
@@ -49,6 +53,8 @@ spec:
 apiVersion: gateway.kgateway.dev/v1alpha1
 kind: GatewayParameters
 metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
   name: public
   namespace: gateway-system
 spec:

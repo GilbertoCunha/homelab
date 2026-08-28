@@ -10,20 +10,44 @@ CNI, and nothing else. To run the bootstrap, see
 ```
 gitops/
 ├── crds/        CRDs, which nothing else may install
-├── network/     Address pool, L2 announcement, Gateways
-├── secrets/     SopsSecrets: encrypted values, committed
-└── system/      ArgoCD itself, kgateway, cert-manager, external-dns, cloudflared
-    ├── base/            what exists
+└── system/      everything else
+    ├── base/            one directory per component
     └── overlays/        which branch and path each environment reads
 ```
 
-Each tree has `base/` and `overlays/production/`. `base` says what a component
+Both trees have `base/` and `overlays/production/`. `base` says what a component
 is; the overlay says where this cluster reads it from. There is one overlay
 today, and the split is what keeps a second cluster from being a rewrite.
 
-`system/base/applications/` holds one ArgoCD `Application` per tree. That is the
-app-of-apps: syncing `system` creates the `Application`s that sync everything
-else.
+`system/base/applications/` holds the two ArgoCD `Application`s. That is the
+app-of-apps: syncing `system` creates them, and they sync everything else.
+
+## A component owns its manifests
+
+`system/base/<component>/` holds **everything** that component needs, whatever
+kind it is:
+
+```
+system/base/cilium/          chart, LB address pool, L2 announcement,
+                             the kube-system label, Hubble's route
+system/base/cert-manager/    chart, ClusterIssuer, its Cloudflare token
+system/base/kgateway/        chart, gateway-system, GatewayParameters,
+                             the Gateways, their certificates
+system/base/grafana/         chart, namespace, route
+system/base/victoria-logs/   chart, collector, namespace, route
+```
+
+So exposing a service is one file added next to the service, not one file added
+to a directory of unrelated routes. The same goes for a component's encrypted
+secret.
+
+The alternative — a directory per *kind*, so every `HTTPRoute` together and
+every `SopsSecret` together — is what this repo used to do. It meant a change to
+one component touched three directories, and reading a component told you
+nothing about how it was exposed.
+
+CRDs are the one exception, and only because the bootstrap has to apply them and
+wait before anything else is applied at all.
 
 ## The bootstrap is not a special case
 
@@ -49,16 +73,18 @@ until the CRD apply is accepted.
 
 ## Sync waves
 
-An `Application` carries `argocd.argoproj.io/sync-wave`, and ArgoCD finishes a
-wave before starting the next. This is the dependency order:
+Any resource carries `argocd.argoproj.io/sync-wave`, and ArgoCD finishes a wave
+before starting the next. Since a component's manifests sit together rather than
+in a tree of their own, the wave is what orders them. This is the dependency
+order:
 
-| Wave | Component | Depends on |
+| Wave | What | Depends on |
 | --- | --- | --- |
 | -1 | `crds` | — |
-| 0 | kgateway CRDs, sops-secrets-operator | — |
-| 1 | kgateway, cert-manager | Their CRDs, established |
-| 2 | `network`, external-dns | `GatewayParameters`, a kind kgateway registers |
-| 3 | `secrets` | The operator, and the namespaces the Secrets land in |
+| 0 | kgateway CRDs, sops-secrets-operator, local-path-provisioner | — |
+| 1 | kgateway, cert-manager, grafana, victoria-logs, victoria-metrics | Their CRDs established, and a default storage class |
+| 2 | Gateways, `GatewayParameters`, address pool, `ClusterIssuer`, certificates, every `HTTPRoute`, external-dns | `GatewayParameters` is a kind kgateway registers |
+| 3 | every `SopsSecret` | The operator, and the namespaces the Secrets land in |
 | 4 | `cloudflared` | Its credentials, and `gw-public` to dial |
 
 Within a wave the order is undefined, so anything that must come first needs a
@@ -66,7 +92,7 @@ wave of its own.
 
 ## One thing is not in git
 
-The age key. Every secret this cluster needs is committed to `gitops/secrets/`
+The age key. Every secret this cluster needs is committed to `gitops/system/base/`
 encrypted, and sops-secrets-operator decrypts each into a plain `Secret`. The
 key that does the decrypting is what cannot be committed alongside them.
 
@@ -83,7 +109,7 @@ to the prod Gateway. Two things keep that from being reckless:
 | Server-side apply | ArgoCD owns the fields it names and no others, so nothing else on the namespace is disturbed |
 | `Prune=false` | Deleting the manifest can never delete `kube-system`, which would take the control plane's workload with it |
 
-Adding any other field to `gitops/network/base/kube-system.yaml` hands ArgoCD
+Adding any other field to `gitops/system/base/cilium/kube-system.yaml` hands ArgoCD
 ownership of that field too. Do not.
 
 ## CRDs are never pruned

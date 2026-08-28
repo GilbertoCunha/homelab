@@ -131,5 +131,5 @@ Where the pieces live:
 | --- | --- |
 | Chart version and values | `gitops/system/base/cilium/cilium.yaml` |
 | The bootstrap render, from that file | `opentofu/project/cilium.tf` |
-| Address pool, L2 announcement policy | `gitops/network/base/` |
+| Address pool, L2 announcement policy | `gitops/system/base/cilium/` |
 | CNI off, kube-proxy off | `opentofu/project/cluster.tf` |

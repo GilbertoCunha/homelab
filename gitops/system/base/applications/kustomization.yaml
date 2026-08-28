@@ -4,6 +4,4 @@ kind: Kustomization
 
 resources:
   - crds.yaml
-  - network.yaml
-  - secrets.yaml
   - system.yaml

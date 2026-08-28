@@ -64,7 +64,7 @@ How this works, and what to do when it does not:
 | --- | --- |
 | `task secrets:edit` | Open the encrypted file in your editor |
 | `task secrets:show` | Print the decrypted values, to check your age key works |
-| `task secrets:edit:cluster -- <file>` | Open an encrypted `SopsSecret` from `gitops/secrets/` |
+| `task secrets:edit:cluster -- <file>` | Open an encrypted `SopsSecret` from `gitops/system/base/` |
 | `task cluster:sops-key` | Put the age key in the cluster, so the operator can decrypt |
 | `age-keygen -o ~/.config/sops/age/keys.txt` | Create the key. Once, ever |
 | `sops updatekeys <file>` | Re-encrypt after changing `.sops.yaml` |
@@ -74,7 +74,7 @@ Two places hold secrets, and the difference is who reads them:
 | Where | Read by | Reaches it via |
 | --- | --- | --- |
 | `secrets.enc.yaml` | Commands you run | `sops exec-env` |
-| `gitops/secrets/*.sops.yaml` | The cluster | sops-secrets-operator |
+| `gitops/system/base/**/*.sops.yaml` | The cluster | sops-secrets-operator |
 
 The age key at `~/.config/sops/age/keys.txt` is not in the repo and cannot be
 recovered from it. If it is gone, every secret has to be created again. The

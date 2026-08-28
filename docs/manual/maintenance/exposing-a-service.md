@@ -44,12 +44,24 @@ metadata:
 
 ## 3. Writing the route
 
+Both files go in the component's own directory, `gitops/system/base/<app>/`,
+alongside whatever deploys it: `namespace.yaml` for step 2 and `route.yaml` for
+this step, both listed in that directory's `kustomization.yaml`. Routes are not
+collected anywhere; see
+[A component owns its manifests](../../concepts/gitops.md#a-component-owns-its-manifests).
+
+The route needs `argocd.argoproj.io/sync-wave: "2"`, which is the wave the
+Gateways come up in. The namespace needs no wave: wave 0 is already early
+enough.
+
 ```yaml
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
   name: my-app
   namespace: my-app
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
 spec:
   parentRefs:
     - name: gw-internal-prod

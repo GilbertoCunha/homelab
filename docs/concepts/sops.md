@@ -134,13 +134,13 @@ be wired up by hand.
 Nothing inside Kubernetes can read it, because `sops exec-env` puts a value in
 one process's environment and nowhere else.
 
-So secrets the cluster needs live somewhere else: `gitops/secrets/`, as
+So secrets the cluster needs live somewhere else: `gitops/system/base/`, as
 `SopsSecret` resources. Those are committed encrypted, and
 **sops-secrets-operator** decrypts them in the cluster and writes a plain
 `Secret` from each. Adding one is a file, not a procedure.
 
 ```
-gitops/secrets/*.sops.yaml  --(committed, encrypted)-->  ArgoCD
+gitops/system/base/**/*.sops.yaml  --(committed, encrypted)-->  ArgoCD
                                                            |
                                               sops-secrets-operator
                                                            |

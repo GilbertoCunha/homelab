@@ -259,11 +259,11 @@ tasks:
       - 'echo "Cluster key in place. Every other secret comes from git."'
 
   secrets:edit:cluster:
-    desc: Opens an encrypted SopsSecret, e.g. `task secrets:edit:cluster -- gitops/secrets/base/cloudflare.sops.yaml`
+    desc: Opens an encrypted SopsSecret, e.g. `task secrets:edit:cluster -- gitops/system/base/cert-manager/cloudflare-token.sops.yaml`
     cmds:
       - sops {{.CLI_ARGS}}
 
   secrets:show:cluster:
-    desc: Shows an unencrypted SopsSecret, e.g. `task secrets:show:cluster -- gitops/secrets/base/cloudflare.sops.yaml`
+    desc: Shows an unencrypted SopsSecret, e.g. `task secrets:show:cluster -- gitops/system/base/cert-manager/cloudflare-token.sops.yaml`
     cmds:
       - sops -d {{.CLI_ARGS}}

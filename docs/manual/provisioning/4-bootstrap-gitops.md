@@ -102,8 +102,8 @@ dashboard](https://dash.cloudflare.com) under **My Profile**, **API Tokens**:
 Cloudflare shows it once. Put it straight in:
 
 ```bash
-task secrets:edit:cluster -- gitops/secrets/base/cloudflare-cert-manager.sops.yaml
-task secrets:edit:cluster -- gitops/secrets/base/cloudflare-external-dns.sops.yaml
+task secrets:edit:cluster -- gitops/system/base/cert-manager/cloudflare-token.sops.yaml
+task secrets:edit:cluster -- gitops/system/base/external-dns/cloudflare-token.sops.yaml
 ```
 
 Your editor opens on the decrypted file. Set `api-token`, then save; SOPS
@@ -116,8 +116,8 @@ task secrets:check
 
 ```
 secrets.enc.yaml is encrypted.
-gitops/secrets/base/cloudflare-cert-manager.sops.yaml is encrypted.
-gitops/secrets/base/cloudflare-external-dns.sops.yaml is encrypted.
+gitops/system/base/cert-manager/cloudflare-token.sops.yaml is encrypted.
+gitops/system/base/external-dns/cloudflare-token.sops.yaml is encrypted.
 ```
 
 Commit the file. It is meant to be committed: the value inside is ciphertext,
@@ -211,7 +211,7 @@ talosctl --nodes 10.10.10.21 get addresses | grep 10.10.10.21/24
 ```
 
 The last column must match `interfaces` in
-`gitops/network/base/l2-announcement.yaml`.
+`gitops/system/base/cilium/l2-announcement.yaml`.
 
 ## 8. Checking DNS and certificates happened on their own
 

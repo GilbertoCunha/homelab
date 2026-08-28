@@ -67,7 +67,7 @@ HTTPRoute ──attaches to──▶ Gateway ──kgateway provisions──▶ 
 ```
 
 `GatewayParameters` is where that is written, in
-`gitops/network/base/gateway-parameters.yaml`. The public Gateway takes
+`gitops/system/base/kgateway/gateway-parameters.yaml`. The public Gateway takes
 `ClusterIP` and no address, because nothing outside the cluster dials it
 directly.
 
@@ -168,7 +168,7 @@ challenge against public resolvers rather than the cluster's, because CoreDNS
 knows nothing about `grncunha.com` and would time out every time.
 
 Both read one Cloudflare API token, scoped to `Zone:DNS:Edit` on
-`grncunha.com`. It lives in `gitops/secrets/`, committed and encrypted, and
+`grncunha.com`. It lives in `gitops/system/base/`, committed and encrypted, and
 sops-secrets-operator turns it into a `Secret` named `cloudflare-api-dns-token`
 in each namespace that needs one. See [Secrets with SOPS](./sops.md).
 
@@ -213,10 +213,11 @@ should not.
 | What | Where |
 | --- | --- |
 | `l2announcements`, client rate limit | `opentofu/project/cilium.tf` |
-| Address pool, announcement policy | `gitops/network/base/` |
-| Service type per Gateway | `gitops/network/base/gateway-parameters.yaml` |
-| The Gateways | `gitops/network/base/gateways.yaml` |
+| Address pool, announcement policy | `gitops/system/base/cilium/` |
+| Service type per Gateway | `gitops/system/base/kgateway/gateway-parameters.yaml` |
+| The Gateways | `gitops/system/base/kgateway/gateways.yaml` |
 | kgateway itself | `gitops/system/base/kgateway/` |
-| Issuer and the two certificates | `gitops/network/base/` |
+| Issuer | `gitops/system/base/cert-manager/cluster-issuer.yaml` |
+| The two certificates | `gitops/system/base/kgateway/certificates.yaml` |
 | cert-manager, external-dns | `gitops/system/base/` |
 | Address allocation table | [Networks and addresses](../architecture/networks.md) |

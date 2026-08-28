@@ -6,6 +6,8 @@
 apiVersion: cilium.io/v2alpha1
 kind: CiliumL2AnnouncementPolicy
 metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
   name: guest-bridge
 spec:
   # Workers only. The control planes carry etcd and the API server, and an

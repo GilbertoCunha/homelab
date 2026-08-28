@@ -17,6 +17,8 @@ kind: SopsSecret
 metadata:
     name: cloudflare-api-dns-token
     namespace: external-dns
+    annotations:
+        argocd.argoproj.io/sync-wave: "3"
 spec:
     secretTemplates:
         - name: ENC[AES256_GCM,data:+b94venHmHRNLx0ymQb3Q+8VBIokXzmk,iv:RNl8Ue2QsCtY0P/vtyIfCjx34THCWmPzlaOm6QpyJJs=,tag:E/NA9tMGTpiy8uKprC5dfw==,type:str]
@@ -34,6 +36,6 @@ sops:
             -----END AGE ENCRYPTED FILE-----
           recipient: age16y8uf79y5gmc6zpm07mrd5exkuf58pl24gc6ucf4pe6uwvp834hs6k59pk
     encrypted_suffix: Templates
-    lastmodified: "2026-08-27T12:35:26Z"
-    mac: ENC[AES256_GCM,data:xRlM/7+ICoUBTK19GcUFckLccjLv35f9TLowQaJfQ1/XhJ/kNxAVgjhiSoK8Xbx/HIFioIUX1DmiIHDjnpCBF+KYxEG9PhNa27cf6uYNPdqH1q6pgTkd+hUR8lD+cxWjqbJli3yI6wwA6sFXtIU4PeGxMvnDqF8lNC4q7h2qVcI=,iv:R1bA3fhI41OHdQ//mYp+9nSt2PFzUjN3lPovp8NifYQ=,tag:fRNrg7bOXlK4eLf0he6T9Q==,type:str]
+    lastmodified: "2026-08-28T09:36:58Z"
+    mac: ENC[AES256_GCM,data:qFu6DH4Sfoc1zpw8osBtWC/TMWguhIh0+hHxgGuu9V9iKF4mQV7Bt3tGveCTby2gIA9ukhX2a9ygjzNkxhYYUU7x/IsGzATIjmT4hLZFgTbZobj3GKfun3MPbiWPkoWKKoGv3VyJbaUPP3cgVgFBid1YDuONkFEzGZCvO4MVnvo=,iv:/LAzkqWy6JACfDj3J0amdG97j9gLyMLHb6Gx3j2opBQ=,tag:2b1NPGqOBpW+9t4JGgJ5kw==,type:str]
     version: 3.13.3

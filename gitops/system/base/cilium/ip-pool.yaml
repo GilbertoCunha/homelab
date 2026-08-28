@@ -8,6 +8,8 @@
 apiVersion: cilium.io/v2
 kind: CiliumLoadBalancerIPPool
 metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
   name: guest-bridge
 spec:
   blocks:

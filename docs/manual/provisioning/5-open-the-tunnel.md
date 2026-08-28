@@ -80,16 +80,16 @@ cat ~/.cloudflared/<tunnel-id>.json
 {"AccountTag":"...","TunnelID":"...","TunnelSecret":"..."}
 ```
 
-Paste it, on one line, into `gitops/secrets/base/cloudflared.sops.yaml` as the
+Paste it, on one line, into `gitops/system/base/cloudflared/credentials.sops.yaml` as the
 `credentials.json` value, then encrypt the file:
 
 ```bash
-sops -e -i gitops/secrets/base/cloudflared.sops.yaml
+sops -e -i gitops/system/base/cloudflared/credentials.sops.yaml
 task secrets:check
 ```
 
 ```
-gitops/secrets/base/cloudflared.sops.yaml is encrypted.
+gitops/system/base/cloudflared/credentials.sops.yaml is encrypted.
 ```
 
 `secrets:check` must name the file: it is not gitignored, so a plaintext one
@@ -106,8 +106,8 @@ for yours:
 | File | Field |
 | --- | --- |
 | `gitops/system/base/cloudflared/configmap.yaml` | `tunnel:` |
-| `gitops/network/base/gateways.yaml` | the `target` annotation on `gw-public` |
-| `gitops/secrets/base/cloudflared.sops.yaml` | `TunnelID`, inside the credentials |
+| `gitops/system/base/kgateway/gateways.yaml` | the `target` annotation on `gw-public` |
+| `gitops/system/base/cloudflared/credentials.sops.yaml` | `TunnelID`, inside the credentials |
 
 It changes only if the tunnel is deleted.
 

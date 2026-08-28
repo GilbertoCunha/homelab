@@ -23,7 +23,7 @@ still take both at once.
 ## Routes disagree on `sectionName`
 
 [Exposing a service](./manual/maintenance/exposing-a-service.md) says to set it.
-`gitops/network/base/hubble-route.yaml` and ArgoCD's own route do not. Either
+`gitops/system/base/cilium/route.yaml` and ArgoCD's own route do not. Either
 the document or the manifests should change.
 
 ## Persistent storage

@@ -5,3 +5,4 @@ kind: Kustomization
 resources:
   - external-dns.yaml
   - external-dns-tunnel.yaml
+  - cloudflare-token.sops.yaml

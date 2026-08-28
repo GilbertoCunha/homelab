@@ -5,3 +5,7 @@ kind: Kustomization
 resources:
   - crds.yaml
   - kgateway.yaml
+  - namespace.yaml
+  - gateway-parameters.yaml
+  - gateways.yaml
+  - certificates.yaml

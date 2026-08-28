@@ -8,6 +8,4 @@ resources:
 
 patches:
   - path: applications/crds.yaml
-  - path: applications/network.yaml
-  - path: applications/secrets.yaml
   - path: applications/system.yaml
