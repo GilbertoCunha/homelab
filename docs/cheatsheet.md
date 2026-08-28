@@ -277,8 +277,57 @@ as well. See [The cluster's networking](./concepts/cilium.md).
 Upgrading it has its own procedure:
 [Upgrading Cilium](./manual/maintenance/upgrading-cilium.md).
 
-**Nothing has persistent storage yet.** A pod asking for a volume stays
-`Pending`, and that is expected rather than broken.
+**`local-path` is the default storage class**, so a claim that names no class
+gets it. A volume is a directory on one worker and does not move. See
+[The cluster's storage](./concepts/storage.md).
+
+| Command | Good result |
+| --- | --- |
+| `kubectl get storageclass` | `local-path (default)`, `WaitForFirstConsumer` |
+| `kubectl get pvc -A` | Every claim `Bound`. A `Pending` one with no events is usually a class that does not exist |
+| `talosctl -n 10.10.10.21 get volumestatus u-local-path-provisioner` | `ready`, on `/dev/vdb1` |
+
+### Metrics and logs
+
+Metrics are scraped into VictoriaMetrics, logs are shipped into VictoriaLogs,
+and Grafana reads both. See
+[Seeing what the cluster is doing](./concepts/observability.md).
+
+| Command | Good result |
+| --- | --- |
+| `kubectl -n victoria-metrics get pods` | `victoria-metrics-0`, `1/1` |
+| `kubectl -n victoria-logs get pods` | The server, plus one collector per **worker**. A collector on a control plane means it lost its taint |
+| `kubectl -n grafana get pods` | One pod, every container ready — Grafana plus its dashboard sidecar |
+| `kubectl -n kube-state-metrics get pods` | One pod, `1/1` |
+| `task secrets:show:cluster -- gitops/system/base/grafana/admin-credentials.sops.yaml` | Grafana's admin login. Only applied when Grafana first built its database |
+
+To ask VictoriaMetrics directly, which has no route of its own:
+
+```bash
+kubectl -n victoria-metrics port-forward svc/victoria-metrics 8428:8428
+curl -s 'http://127.0.0.1:8428/api/v1/query?query=sum(up)by(job)' | jq -r \
+  '.data.result[] | "\(.metric.job) \(.value[1])"'
+```
+
+Every job in the scrape config comes back, and none of them at `0`. A job
+missing entirely, or sitting at `0`, is the fault. A component that stops
+reporting has usually lost its `prometheus.io/scrape` annotation rather than
+broken its endpoint.
+
+To ask VictoriaLogs which namespaces are actually shipping:
+
+```bash
+kubectl -n victoria-logs port-forward svc/victoria-logs 9428:9428
+curl -s -G 'http://127.0.0.1:9428/select/logsql/query' \
+  --data-urlencode 'query=* | stats by (kubernetes.pod_namespace) count() as n | sort by (n desc)'
+```
+
+One line per namespace, busiest first. A namespace you expect to see and do not
+is the fault.
+
+Swapping `pod_namespace` for `pod_node_name` answers a different question: every
+node in that answer is a worker. Control-plane logs never arrive here; read
+those with `talosctl -n 10.10.10.11 logs etcd`.
 
 ### Getting in and out
 
@@ -317,7 +366,7 @@ The cluster's contents come from `gitops/`, applied by ArgoCD. See
 | `task cluster:diff` | Only the change you meant to make |
 | `task cluster:bootstrap` | Installs ArgoCD, or repairs it. Safe to re-run |
 | `task cluster:sops-key` | The one secret ArgoCD cannot supply. Re-run after a rebuild |
-| `kubectl -n argocd get applications` | Eleven, all `Synced` and `Healthy` |
+| `kubectl -n argocd get applications` | Every one `Synced` and `Healthy` |
 | `kubectl -n argocd get pods` | Everything `Running` |
 | `kubectl get sopssecret -A` | Every committed secret, and no error in the operator's log |
 | `task secrets:edit:cluster -- <file>` | Edits an encrypted `SopsSecret` in place |

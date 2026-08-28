@@ -149,24 +149,26 @@ kubectl -n argocd get applications
 ```
 
 ```
-NAME                    SYNC STATUS   HEALTH STATUS
-cert-manager            Synced        Healthy
-cilium                  Synced        Healthy
-crds                    Synced        Healthy
-external-dns            Synced        Healthy
-external-dns-tunnel     Synced        Healthy
-kgateway-crds-helm      Synced        Healthy
-kgateway-helm           Synced        Healthy
-network                 Synced        Healthy
-secrets                 Synced        Healthy
-sops-secrets-operator   Synced        Healthy
-system                  Synced        Healthy
+NAME                      SYNC STATUS   HEALTH STATUS
+cert-manager              Synced        Healthy
+cilium                    Synced        Healthy
+crds                      Synced        Healthy
+...
+system                    Synced        Healthy
 ```
 
-`network` sits `OutOfSync` or `Degraded` for the first minute or two, because it
+One row per directory in `gitops/system/base/`, and what you are checking is
+that **every** row reads `Synced` and `Healthy` — not that a particular set is
+present. The list grows whenever a component is added.
+
+`system` sits `OutOfSync` or `Degraded` for the first minute or two, because it
 creates `GatewayParameters` before kgateway has registered that kind. ArgoCD
 retries on its own. If it is still degraded after five minutes, something is
 actually wrong.
+
+Anything claiming a volume stays `Progressing` until `local-path-provisioner` is
+`Healthy` and the claim binds. That covers most of the observability stack; see
+[Seeing what the cluster is doing](../../concepts/observability.md).
 
 ## 7. Checking an address became live
 
@@ -257,11 +259,19 @@ kubectl -n external-dns logs deploy/external-dns | tail -20
 
 From a device on the mesh, open
 [`argocd.k8s.homelab.grncunha.com`](https://argocd.k8s.homelab.grncunha.com).
-The page loads over HTTPS with no certificate warning, and Hubble's UI is at
-[`hubble.k8s.homelab.grncunha.com`](https://hubble.k8s.homelab.grncunha.com).
+The page loads over HTTPS with no certificate warning. Three more answer the
+same way:
 
-Anonymous access is read-only and there is no admin user, which is deliberate:
-see [GitOps with ArgoCD](../../concepts/gitops.md).
+| UI | Name |
+| --- | --- |
+| Hubble, what is talking to what | `hubble.k8s.homelab.grncunha.com` |
+| Grafana, the dashboards | `grafana.k8s.homelab.grncunha.com` |
+| VictoriaLogs, what every pod printed | `victoria-logs.k8s.homelab.grncunha.com` |
+
+ArgoCD's anonymous access is read-only and there is no admin user, which is
+deliberate: see [GitOps with ArgoCD](../../concepts/gitops.md). Grafana does
+have one, and its password comes from a `SopsSecret`; see
+[Seeing what the cluster is doing](../../concepts/observability.md).
 
 If the name does not resolve, your device is not on the mesh, or is not
 accepting subnet routes. The Gateways still answer by address, which is how you

@@ -84,6 +84,22 @@ spec:
               - SYS_ADMIN
               - SYS_RESOURCE
 
+        # Off by default, so until this the CNI carrying every packet in the
+        # cluster reported nothing. Enabling it annotates the agent DaemonSet
+        # for scraping, which is all the discovery job in
+        # gitops/system/base/victoria-metrics/application.yaml needs. The
+        # operator is annotated by the chart already.
+        prometheus:
+          enabled: true
+
+        # The chart ships dashboards written for this exact version, as
+        # ConfigMaps labelled `grafana_dashboard`. Grafana's sidecar collects
+        # them, which is why none of these are a gnetId in
+        # gitops/system/base/grafana/application.yaml: grafana.com's Cilium
+        # dashboards are still written for 1.12.
+        dashboards:
+          enabled: true
+
         hubble:
           relay:
             enabled: true
@@ -97,6 +113,19 @@ spec:
             auto:
               enabled: true
               method: cronJob
+          # Hubble sees every flow but stores none of it. These turn a chosen
+          # few into counters worth keeping: what was dropped and why, DNS
+          # answers, TCP state. Left empty, Hubble is only ever a live view.
+          #
+          # Each one costs cardinality, so this is a deliberate short list
+          # rather than everything the chart offers.
+          metrics:
+            enabled:
+              - dns
+              - drop
+              - tcp
+              - flow
+              - port-distribution
   syncPolicy:
     automated:
       prune: true

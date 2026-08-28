@@ -11,6 +11,7 @@ resources:
   - external-dns
   - grafana
   - kgateway
+  - kube-state-metrics
   - local-path-provisioner
   - sops
   - victoria-logs

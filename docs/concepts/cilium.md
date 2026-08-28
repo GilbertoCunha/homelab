@@ -22,6 +22,10 @@ Being honest about the reasons, because they are not the usual ones:
 | NetworkPolicy that actually works | Yes. |
 | Hubble: seeing what talks to what | Yes, and it is the strongest reason on a homelab. |
 
+Hubble answers one of three questions the cluster gets asked; metrics and logs
+are the other two, and they are in
+[Seeing what the cluster is doing](./observability.md).
+
 Replacing kube-proxy is likewise not about throughput at this size. It is about
 having one thing implement Services rather than two.
 

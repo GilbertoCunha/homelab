@@ -37,6 +37,33 @@ spec:
           # overriding them here.
           existingSecret: grafana-admin
 
+        plugins:
+          # Reading logs needs a datasource plugin; the Prometheus one built in
+          # cannot speak LogsQL. Signed and in the Grafana catalogue, so it
+          # needs no `allow_loading_unsigned_plugins`. Installed from
+          # grafana.com at pod start, into the volume below.
+          #
+          # `victorialogs-datasource` is the old id for this and no longer
+          # exists. Any dashboard still asking for that one will not bind.
+          - victoriametrics-logs-datasource
+
+        podAnnotations:
+          # Grafana exports its own metrics. The discovery job in
+          # gitops/system/base/victoria-metrics/application.yaml scrapes
+          # whatever carries these, so a component opts in beside itself.
+          prometheus.io/scrape: "true"
+          prometheus.io/port: "3000"
+
+        sidecar:
+          dashboards:
+            # Watches every namespace for ConfigMaps carrying the label below
+            # and loads them as dashboards. That is what lets a component ship
+            # its own dashboard next to itself instead of every dashboard
+            # having to be a gnetId listed here; Cilium's arrive this way.
+            enabled: true
+            label: grafana_dashboard
+            searchNamespace: ALL
+
         persistence:
           # Off by default, which puts Grafana's database in an emptyDir and
           # loses every hand-made change on restart. No storageClassName:
@@ -58,6 +85,15 @@ spec:
                 updateIntervalSeconds: 10
                 editable: true
 
+              - name: victorialogs
+                # Logs, queried with LogsQL. Needs the plugin above; the type
+                # is the plugin's id, not a Grafana built-in.
+                type: victoriametrics-logs-datasource
+                orgId: 1
+                url: http://victoria-logs.victoria-logs.svc.cluster.local:9428
+                access: proxy
+                editable: true
+
         dashboardProviders:
           dashboardproviders.yaml:
             apiVersion: 1
@@ -71,6 +107,13 @@ spec:
                 options:
                   path: /var/lib/grafana/dashboards/default
 
+        # Pulled from grafana.com by id at pod start. Every one of these reads
+        # metrics, so they all take the victoriametrics datasource; the logs
+        # datasource above is for Explore and hand-built panels, because the
+        # one published logs dashboard still asks for the dead plugin id.
+        #
+        # Cilium's dashboards are not here: its chart ships current ones, which
+        # the sidecar picks up. See gitops/system/base/cilium/cilium.yaml.
         dashboards:
           default:
             victoriametrics:
@@ -78,6 +121,19 @@ spec:
               datasource: victoriametrics
             kubernetes:
               gnetId: 14205
+              datasource: victoriametrics
+            victorialogs:
+              # Needs victoria-logs to be scraped; it annotates itself for that.
+              gnetId: 22084
+              datasource: victoriametrics
+            kube-state-metrics:
+              gnetId: 13332
+              datasource: victoriametrics
+            cert-manager:
+              gnetId: 11001
+              datasource: victoriametrics
+            coredns:
+              gnetId: 15762
               datasource: victoriametrics
   syncPolicy:
     automated:

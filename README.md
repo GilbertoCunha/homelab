@@ -22,6 +22,8 @@ the page does not load, check that first: `tailscale status`, and
 | [Headscale](https://vpn.homelab.grncunha.com) | The mesh itself, where devices join | anywhere, by design |
 | [ArgoCD](https://argocd.k8s.homelab.grncunha.com) | What is deployed in the cluster, and whether it is healthy | the mesh only |
 | [Hubble](https://hubble.k8s.homelab.grncunha.com) | What is talking to what inside the cluster | the mesh only |
+| [Grafana](https://grafana.k8s.homelab.grncunha.com) | Dashboards: what the cluster is doing, and what it was doing an hour ago | the mesh only |
+| [VictoriaLogs](https://victoria-logs.k8s.homelab.grncunha.com) | What every pod printed, searchable | the mesh only |
 
 The server itself is `homelab.grncunha.com`, over SSH.
 

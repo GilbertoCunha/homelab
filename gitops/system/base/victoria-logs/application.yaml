@@ -29,6 +29,13 @@ spec:
           # Without this the chart names everything after the release and the
           # chart both, giving `victoria-logs-victoria-logs-single-server`.
           fullnameOverride: victoria-logs
+          # It exports its own metrics on the port below and nothing read them
+          # until this was here. The discovery job in
+          # gitops/system/base/victoria-metrics/application.yaml scrapes
+          # whatever carries these; dashboard 22084 is what reads the result.
+          podAnnotations:
+            prometheus.io/scrape: "true"
+            prometheus.io/port: "9428"
           retentionPeriod: 7d
           persistentVolume:
             # No storageClassName anywhere: local-path is the default class.

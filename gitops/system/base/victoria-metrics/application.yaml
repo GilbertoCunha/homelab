@@ -105,6 +105,79 @@ spec:
                       regex: '^/system\.slice/(.+)\.service$'
                       target_label: systemd_service_name
                       replacement: "${1}"
+
+                # The two jobs below are the whole of workload monitoring, and
+                # they name nothing. A component is scraped because it carries
+                # `prometheus.io/scrape: "true"`, which most charts already set
+                # for themselves; the rest opt in with a `podAnnotations` value
+                # beside their own manifest. There is no list of targets here
+                # to keep in step with what is deployed.
+                #
+                # Two jobs rather than one, because charts disagree about where
+                # the annotation goes: cert-manager, Envoy and Cilium annotate
+                # the pod, while kube-dns, hubble-metrics and
+                # kube-state-metrics annotate the Service.
+                #
+                # victoria-metrics itself is deliberately not annotated. It is
+                # already scraped by the `victoriametrics` job above, and
+                # annotating it too would store everything twice.
+                - job_name: "kubernetes-pods"
+                  kubernetes_sd_configs:
+                    - role: pod
+                  relabel_configs:
+                    - source_labels:
+                        [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+                      action: keep
+                      regex: "true"
+                    # Discovery guesses a port from the container spec, which
+                    # is rarely the metrics one. This overrides it.
+                    - source_labels:
+                        [__address__,
+                         __meta_kubernetes_pod_annotation_prometheus_io_port]
+                      action: replace
+                      regex: '([^:]+)(?::\d+)?;(\d+)'
+                      replacement: "${1}:${2}"
+                      target_label: __address__
+                    - source_labels:
+                        [__meta_kubernetes_pod_annotation_prometheus_io_path]
+                      action: replace
+                      regex: "(.+)"
+                      target_label: __metrics_path__
+                    # Without these the only identity a series carries is an
+                    # address, which changes every time the pod restarts.
+                    - source_labels: [__meta_kubernetes_namespace]
+                      target_label: namespace
+                    - source_labels: [__meta_kubernetes_pod_name]
+                      target_label: pod
+                    - source_labels: [__meta_kubernetes_pod_node_name]
+                      target_label: node
+
+                - job_name: "kubernetes-service-endpoints"
+                  kubernetes_sd_configs:
+                    - role: endpoints
+                  relabel_configs:
+                    - source_labels:
+                        [__meta_kubernetes_service_annotation_prometheus_io_scrape]
+                      action: keep
+                      regex: "true"
+                    - source_labels:
+                        [__address__,
+                         __meta_kubernetes_service_annotation_prometheus_io_port]
+                      action: replace
+                      regex: '([^:]+)(?::\d+)?;(\d+)'
+                      replacement: "${1}:${2}"
+                      target_label: __address__
+                    - source_labels:
+                        [__meta_kubernetes_service_annotation_prometheus_io_path]
+                      action: replace
+                      regex: "(.+)"
+                      target_label: __metrics_path__
+                    - source_labels: [__meta_kubernetes_namespace]
+                      target_label: namespace
+                    - source_labels: [__meta_kubernetes_service_name]
+                      target_label: service
+                    - source_labels: [__meta_kubernetes_pod_name]
+                      target_label: pod
   syncPolicy:
     automated:
       # Prune resources during auto-syncing (default is false)

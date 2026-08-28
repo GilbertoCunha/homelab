@@ -1,0 +1,38 @@
+---
+# Turns the API server's view of objects into metrics: how many replicas a
+# Deployment wants against how many it has, why a pod is not Running, how full a
+# PersistentVolumeClaim is. None of that is derivable from cAdvisor, which sees
+# containers and not the things Kubernetes thinks it is running.
+#
+# It needs no values. The chart annotates its own Service for scraping, so the
+# `kubernetes-service-endpoints` job in
+# gitops/system/base/victoria-metrics/application.yaml finds it without being
+# told, and dashboard 13332 in gitops/system/base/grafana/ reads it.
+#
+# Wave 1: it needs only the API server. Grafana, which draws the result, is
+# wave 4.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kube-state-metrics
+  namespace: argocd
+  labels:
+    tier: system
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  project: default
+  destination:
+    namespace: kube-state-metrics
+    server: https://kubernetes.default.svc
+  source:
+    chart: kube-state-metrics
+    repoURL: https://prometheus-community.github.io/helm-charts
+    targetRevision: 8.4.1
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
