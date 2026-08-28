@@ -81,6 +81,12 @@ spec:
               name: config
             - mountPath: /app/config/logs
               name: logs
+            # Homepage serves whatever is here at /icons/<file>. The directory
+            # does not exist in the image, so this creates it and hides
+            # nothing. Read-only: nothing writes to it, unlike /app/config.
+            - mountPath: /app/public/icons
+              name: assets
+              readOnly: true
       volumes:
         - name: homepage-config
           configMap:
@@ -89,3 +95,7 @@ spec:
           emptyDir: {}
         - name: logs
           emptyDir: {}
+        - name: assets
+          configMap:
+            # kustomize rewrites this to the generated name, hash and all.
+            name: homepage-assets

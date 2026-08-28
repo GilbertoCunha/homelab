@@ -39,18 +39,24 @@ data:
     # https://tailwindcss.com/docs/backdrop-blur
     cardBlur: xs
 
-    # The order tiles appear in. A group discovered from an annotation that is
-    # not named here still shows, just after these.
+    useEqualHeights: true
+    # Order here is the order groups appear in.
     layout:
-      Cluster:
-        style: row
-        columns: 3
-      Observability:
-        style: row
-        columns: 3
+      # `style: row` is the only thing that makes a group full width, and it
+      # also puts the services on one line — the two are the same switch. One
+      # column, so the two services read as two rows across the top.
       Host:
         style: row
-        columns: 3
+        columns: 1
+      # Default style: the services stack, and the groups sit beside each other
+      # rather than each taking a full-width band. Homepage sizes these by
+      # breakpoint — half the width at md, a third at lg, a quarter at xl — so
+      # they get narrower on a wide display. There is no setting for the width;
+      # changing it means CSS.
+      Cluster:
+        style: column
+      Observability:
+        style: column
 
   kubernetes.yaml: |
     mode: cluster
@@ -74,9 +80,10 @@ data:
             icon: headscale.png
 
   widgets.yaml: |
-    - greeting:
-        text_size: xl
-        text: Homelab
+    # The wordmark from logo.svg, mounted into /app/public/icons by the
+    # Deployment and served at the path below.
+    - logo:
+        icon: /icons/logo.svg
     - datetime:
         text_size: xl
         format:

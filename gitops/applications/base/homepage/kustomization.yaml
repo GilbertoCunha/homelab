@@ -9,3 +9,20 @@ resources:
   - deployment.yaml
   - service.yaml
   - route.yaml
+
+# Built from the real file rather than a copy of it pasted into a manifest, so
+# the SVG exists exactly once and editing it is editing the logo.
+#
+# The generated name keeps its content hash. That is what makes a new logo
+# actually appear: the hash changes, so the Deployment's volume reference
+# changes, so the pod rolls. A fixed name would leave a running pod serving the
+# old file.
+configMapGenerator:
+  - name: homepage-assets
+    # Required, even though every other manifest here declares it. Without it
+    # the generated ConfigMap lands in no namespace, kustomize will not match it
+    # to a Deployment that is in one, and the volume silently keeps pointing at
+    # the unhashed name — which then does not exist.
+    namespace: homepage
+    files:
+      - logo.svg
