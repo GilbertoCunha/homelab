@@ -1,0 +1,20 @@
+---
+# Declared here rather than left to the Applications' `CreateNamespace`,
+# because both labels below have to be on it before anything is scheduled into
+# it, and a namespace ArgoCD creates implicitly carries neither.
+#
+# Wave 0 by default, which is ahead of the wave 1 Applications that deploy here.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: victoria-logs
+  labels:
+    # Lets this namespace attach routes to the prod Gateways, and nothing else.
+    # See gitops/network/base/gateways.yaml.
+    env: prod
+    # Talos enforces `baseline` on every namespace it is not told otherwise
+    # about, and baseline forbids hostPath. The collector is a DaemonSet that
+    # reads each node's /var/log, so it cannot run under it. This relaxes the
+    # server as well, which does not need it; the alternative was a second
+    # namespace for one DaemonSet.
+    pod-security.kubernetes.io/enforce: privileged

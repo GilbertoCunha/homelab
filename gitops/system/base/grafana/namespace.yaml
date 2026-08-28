@@ -1,0 +1,13 @@
+---
+# Declared here rather than left to the Application's `CreateNamespace`,
+# because the label has to be on it before the route is created.
+#
+# Wave 0 by default, which is ahead of the wave 1 Application.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: grafana
+  labels:
+    # Lets this namespace attach routes to the prod Gateways, and nothing else.
+    # See gitops/network/base/gateways.yaml.
+    env: prod

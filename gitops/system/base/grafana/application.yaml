@@ -74,5 +74,5 @@ spec:
       # only in the target Kubernetes cluster
       # but not in the git source (default is false).
       selfHeal: true
-    syncOptions:
-      - CreateNamespace=true
+    # No CreateNamespace: namespace.yaml declares it, because it carries
+    # labels an implicitly created namespace would not have.
