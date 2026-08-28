@@ -1,0 +1,33 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: victoria-logs-collector
+  namespace: argocd
+  labels:
+    tier: system
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  destination:
+    namespace: victoria-logs
+    server: https://kubernetes.default.svc
+  project: default
+  source:
+    # Use single server victoria metrics
+    chart: victoria-logs-collector
+    helm:
+      valuesFiles:
+        - values.yaml
+    repoURL: https://victoriametrics.github.io/helm-charts
+    targetRevision: 0.3.7
+  syncPolicy:
+    automated:
+      # Prune resources during auto-syncing (default is false)
+      prune: true
+      # Sync the app in part when resources are changed
+      # only in the target Kubernetes cluster
+      # but not in the git source (default is false).
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

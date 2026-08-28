@@ -25,3 +25,23 @@ still take both at once.
 [Exposing a service](./manual/maintenance/exposing-a-service.md) says to set it.
 `gitops/network/base/hubble-route.yaml` and ArgoCD's own route do not. Either
 the document or the manifests should change.
+
+## Persistent storage
+
+There is no persistent storage configuration for either:
+
+- `victoria-metrics`
+- `victoria-logs`
+- `victoria-traces`
+- `otel`
+- `grafana`
+
+## Grafana integration
+
+Integrate into Grafana:
+
+- `victoria-logs`
+- `victoria-traces`
+- More dashboards to monitor important services
+- Check if all metrics and logs and traces are being properly collected
+

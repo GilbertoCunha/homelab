@@ -12,3 +12,4 @@ resources:
   - cluster-issuer.yaml
   - certificates.yaml
   - hubble-route.yaml
+  - victoria-logs-route.yaml

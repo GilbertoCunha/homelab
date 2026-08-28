@@ -9,5 +9,8 @@ resources:
   - cilium
   - cloudflared
   - external-dns
+  - grafana
   - kgateway
   - sops
+  - victoria-logs
+  - victoria-metrics

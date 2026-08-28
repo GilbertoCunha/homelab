@@ -1,0 +1,21 @@
+---
+remoteWrite:
+  - url: http://vls-victoria-logs-single-server:9428
+collector:
+  includePodLabels: true
+  includePodAnnotations: false
+  includeNodeLabels: false
+  includeNodeAnnotations: false
+  includeNamespaceLabels: true
+  includeNamespaceAnnotations: false
+  ignoreFields:
+    - request.payload*
+    - password
+    - token
+resources:
+  limits:
+    cpu: 100m
+    memory: 128Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
