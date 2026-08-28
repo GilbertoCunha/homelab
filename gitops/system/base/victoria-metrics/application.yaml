@@ -163,6 +163,18 @@ spec:
                       target_label: pod
                     - source_labels: [__meta_kubernetes_pod_node_name]
                       target_label: node
+                    # A pod's own Kubernetes labels, copied onto its metrics.
+                    # Published dashboards select on them rather than on pod
+                    # names: Cilium's filters `k8s_app="cilium"`, and without
+                    # this every panel on it is empty while the metrics sit
+                    # there perfectly well collected.
+                    - action: labelmap
+                      regex: __meta_kubernetes_pod_label_(.+)
+                    # The three that change on every rollout. Keeping them
+                    # would start a new series each time a Deployment is
+                    # updated, for no question anyone asks.
+                    - action: labeldrop
+                      regex: (pod_template_hash|controller_revision_hash|pod_template_generation)
 
                 - job_name: "kubernetes-service-endpoints"
                   kubernetes_sd_configs:
