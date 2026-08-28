@@ -3,7 +3,7 @@
 # address Let's Encrypt cannot reach, and DNS-01 is the only challenge that
 # issues wildcards.
 #
-# The token itself is committed, encrypted, in gitops/secrets/, and decrypted in
+# The token itself is committed, encrypted, next to this file, and decrypted in
 # the cluster by sops-secrets-operator.
 apiVersion: cert-manager.io/v1
 kind: ClusterIssuer

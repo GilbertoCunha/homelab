@@ -7,7 +7,7 @@
 # external-dns pod mounts it from its own.
 #
 # Edit it with:
-#   task secrets:edit:cluster -- gitops/secrets/base/cloudflare-external-dns.sops.yaml
+#   task secrets:edit:cluster -- gitops/system/base/external-dns/cloudflare-token.sops.yaml
 #
 # Scope the token to Zone - DNS - Edit on grncunha.com and nothing else. The
 # tunnel needs an account-scoped token instead, which is a second one; see

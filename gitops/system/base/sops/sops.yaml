@@ -1,7 +1,7 @@
 ---
-# Decrypts the SopsSecret resources committed in gitops/secrets/ and turns each
-# into a plain Kubernetes Secret. This is what lets an encrypted value live in
-# git rather than being copied in by hand.
+# Decrypts the SopsSecret resources committed beside the components that read
+# them, and turns each into a plain Kubernetes Secret. This is what lets an
+# encrypted value live in git rather than being copied in by hand.
 #
 # Wave 0: cert-manager and external-dns cannot start usefully without the
 # secrets it produces.

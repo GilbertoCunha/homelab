@@ -10,7 +10,7 @@ metadata:
   name: victoria-logs
   labels:
     # Lets this namespace attach routes to the prod Gateways, and nothing else.
-    # See gitops/network/base/gateways.yaml.
+    # See gitops/system/base/kgateway/gateways.yaml.
     env: prod
     # Talos enforces `baseline` on every namespace it is not told otherwise
     # about, and baseline forbids hostPath. The collector is a DaemonSet that

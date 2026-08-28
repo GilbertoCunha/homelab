@@ -6,3 +6,4 @@ resources:
   - namespace.yaml
   - application.yaml
   - route.yaml
+  - admin-credentials.sops.yaml

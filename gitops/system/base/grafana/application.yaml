@@ -2,7 +2,8 @@
 # The dashboards. Grafana stores nothing itself worth keeping except what is
 # clicked into it, which is exactly why it gets a volume.
 #
-# Wave 1: it claims a volume, so the storage class in wave 0 has to exist first.
+# It claims a volume, so the storage class in wave 0 has to exist first; the
+# wave below is later still, for the reason given there.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -11,7 +12,10 @@ metadata:
   labels:
     tier: system
   annotations:
-    argocd.argoproj.io/sync-wave: "1"
+    # Wave 4, not 1 with the rest: the admin login is a SopsSecret, and those
+    # land in wave 3. Starting earlier only means the pod sits in
+    # CreateContainerConfigError until the Secret shows up.
+    argocd.argoproj.io/sync-wave: "4"
 spec:
   destination:
     namespace: grafana
@@ -24,6 +28,15 @@ spec:
     # Inlined for the same reason as victoria-logs; see that application.yaml.
     helm:
       valuesObject:
+        admin:
+          # Written by sops-secrets-operator from admin-credentials.sops.yaml.
+          # Left unset the chart generates a password into a Secret it owns,
+          # which is then only discoverable by reading it out of the cluster.
+          # `userKey` and `admin-user` / `passwordKey` and `admin-password` are
+          # the chart's defaults, so the secret matches them rather than
+          # overriding them here.
+          existingSecret: grafana-admin
+
         persistence:
           # Off by default, which puts Grafana's database in an emptyDir and
           # loses every hand-made change on restart. No storageClassName:
