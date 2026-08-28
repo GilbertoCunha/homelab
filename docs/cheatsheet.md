@@ -212,6 +212,23 @@ key created on the server:
 tailscale up --login-server https://vpn.homelab.grncunha.com --authkey <key> --accept-routes
 ```
 
+That is the command-line client. The app clients have no `--login-server` flag
+and are pointed at headscale through their own settings, which headscale
+documents per platform:
+
+| Platform | Where the steps live |
+| --- | --- |
+| Android | [headscale: Android](https://headscale.net/stable/usage/connect/android/) |
+| iOS, macOS | [headscale: Apple](https://headscale.net/stable/usage/connect/apple/) |
+| Windows | [headscale: Windows](https://headscale.net/stable/usage/connect/windows/) |
+
+Two things those pages will not tell you, because they are particular to this
+mesh: the device must stay **untagged**, or it loses the user identity the
+access policy sorts people from servers by; and accepting subnet routes is what
+makes `10.10.10.0/24` reachable. On the command line that is `--accept-routes`
+above, in an app it is a setting, and without it every guest, the Kubernetes
+API and `talosctl` all time out while headscale itself looks fine.
+
 | Command | Good result |
 | --- | --- |
 | `tailscale status` | Connected, and `homelab` listed as a peer |

@@ -12,7 +12,10 @@ It decides who is on the network, hands out addresses, and serves DNS. It runs o
 the server, behind Caddy, at `https://vpn.homelab.grncunha.com`.
 
 **Tailscale** is the client. Every device runs the normal client and is pointed
-at Headscale with `--login-server` instead of Tailscale's servers.
+at Headscale with `--login-server` instead of Tailscale's servers. The app
+clients have no such flag and are pointed at it through their own settings
+instead; the [Cheatsheet](../cheatsheet.md) has the command, the per-platform
+links to headscale's own documentation, and what to check afterwards.
 
 Addresses come from `100.64.0.0/16`. They are stable and belong to the device,
 not to the network it happens to be on.
