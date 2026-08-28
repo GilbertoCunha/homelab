@@ -1,0 +1,35 @@
+{{- $repos := list -}}
+{{- range $env := .Values.environments -}}
+{{- $repos = append $repos $env.sync.repo_url -}}
+{{- end -}}
+---
+# Wave 1. What the project's Applications are allowed to be: these repositories
+# and no others, these namespaces and no others. Everything in the cluster used
+# `project: default` before this, which permits anything anywhere.
+#
+# Cluster-scoped resources are deliberately absent from the whitelist, so an
+# application asking for a ClusterRole is refused rather than granted it
+# quietly. Adding one is a decision that belongs here.
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: {{ .Values.name }}
+  namespace: {{ .Values.defaults.argocdNamespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+  labels:
+    {{- include "project.labels" (dict "root" $) | nindent 4 }}
+spec:
+  description: {{ printf "Project %s" .Values.name | quote }}
+  sourceRepos:
+    {{- range $repo := $repos | uniq }}
+    - {{ $repo | quote }}
+    {{- end }}
+  destinations:
+    {{- range $env := .Values.environments }}
+    - server: {{ $.Values.defaults.destinationServer }}
+      namespace: {{ include "project.namespace" (dict "root" $ "env" $env) }}
+    {{- end }}
+  namespaceResourceWhitelist:
+    - group: "*"
+      kind: "*"

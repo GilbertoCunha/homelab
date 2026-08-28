@@ -1,0 +1,36 @@
+{{- range $env := .Values.environments }}
+---
+# Wave 2: the namespace, its limits, its policy and the AppProject all exist by
+# the time this tries to deploy into them.
+#
+# This is the only part of a project this chart does not decide. Everything the
+# workload is comes from the repository below; everything it is allowed to be
+# comes from the objects above.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ printf "%s-%s" $.Values.name $env.name }}
+  namespace: {{ $.Values.defaults.argocdNamespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+  labels:
+    {{- include "project.labels" (dict "root" $) | nindent 4 }}
+    tier: applications
+spec:
+  project: {{ $.Values.name }}
+  source:
+    repoURL: {{ $env.sync.repo_url | quote }}
+    targetRevision: {{ $env.sync.revision | quote }}
+    path: {{ $env.sync.path | quote }}
+  destination:
+    server: {{ $.Values.defaults.destinationServer }}
+    namespace: {{ include "project.namespace" (dict "root" $ "env" $env) }}
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    # No CreateNamespace: the namespace is created above, with the labels the
+    # Gateways and Pod Security both read. One created here would have none.
+    syncOptions:
+      - ServerSideApply=true
+{{- end }}

@@ -32,6 +32,7 @@ Documentation is split by the question it answers:
 | `docs/backlog.md` | "What is not built yet?" | Persistent storage |
 | `docs/improvements.md` | "What runs, but is not right yet?" | Missing resource requests |
 | `examples/` | "How do I prove a path works?" | A public app, over the tunnel |
+| `gitops/applications/catalog/` | "What runs here, and where does it come from?" | One file per project |
 | `README.md` | "Where do I click?" | Links to Proxmox, ArgoCD |
 
 `README.md` is a front door, not a document: links to the things you actually
@@ -153,6 +154,12 @@ Nothing writes state to this repo.
 - **Ordering is a sync wave, not a file order.** Anything that must exist before
   something else gets its own `argocd.argoproj.io/sync-wave`, with a comment
   saying what it is waiting for.
+- **An application gets a project, not a hand-written namespace.** A file in
+  `gitops/applications/catalog/` is rendered by `gitops/charts/project` into a
+  namespace per environment, its quota, its policy and its `Application`.
+  Writing those by hand skips the limits and the isolation that come with them.
+  `gitops/charts/` is the one place in `gitops/` holding a template rather than
+  a manifest.
 - **A chart's own resource beats a hand-written copy.** If a chart templates the
   `HTTPRoute` you need, enable it in `values.yaml` rather than writing a second
   one; the hostname is then written once.

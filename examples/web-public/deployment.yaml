@@ -28,4 +28,8 @@ spec:
               cpu: 10m
               memory: 16Mi
             limits:
+              # A cpu limit as well as a memory one, because a project's
+              # ResourceQuota names `limits.cpu` and the API server then
+              # refuses any pod that does not set it.
+              cpu: 100m
               memory: 32Mi

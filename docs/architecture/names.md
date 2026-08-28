@@ -14,6 +14,16 @@ server name. Where a name sits says what serves it and how it is added.
 | `<app>.grncunha.com` | Any cluster workload published to the internet | anywhere |
 | `grncunha.com` | Apex domain | — |
 
+Namespaces follow their own pattern, since they are names too:
+
+| Namespace | What it is |
+| --- | --- |
+| `project-<name>-<environment>` | A project, one per environment. Created from `gitops/applications/catalog/` and never by hand |
+| everything else | A system component, named after itself |
+
+The prefix is what keeps a project from colliding with a system namespace, and
+what makes `kubectl get ns` sort them together.
+
 The server's public IP is not recorded anywhere in this repo. It lives in the
 Cloudflare DNS records, and everything else resolves it from there.
 

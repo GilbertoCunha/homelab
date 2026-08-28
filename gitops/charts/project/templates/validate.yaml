@@ -1,0 +1,11 @@
+{{/*
+Emits nothing. Exists so that a catalog file missing something essential fails
+while rendering, with a sentence saying what, rather than producing a partial
+project and an error about an empty object name.
+*/}}
+{{- if not .Values.name }}
+{{- fail "a project needs a `name`: it is what its namespaces, its AppProject and its Applications are called." }}
+{{- end }}
+{{- if not .Values.environments }}
+{{- fail (printf "project %q has no `environments`, so there is nothing to create. Give it at least one of: %v" .Values.name .Values.defaults.allowedEnvironments) }}
+{{- end }}

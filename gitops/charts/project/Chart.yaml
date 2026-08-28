@@ -1,0 +1,11 @@
+---
+apiVersion: v2
+name: project
+description: >-
+  Everything a project needs to exist in this cluster: a namespace per
+  environment, the limits it runs inside, the policy it is isolated by, and the
+  ArgoCD Application that deploys it.
+type: application
+# The chart is rendered from this repository by an ApplicationSet, never
+# published, so this version is only ever read by helm itself.
+version: 0.1.0

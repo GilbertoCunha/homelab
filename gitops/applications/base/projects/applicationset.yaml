@@ -1,0 +1,54 @@
+---
+# One project per file in gitops/applications/catalog/. Adding a file creates a
+# project; deleting one destroys it, namespaces and volumes included, because
+# there is no `preserveResourcesOnDeletion` below.
+#
+# spec.generators is set per environment in
+# ../../overlays/production/projects/, which is also why it is not filled in
+# here.
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: projects
+  namespace: argocd
+  labels:
+    tier: applications
+spec:
+  # Addresses the catalog file's own keys, so the Application can be named
+  # after the project rather than after the file.
+  goTemplate: true
+  goTemplateOptions:
+    - missingkey=error
+  generators: []
+  template:
+    metadata:
+      name: '{{ .name }}'
+      labels:
+        tier: applications
+    spec:
+      project: default
+      # Two sources, and the second exists only to be referenced by the first.
+      # The catalog file is the chart's values file rather than something
+      # copied into this template, so a project is described in exactly one
+      # place and a list of environments never has to survive templating.
+      sources:
+        - repoURL: https://github.com/GilbertoCunha/homelab
+          targetRevision: main
+          path: gitops/charts/project
+          helm:
+            valueFiles:
+              - $values/gitops/applications/catalog/{{ .path.filename }}
+        - repoURL: https://github.com/GilbertoCunha/homelab
+          targetRevision: main
+          ref: values
+      destination:
+        server: https://kubernetes.default.svc
+        # Where the AppProject and the Applications land. The namespaces the
+        # chart creates are cluster-scoped and name themselves.
+        namespace: argocd
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - ServerSideApply=true

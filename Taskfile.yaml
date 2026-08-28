@@ -8,6 +8,7 @@ vars:
   # The kustomize overlays ArgoCD syncs. `cluster:bootstrap` applies the same
   # ones, which is what lets ArgoCD adopt what it finds already running.
   GITOPS_DIR: gitops
+  CHART_DIR: gitops/charts
   KUBECONFIG_FILE: '{{.ROOT_DIR}}/kubeconfig'
   SECRETS: '{{.ROOT_DIR}}/secrets.enc.yaml'
   SOPS_CONFIG: '{{.ROOT_DIR}}/.sops.yaml'
@@ -198,7 +199,16 @@ tasks:
       - kustomize build --enable-helm {{.GITOPS_DIR}}/crds/overlays/production > /dev/null
       - kustomize build --enable-helm {{.GITOPS_DIR}}/system/overlays/production > /dev/null
       - kustomize build --enable-helm {{.GITOPS_DIR}}/applications/overlays/production > /dev/null
-      - 'echo "All overlays render."'
+      # Nothing above renders the project chart: ArgoCD does that, from git.
+      # Rendering it here against every catalog file is what turns a broken
+      # template or a bad project description into a failure now rather than a
+      # sync error later. It also needs no cluster.
+      - |
+        for f in {{.GITOPS_DIR}}/applications/catalog/*.yaml; do
+          helm lint {{.CHART_DIR}}/project -f "$f" > /dev/null
+          helm template "$(basename "$f" .yaml)" {{.CHART_DIR}}/project -f "$f" > /dev/null
+        done
+      - 'echo "All overlays render, and every project in the catalog."'
 
   cluster:diff:
     desc: Shows what `task cluster:bootstrap` would change

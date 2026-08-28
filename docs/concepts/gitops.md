@@ -10,9 +10,11 @@ CNI, and nothing else. To run the bootstrap, see
 ```
 gitops/
 ├── crds/          CRDs, which nothing else may install
+├── charts/        templates, not manifests
 ├── system/        what makes the cluster work
 └── applications/  what the cluster is for
     ├── base/            one directory per component
+    ├── catalog/         one file per project
     └── overlays/        which branch and path each environment reads
 ```
 
@@ -27,6 +29,35 @@ today, and the split is what keeps a second cluster from being a rewrite.
 
 `system/base/applications/` holds the ArgoCD `Application` per tree. That is the
 app-of-apps: syncing `system` creates them, and they sync everything else.
+
+## A project is described once
+
+A component under `applications/base/` is written out by hand, manifest by
+manifest. That suits something like Homepage, which is one of a kind. It suits
+an application badly: every one would need the same namespace, the same quota
+and the same policy, written again and slightly differently each time.
+
+So an application gets a **project** instead. One file in
+`applications/catalog/` says what it is called, which environments it runs in,
+and where each one's manifests come from. An ApplicationSet turns each file
+into an `Application`, which renders `charts/project` to produce, per
+environment: a namespace labelled for the Gateways and for Pod Security, a
+`ResourceQuota`, a default-deny `NetworkPolicy` with DNS and metric scraping
+allowed through, and the `Application` that deploys the workload itself. The
+project also gets an `AppProject` limiting it to the repositories it named.
+
+The catalog file **is** the chart's values file. It is not copied into the
+ApplicationSet template or restated anywhere, which is what keeps a project
+described in one place.
+
+Two consequences worth knowing before writing one:
+
+- The chart refuses to render an environment that is not `prod` or `dev`,
+  because those are the only names the Gateways select on. `task cluster:render`
+  renders every catalog file, so that failure happens before a commit.
+- Deleting a catalog file deletes the project, namespaces and volumes included.
+
+The procedure is [Adding a project](../manual/maintenance/adding-a-project.md).
 
 ## A component owns its manifests
 

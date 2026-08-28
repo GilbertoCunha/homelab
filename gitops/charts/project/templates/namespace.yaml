@@ -1,0 +1,22 @@
+{{- range $env := .Values.environments }}
+{{- include "project.validateEnv" (dict "root" $ "env" $env) }}
+---
+# Wave 0: everything else in this project lands inside it.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ include "project.namespace" (dict "root" $ "env" $env) }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+  labels:
+    {{- include "project.labels" (dict "root" $) | nindent 4 }}
+    # What the Gateways select on. Without it an HTTPRoute from this namespace
+    # is refused; see gitops/system/base/kgateway/gateways.yaml.
+    env: {{ $env.name }}
+    # What the cluster runs, as opposed to what makes it run.
+    tier: applications
+    # Set here rather than inherited. Talos enforces `baseline` on any
+    # namespace that does not say otherwise, which makes the posture an
+    # accident; this makes it a decision, per project and per environment.
+    pod-security.kubernetes.io/enforce: {{ include "project.podSecurity" (dict "root" $ "env" $env) }}
+{{- end }}

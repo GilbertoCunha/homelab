@@ -1,0 +1,17 @@
+---
+# Where this cluster reads its catalog from. The whole `generators` list is
+# restated rather than one field of it: kustomize has no merge strategy for a
+# CRD, so a strategic-merge patch replaces a list outright. Patching only
+# `path` would silently drop `repoURL` and `revision` with it.
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: projects
+  namespace: argocd
+spec:
+  generators:
+    - git:
+        repoURL: https://github.com/GilbertoCunha/homelab
+        revision: main
+        files:
+          - path: gitops/applications/catalog/*.yaml

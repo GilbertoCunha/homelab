@@ -21,6 +21,8 @@ Follow these in order. Each one assumes the ones above it are done.
 
 Standalone procedures. Read the one you need.
 
+- [Adding a project](./maintenance/adding-a-project.md): somewhere for an
+  application to live, which is one file in the catalog
 - [Exposing a service](./maintenance/exposing-a-service.md): making a workload
   reachable by name, which is one `HTTPRoute` and nothing else
 - [Upgrading Cilium](./maintenance/upgrading-cilium.md): the CNI, which is also

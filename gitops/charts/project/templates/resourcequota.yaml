@@ -1,0 +1,30 @@
+{{- range $env := .Values.environments }}
+{{- $q := fromYaml (include "project.quotas" (dict "root" $ "env" $env)) }}
+---
+# Wave 1: the namespace exists by now.
+#
+# Naming `requests.*` and `limits.*` here has a second effect worth knowing:
+# the API server then REFUSES any pod that does not set them, naming the
+# resource it wants. That refusal is the point. There is no LimitRange in this
+# chart to paper over it, so an application declares what it needs or it does
+# not start.
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: project
+  namespace: {{ include "project.namespace" (dict "root" $ "env" $env) }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+  labels:
+    {{- include "project.labels" (dict "root" $) | nindent 4 }}
+spec:
+  hard:
+    requests.cpu: {{ $q.cpu | quote }}
+    requests.memory: {{ $q.memory | quote }}
+    limits.cpu: {{ $q.cpu | quote }}
+    limits.memory: {{ $q.memory | quote }}
+    # Volumes here are node-local on a worker's second disk, so a project's
+    # share of one is worth capping. See docs/concepts/storage.md.
+    requests.storage: {{ $q.storage | quote }}
+    persistentvolumeclaims: {{ $q.persistentvolumeclaims | quote }}
+{{- end }}

@@ -1,0 +1,48 @@
+---
+# A project is described once, in gitops/applications/catalog/<name>.yaml, and
+# that file is passed to this chart as its values. Everything below is either
+# required from that file or a default it may override.
+
+# Required. Names the project, and every namespace it gets.
+name: ""
+
+# Required. One entry per environment the project runs in. `name` and `sync`
+# are required on each; the rest falls back to `defaults` below.
+#
+#   - name: prod
+#     sync:
+#       repo_url: https://github.com/you/app
+#       revision: main
+#       path: deploy/prod
+#     quotas: {...}
+#     podSecurity: restricted
+environments: []
+
+defaults:
+  # Only these mean anything. The Gateways in
+  # gitops/system/base/kgateway/gateways.yaml select namespaces on exactly
+  # `env: prod` and `env: dev`, and that file is the source of truth; this list
+  # is the second place it is written, so that an unknown environment fails
+  # while rendering rather than becoming a namespace whose routes are silently
+  # refused.
+  allowedEnvironments:
+    - prod
+    - dev
+
+  # Applied to a namespace whose environment does not name its own.
+  podSecurity: restricted
+
+  # Applied to an environment that does not name its own. There is deliberately
+  # no LimitRange in this chart: naming requests and limits here is what makes
+  # the API server reject a pod that does not set them, which is a better
+  # failure than a default nobody chose.
+  quotas:
+    cpu: "2"
+    memory: 4Gi
+    storage: 10Gi
+    persistentvolumeclaims: "4"
+
+  # Where the workload Applications deploy to, and where ArgoCD's own objects
+  # live. Only ever different on a second cluster.
+  destinationServer: https://kubernetes.default.svc
+  argocdNamespace: argocd
