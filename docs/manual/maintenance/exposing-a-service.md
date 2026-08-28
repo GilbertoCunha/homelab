@@ -98,6 +98,15 @@ Optional, and one more annotation block on the same route:
     gethomepage.dev/icon: my-app.png
 ```
 
+If the route's name is not the same as the `app.kubernetes.io/name` on its pods,
+add `gethomepage.dev/pod-selector` too. Homepage guesses that label from the
+route name to find the pods behind the tile, and a tile whose guess misses reads
+**Not Found**:
+
+```yaml
+    gethomepage.dev/pod-selector: app.kubernetes.io/name=my-app
+```
+
 The tile appears on `home.k8s.homelab.grncunha.com` on its own: Homepage reads
 these annotations off every route in the cluster, so nothing keeps a list of
 links. The icon name comes from [Dashboard Icons](https://dashboardicons.com),
@@ -140,7 +149,7 @@ Reading the failures:
 
 | Result | Meaning |
 | --- | --- |
-| `could not resolve host` | external-dns has not written the record yet. `kubectl -n external-dns logs deploy/external-dns`, or `deploy/external-dns-tunnel` for a public name |
+| `could not resolve host` | external-dns has not written the record yet: `kubectl -n external-dns logs deploy/external-dns`, or `deploy/external-dns-tunnel` for a public name. If `dig` finds the record and the browser still cannot, your resolver cached the failure from before it existed — flush it (`sudo dscacheutil -flushcache; sudo killall -HUP mDNSResponder` on macOS) |
 | Certificate warning | The hostname is not under a wildcard the Gateway serves. Wildcards do not nest: `a.dev.k8s...` needs the dev Gateway, not the prod one |
 | `404` | Envoy answered, no route matched. The hostname in the route and the one you asked for disagree |
 | `503` | The route matched and the backend is not answering. The problem is the workload, not this |

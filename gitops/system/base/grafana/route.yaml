@@ -12,6 +12,11 @@ metadata:
     gethomepage.dev/group: Observability
     gethomepage.dev/description: Dashboards, metrics and logs
     gethomepage.dev/icon: grafana.png
+    # Which pods back the tile's status dot. Without it Homepage looks for
+    # `app.kubernetes.io/name` equal to the *route* name, and this route is
+    # `grafana-ui` while the pods are `grafana`, so it finds nothing and the
+    # tile reads "Not Found".
+    gethomepage.dev/pod-selector: app.kubernetes.io/name=grafana
     # Needs no credentials: it asks VictoriaMetrics how many scrape targets are
     # up, over the Prometheus API it already serves.
     gethomepage.dev/widget.type: prometheus

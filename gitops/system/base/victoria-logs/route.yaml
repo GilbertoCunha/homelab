@@ -10,6 +10,9 @@ metadata:
     gethomepage.dev/group: Observability
     gethomepage.dev/description: What every pod printed
     gethomepage.dev/icon: victoriametrics.png
+    # See the note on grafana's route: the route is `victoria-logs-ui`, the
+    # pods are `victoria-logs-single`, and the guess from the route name misses.
+    gethomepage.dev/pod-selector: app.kubernetes.io/name=victoria-logs-single
   name: victoria-logs-ui
   namespace: victoria-logs
 spec:
