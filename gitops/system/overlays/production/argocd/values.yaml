@@ -61,6 +61,21 @@ server:
       gethomepage.dev/group: Cluster
       gethomepage.dev/description: What is deployed, and whether it is healthy
       gethomepage.dev/icon: argo-cd.png
+      # Live counts on the tile: how many Applications there are, and how many
+      # are synced, out of sync and healthy.
+      #
+      # No API key, and none is needed. Anonymous access is on with
+      # `policy.default: role:readonly` above, and ArgoCD ignores a bearer
+      # token it cannot parse rather than rejecting the request, so the
+      # widget's empty `Authorization` header falls through to the anonymous
+      # user. This grants the page nothing that anyone on the mesh could not
+      # already read from the UI.
+      #
+      # The in-cluster Service, not the public hostname: Homepage calls this
+      # from the pod, so it never leaves the cluster. Plain HTTP because
+      # `server.insecure` is set above.
+      gethomepage.dev/widget.type: argocd
+      gethomepage.dev/widget.url: http://argocd-server.argocd.svc.cluster.local
     # No sectionName, so the route attaches to both the HTTPS and the HTTP
     # listener rather than only one of them.
     parentRefs:
