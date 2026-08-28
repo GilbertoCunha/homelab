@@ -34,10 +34,8 @@ data:
     # documented as incompatible with `cardBlur` below.
     background:
       image: https://i.imgur.com/IzrpX9X.jpeg
-      opacity: 50
-    # Frosts the cards over the image. xs, md and the rest are Tailwind's:
-    # https://tailwindcss.com/docs/backdrop-blur
-    cardBlur: xs
+      opacity: 30
+      blur: md
 
     useEqualHeights: true
     # Order here is the order groups appear in.
@@ -84,12 +82,6 @@ data:
     # Deployment and served at the path below.
     - logo:
         icon: /icons/logo.svg
-    - datetime:
-        text_size: xl
-        format:
-          dateStyle: short
-          timeStyle: short
-          hour12: false
     # Reads the metrics API, which is why metrics-server exists. Empty tiles
     # here mean it is not answering: check `kubectl top nodes`.
     - kubernetes:
@@ -104,9 +96,6 @@ data:
           cpu: true
           memory: true
           showLabel: true
-    - search:
-        provider: duckduckgo
-        target: _blank
 
   bookmarks.yaml: |
     - Repo:
