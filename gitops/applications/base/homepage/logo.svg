@@ -1,23 +1,21 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 96">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 96">
   <!-- No width/height: with only a viewBox the mark scales to whatever box it
-       is given, and the box is the widget's, not ours.
+       is given, and the box is the widget's, not ours. Homepage draws this
+       into a 48x48 square with object-fit: contain, so the closer the viewBox
+       is to square, and the more of it the glyphs fill, the bigger the mark
+       renders.
 
-       The viewBox hugs the glyphs deliberately. Homepage draws this into a
-       48x48 square with object-fit: contain, so every empty unit in here is
-       thrown away twice over: once fitting a wide mark into a square, and
-       again as blank space inside the mark.
-
-       textLength pins the width in user units regardless of which font the
-       browser actually has, so the mark keeps its proportions when Comfortaa
-       is missing and it falls back. lengthAdjust=spacing changes the tracking
-       only, leaving the letterforms alone. -->
+       Deliberately no textLength. It pins the mark's width whatever font the
+       browser has, which is tempting given Comfortaa is unlikely to be
+       installed - but it does that by stretching the tracking, so the shorter
+       the word the further apart the letters march. The width below has some
+       slack for that instead: too narrow and the glyphs are clipped by the
+       viewBox, too wide and they shrink to sit inside it. -->
   <text
-    x="160"
+    x="100"
     y="48"
     dominant-baseline="central"
     text-anchor="middle"
-    textLength="304"
-    lengthAdjust="spacing"
     font-family="'Comfortaa', 'Quicksand', 'Comfortaa Pro', 'Comfortaa Regular', sans-serif"
     font-size="80"
     font-weight="500"

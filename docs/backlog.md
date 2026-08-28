@@ -27,3 +27,13 @@ upgrade of every node.
 
 Worth doing once something holds data that is not cheap to lose. Metrics and
 logs are not that.
+
+## Backups
+
+Defining a strategy for anything that might need backups, including potentially
+the cluster itself.
+
+For peace of mind to allow recovery in the case of a disaster.
+
+Velero is a potential option to look at.
+
