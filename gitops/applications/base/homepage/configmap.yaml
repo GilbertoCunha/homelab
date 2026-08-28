@@ -34,8 +34,8 @@ data:
     # documented as incompatible with `cardBlur` below.
     background:
       image: https://i.imgur.com/IzrpX9X.jpeg
-      #opacity: 30
-      blur: md
+      # opacity: 30
+      blur: lg
 
     useEqualHeights: true
     # Order here is the order groups appear in.
