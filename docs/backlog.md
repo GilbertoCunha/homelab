@@ -12,6 +12,9 @@ credentials.
 
 Reloader is the likely answer: one controller, an annotation per workload.
 
+VictoriaMetrics is the exception, and shows the other way out: it watches its own
+config file, so its scrape jobs reload without anything restarting it.
+
 ## Replicated storage
 
 There is storage, but it is node-local: a volume is a directory on whichever

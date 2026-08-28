@@ -34,6 +34,12 @@ spec:
             # Metrics arriving over OpenTelemetry are named the way Prometheus
             # names them, so one dashboard query matches both sources.
             opentelemetry.usePrometheusNaming: true
+            # The scrape config below is mounted from a ConfigMap, and this is
+            # read once at startup. Left at its default of 0 the file is never
+            # re-read, so editing a job here changes the ConfigMap, changes the
+            # file in the pod, and changes nothing at all about what is being
+            # scraped until something restarts it.
+            promscrape.configCheckInterval: 1m
           scrape:
             enabled: true
             configMap: ""
