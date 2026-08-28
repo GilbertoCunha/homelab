@@ -180,9 +180,11 @@ instead.
 
 Dashboards arrive two ways:
 
-- **By `gnetId`**, downloaded from grafana.com at startup by an init container.
-  They are listed in the Grafana Application. A cluster with no egress gets an
-  empty dashboard list and no error anywhere obvious.
+- **By `gnetId` and `revision`**, downloaded from grafana.com at startup by an
+  init container. Both numbers are required: with no `revision` the chart asks
+  for revision 1, the first version ever published, which is usually written
+  against metric names that have since been renamed. A cluster with no egress
+  gets an empty dashboard list and no error anywhere obvious.
 - **As a labelled ConfigMap**, collected by Grafana's sidecar from any
   namespace. That is how Cilium's dashboards arrive: its chart ships versions
   written for the release actually running, which grafana.com's Cilium

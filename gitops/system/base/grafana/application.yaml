@@ -116,24 +116,39 @@ spec:
         # the sidecar picks up. See gitops/system/base/cilium/cilium.yaml.
         dashboards:
           default:
+            # `revision` is not optional. Left out, the chart asks grafana.com
+            # for revision 1 — the first version ever published, not the
+            # current one — and you get a dashboard written for metric names
+            # that were renamed years ago. Bump these deliberately.
             victoriametrics:
               gnetId: 10229
+              revision: 58
               datasource: victoriametrics
             kubernetes:
               gnetId: 14205
+              revision: 1
               datasource: victoriametrics
             victorialogs:
               # Needs victoria-logs to be scraped; it annotates itself for that.
               gnetId: 22084
+              revision: 11
               datasource: victoriametrics
             kube-state-metrics:
+              # Filters everything on a `cluster` label, which is why the
+              # scrape config sets one.
               gnetId: 13332
+              revision: 12
               datasource: victoriametrics
             cert-manager:
               gnetId: 11001
+              revision: 1
               datasource: victoriametrics
             coredns:
-              gnetId: 15762
+              # Not 15762, the kubernetes-mixin one: it expects a metric set
+              # that a plain CoreDNS install does not export, and fills a
+              # fraction of its panels here.
+              gnetId: 12539
+              revision: 5
               datasource: victoriametrics
   syncPolicy:
     automated:

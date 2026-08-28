@@ -46,6 +46,12 @@ spec:
             config:
               global:
                 scrape_interval: 15s
+                # Added to everything scraped. Dashboards written against
+                # multi-cluster setups filter on this label, and with no value
+                # to select they draw nothing at all. Matches `cluster_name` in
+                # opentofu/project/terraform.tfvars.
+                external_labels:
+                  cluster: homelab
               scrape_configs:
                 - job_name: victoriametrics
                   static_configs:
