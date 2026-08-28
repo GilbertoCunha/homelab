@@ -17,7 +17,7 @@ spec:
     # Use single server victoria metrics
     chart: victoria-metrics-single
     helm:
-      valuesFiles:
+      valueFiles:
         - values.yaml
     repoURL: https://victoriametrics.github.io/helm-charts
     targetRevision: 0.45.0
