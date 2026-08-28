@@ -11,13 +11,32 @@ data:
   settings.yaml: |
     title: Homelab
 
+    # Fixed dark, rather than following the browser. The background sits on top
+    # of the theme's own colour, so a light theme would wash it out and leave
+    # the same unreadable text this is here to avoid.
+    theme: dark
+
+    # Puts each header widget in its own card, so the greeting, the clock and
+    # the cluster gauges match the service tiles below instead of floating as
+    # bare text. `underlined` is the default; `clean` removes even the rule.
+    headerStyle: boxedWidgets
+
     # Fetched by the browser, not the pod, so it needs the viewer to have
     # internet — the same as the tile icons. It must be a direct link to the
     # image itself: an imgur.com/gallery/... page is HTML, and CSS given HTML
     # draws nothing.
-    background: https://i.imgur.com/IzrpX9X.jpeg
-    # xs, md, and the rest: https://tailwindcss.com/docs/backdrop-blur
-    # Incompatible with background.blur, so the background is set plain above.
+    #
+    # `opacity` is what makes the text readable: it fades the image toward the
+    # dark theme colour underneath. Lower is darker — turn it down if the text
+    # is still hard to read, up if the image is washing out.
+    #
+    # It is deliberately not `brightness`, which would do the same job but is
+    # documented as incompatible with `cardBlur` below.
+    background:
+      image: https://i.imgur.com/IzrpX9X.jpeg
+      opacity: 50
+    # Frosts the cards over the image. xs, md and the rest are Tailwind's:
+    # https://tailwindcss.com/docs/backdrop-blur
     cardBlur: xs
 
     # The order tiles appear in. A group discovered from an annotation that is
