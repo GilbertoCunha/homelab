@@ -8,3 +8,10 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "2"
   name: gateway-system
+  labels:
+    # In the mesh, so traffic from the edge to a workload is mutual TLS the
+    # whole way and an Istio AuthorizationPolicy can name the Gateway's own
+    # identity rather than an address. Traffic arriving from outside the
+    # cluster is untouched: ztunnel passes an unenrolled caller through.
+    # See docs/concepts/istio.md.
+    istio.io/dataplane-mode: ambient

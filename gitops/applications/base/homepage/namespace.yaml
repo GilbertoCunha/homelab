@@ -9,3 +9,6 @@ metadata:
     # Lets this namespace attach routes to the prod Gateways, and nothing else.
     # See gitops/system/base/kgateway/gateways.yaml.
     env: prod
+    # In the mesh. Nothing is injected into the pod: ztunnel on the node
+    # carries its traffic under mutual TLS. See docs/concepts/istio.md.
+    istio.io/dataplane-mode: ambient

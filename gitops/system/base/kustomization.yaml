@@ -10,6 +10,7 @@ resources:
   - cloudflared
   - external-dns
   - grafana
+  - istio
   - kgateway
   - kube-state-metrics
   - local-path-provisioner

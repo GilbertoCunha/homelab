@@ -19,4 +19,10 @@ metadata:
     # namespace that does not say otherwise, which makes the posture an
     # accident; this makes it a decision, per project and per environment.
     pod-security.kubernetes.io/enforce: {{ include "project.podSecurity" (dict "root" $ "env" $env) }}
+    # Joins the mesh. Every connection in or out of this namespace is then
+    # carried by ztunnel under mutual TLS, with no change to the workload and
+    # nothing injected into its pods. It also changes what a NetworkPolicy can
+    # say here: see the `allow-hbone` policy alongside this file, and
+    # [Istio in ambient mode](../../../../docs/concepts/istio.md).
+    istio.io/dataplane-mode: ambient
 {{- end }}

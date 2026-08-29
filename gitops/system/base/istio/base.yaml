@@ -1,0 +1,39 @@
+---
+# Wave 0: the CRDs and cluster roles every other Istio chart writes against.
+#
+# The CRDs come from this chart rather than from
+# gitops/crds/base/kustomization.yaml, which is where every other CRD in the
+# repo lives. Istio publishes them nowhere else: there is no release artifact
+# holding them on their own. The rule that chart CRDs are never upgraded is a
+# Helm rule, and ArgoCD is not Helm — it renders the chart and applies what
+# comes out, CRDs included, on every sync. kgateway's CRDs arrive the same way.
+#
+# Keep `targetRevision` in step with istiod.yaml, cni.yaml and ztunnel.yaml.
+# See [Upgrading Istio](../../../../docs/manual/maintenance/upgrading-istio.md).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: istio-base
+  namespace: argocd
+  labels:
+    tier: system
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  project: default
+  destination:
+    namespace: istio-system
+    server: https://kubernetes.default.svc
+  source:
+    chart: base
+    repoURL: https://istio-release.storage.googleapis.com/charts
+    targetRevision: 1.30.4
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      # Istio's CRDs are past the 262kB a client-side apply can fit into the
+      # last-applied-configuration annotation, so a client-side apply fails
+      # outright.
+      - ServerSideApply=true

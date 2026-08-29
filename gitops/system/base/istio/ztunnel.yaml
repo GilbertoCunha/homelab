@@ -1,0 +1,34 @@
+---
+# Wave 2: the data plane, one pod per node, in the host network namespace.
+#
+# Every enrolled pod's traffic is redirected here, and ztunnel carries it to
+# the ztunnel on the destination node over HBONE: mutual TLS on port 15008,
+# with an identity taken from the pod's service account. This is what a
+# NetworkPolicy sees for an enrolled namespace, and why the project chart
+# allows 15008 — see gitops/charts/project/templates/networkpolicy.yaml.
+#
+# It handles L4 only. L7 needs a waypoint, and this cluster has none yet.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ztunnel
+  namespace: argocd
+  labels:
+    tier: system
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  project: default
+  destination:
+    namespace: istio-system
+    server: https://kubernetes.default.svc
+  source:
+    chart: ztunnel
+    repoURL: https://istio-release.storage.googleapis.com/charts
+    targetRevision: 1.30.4
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - ServerSideApply=true

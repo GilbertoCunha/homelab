@@ -1,0 +1,38 @@
+---
+# Wave 1: the control plane. It waits on the CRDs from base.yaml.
+#
+# In ambient mode istiod issues the workload certificates ztunnel presents and
+# programs what ztunnel does with them. There are no sidecars: nothing is
+# injected into a workload pod, which is why this cluster can enrol a namespace
+# without restarting anything in it. See
+# [Istio in ambient mode](../../../../docs/concepts/istio.md).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: istiod
+  namespace: argocd
+  labels:
+    tier: system
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  project: default
+  destination:
+    namespace: istio-system
+    server: https://kubernetes.default.svc
+  source:
+    chart: istiod
+    repoURL: https://istio-release.storage.googleapis.com/charts
+    targetRevision: 1.30.4
+    helm:
+      valuesObject:
+        # Turns off sidecar injection and turns on the ambient control plane,
+        # including the `istio-waypoint` GatewayClass. Without it istiod comes
+        # up expecting to inject sidecars and ztunnel gets no configuration.
+        profile: ambient
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - ServerSideApply=true

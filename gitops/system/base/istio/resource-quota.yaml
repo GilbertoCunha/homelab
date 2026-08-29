@@ -1,0 +1,21 @@
+---
+# Wave 0, ahead of the DaemonSets it admits.
+#
+# ztunnel and istio-cni run at `system-node-critical`. A namespace with no
+# quota scoped to that priority class rejects pods asking for it, and the
+# rejection is at admission: the DaemonSet exists, reports no error of its own,
+# and simply never places a pod. Istio ships this quota for that reason.
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: istio-critical-pods
+  namespace: istio-system
+spec:
+  hard:
+    pods: 1000
+  scopeSelector:
+    matchExpressions:
+      - operator: In
+        scopeName: PriorityClass
+        values:
+          - system-node-critical

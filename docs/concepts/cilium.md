@@ -122,6 +122,24 @@ implementation here. These are separate features, and
 [Getting traffic into the cluster](./ingress.md) explains why turning one off
 does not remove the need for the other.
 
+## Three values belong to Istio
+
+Istio runs in ambient mode on this cluster, and both it and Cilium want to touch
+the same packets. Three values here are what keeps them apart:
+
+| Value | Why |
+| --- | --- |
+| `socketLB.hostNamespaceOnly: true` | Socket load balancing would otherwise rewrite a connection's destination inside the pod's own network namespace, before ztunnel sees it. |
+| `cni.exclusive: false` | Cilium would otherwise delete istio-cni's configuration, which is chained onto its own. |
+| `bpf.masquerade` left unset | The default, iptables masquerading, works with ambient. The BPF one breaks pod health checks. |
+
+`kubeProxyReplacement` stays **true** despite Cilium recommending otherwise for
+Istio, because `l2announcements` requires it and that is how the Gateways get
+their addresses. **Cilium's L7 policy must not be used while ambient is on**:
+two proxies enforcing HTTP rules is a split brain, and a rule on port 15008
+breaks all mesh traffic. [Istio in ambient mode](./istio.md) has the whole
+picture.
+
 ## What this costs
 
 Cilium is the network *and* the Service implementation. When it is broken, both

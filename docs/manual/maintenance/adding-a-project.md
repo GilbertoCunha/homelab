@@ -46,9 +46,9 @@ Per environment, in a namespace named `project-<name>-<environment>`:
 
 | Object | What it does |
 | --- | --- |
-| `Namespace` | Labelled `env`, `tier: applications`, and a Pod Security level |
+| `Namespace` | Labelled `env`, `tier: applications`, a Pod Security level, and into the mesh |
 | `ResourceQuota` | Caps cpu, memory, storage and PVCs |
-| `NetworkPolicy` ×3 | Denies everything, then allows DNS and metric scraping |
+| `NetworkPolicy` ×4 | Denies everything, then allows DNS, metric scraping and mesh traffic |
 | `Application` | Deploys `sync` into the namespace |
 
 Plus one `AppProject` for the whole project, limiting it to the repositories
@@ -88,10 +88,19 @@ kubectl get ns project-<name>-prod -o jsonpath='{.metadata.labels}'
 them. There is no `LimitRange` filling them in. The error names the missing
 resource.
 
-**Nothing can reach the workload yet.** The default-deny drops all ingress, so
-an `HTTPRoute` will be `Accepted: True` and the backend still unreachable. Add
-a `NetworkPolicy` allowing ingress from `gateway-system` in the project's own
-repository — exposure is meant to be a decision, not a side effect. See
+**The namespace is in the mesh, and that changes what a `NetworkPolicy` can
+say.** Traffic between this namespace and any other pod arrives on port 15008
+under mutual TLS, not on the application's port, so a rule naming a port no
+longer distinguishes anything. Write access rules as an Istio
+`AuthorizationPolicy` instead, which can name a service account rather than an
+address. [Istio in ambient mode](../../concepts/istio.md) explains why.
+
+**Nothing can reach the workload yet.** The default-deny still drops all
+ingress from `gateway-system`, so an `HTTPRoute` will be `Accepted: True` and
+the backend still unreachable. Add a `NetworkPolicy` allowing ingress from
+`gateway-system` in the project's own repository — exposure is meant to be a
+decision, not a side effect. Because both namespaces are in the mesh, that
+policy names **port 15008**, not the application's port. See
 [Exposing a service](./exposing-a-service.md).
 
 **Deleting the file deletes the project.** Namespaces and volumes included, and

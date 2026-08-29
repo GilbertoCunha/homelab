@@ -28,6 +28,23 @@ upgrade of every node.
 Worth doing once something holds data that is not cheap to lose. Metrics and
 logs are not that.
 
+## Waypoints, and strict mTLS
+
+Istio runs in ambient mode, which means ztunnel and L4 only: identity and
+encryption between pods, and nothing that understands HTTP. See
+[Istio in ambient mode](./concepts/istio.md).
+
+Two things are deliberately not done yet:
+
+- **A waypoint**, which is what adds L7 — per-path policy, retries, request
+  telemetry. It is one `Gateway` with `gatewayClassName: istio-waypoint`, added
+  per namespace, and worth doing the first time a workload actually needs one
+  rather than in advance.
+- **`PeerAuthentication` with `mode: STRICT`**, which refuses plaintext
+  entirely. Permissive is what lets a namespace be enrolled without every
+  unenrolled caller breaking at the same moment. Worth doing once everything
+  that talks to an enrolled namespace is itself enrolled.
+
 ## Backups
 
 Defining a strategy for anything that might need backups, including potentially

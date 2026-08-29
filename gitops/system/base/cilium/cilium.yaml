@@ -36,6 +36,27 @@ spec:
 
         kubeProxyReplacement: true
 
+        # The three settings below are what lets Istio's ambient mode share
+        # this datapath. See [Istio in ambient mode](../../../../docs/concepts/istio.md).
+        #
+        # Socket load balancing rewrites a connection's destination inside the
+        # pod's own network namespace, before ztunnel's redirect can see it.
+        # Limiting it to the host namespace leaves ambient traffic intact and
+        # costs nothing else: pods still reach Services, one hop later.
+        socketLB:
+          hostNamespaceOnly: true
+
+        # istio-cni chains itself onto Cilium's conflist rather than replacing
+        # it. The chart's default is to delete any CNI configuration Cilium did
+        # not write, which would remove istio-cni on every agent restart.
+        cni:
+          exclusive: false
+
+        # `bpf.masquerade` is deliberately absent, and must stay that way.
+        # Cilium's default is iptables masquerading, which ambient works with;
+        # the BPF implementation does not SNAT Istio's link-local probe address
+        # the same way and pod health checks start failing.
+
         # Lets a Service of `type: LoadBalancer` get a real address: LB IPAM
         # picks one out of a CiliumLoadBalancerIPPool, and one agent wins a
         # lease and answers ARP for it on the guest bridge. There is no

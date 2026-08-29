@@ -152,7 +152,7 @@ Reading the failures:
 | `could not resolve host` | external-dns has not written the record yet: `kubectl -n external-dns logs deploy/external-dns`, or `deploy/external-dns-tunnel` for a public name. If `dig` finds the record and the browser still cannot, your resolver cached the failure from before it existed — flush it (`sudo dscacheutil -flushcache; sudo killall -HUP mDNSResponder` on macOS) |
 | Certificate warning | The hostname is not under a wildcard the Gateway serves. Wildcards do not nest: `a.dev.k8s...` needs the dev Gateway, not the prod one |
 | `404` | Envoy answered, no route matched. The hostname in the route and the one you asked for disagree |
-| `503` | The route matched and the backend is not answering. The problem is the workload, not this |
+| `503` | The route matched and the backend is not answering. Usually the workload; also what a missing `NetworkPolicy` looks like, since a project namespace denies ingress by default. Both namespaces are in the mesh, so that policy allows **port 15008** from `gateway-system`, not the application's port. See [Istio in ambient mode](../../concepts/istio.md) |
 
 To separate a DNS problem from everything else, ask the Gateway by address:
 

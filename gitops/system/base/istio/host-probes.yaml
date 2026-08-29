@@ -1,0 +1,28 @@
+---
+# Wave 0: this has to exist before any namespace is enrolled into the mesh.
+#
+# kubelet's health probes reach an ambient pod SNAT-ed from a link-local
+# address Istio picks, and Cilium has no way to exempt link-local addresses
+# from policy. So under the default-deny NetworkPolicy every project namespace
+# gets, the probes are dropped and the pod never becomes Ready. This is the
+# exemption Istio documents for exactly that:
+# https://istio.io/latest/docs/ambient/install/platform-prerequisites/
+#
+# Inert while nothing is enrolled.
+apiVersion: cilium.io/v2
+kind: CiliumClusterwideNetworkPolicy
+metadata:
+  name: allow-ambient-hostprobes
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  description: "Allows SNAT-ed kubelet health check probes into ambient pods"
+  # Without this the policy would itself become a default-deny for every
+  # endpoint in the cluster, which is the opposite of what it is for.
+  enableDefaultDeny:
+    egress: false
+    ingress: false
+  endpointSelector: {}
+  ingress:
+    - fromCIDR:
+        - "169.254.7.127/32"

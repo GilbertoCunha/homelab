@@ -1,0 +1,15 @@
+---
+# Declared here rather than left to an Application's `CreateNamespace`, because
+# the Pod Security label has to be on it before ztunnel or istio-cni is
+# admitted.
+#
+# Wave 0 by default, which is ahead of everything else in this directory.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: istio-system
+  labels:
+    # ztunnel and istio-cni run in the host network namespace with NET_ADMIN
+    # and SYS_ADMIN. Talos enforces `baseline` on any namespace that does not
+    # say otherwise, and baseline rejects both.
+    pod-security.kubernetes.io/enforce: privileged
