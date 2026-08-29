@@ -36,6 +36,20 @@ spec:
 
         kubeProxyReplacement: true
 
+        # Every value on this page reaches the agent through the `cilium-config`
+        # ConfigMap, and the agent reads it once, at startup. The chart's default
+        # is to leave the DaemonSet's pod template untouched when that ConfigMap
+        # changes, so a values-only change syncs, reports Healthy, and never
+        # reaches a running agent. A version bump hides this by changing the
+        # image, which rolls the pods for its own reasons.
+        #
+        # These render a checksum of the ConfigMap onto the pod templates, so a
+        # changed value rolls the agents node by node and the operator with them.
+        # It makes editing this file mean what it looks like it means.
+        rollOutCiliumPods: true
+        operator:
+          rollOutPods: true
+
         # The three settings below are what lets Istio's ambient mode share
         # this datapath. See [Istio in ambient mode](../../../../docs/concepts/istio.md).
         #

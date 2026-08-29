@@ -122,6 +122,18 @@ implementation here. These are separate features, and
 [Getting traffic into the cluster](./ingress.md) explains why turning one off
 does not remove the need for the other.
 
+## Editing this file restarts the agents
+
+Every value reaches the agent through the `cilium-config` ConfigMap, and the
+agent reads it once, at startup. The chart's default is to leave the DaemonSet's
+pod template alone when that ConfigMap changes — so a values-only change syncs,
+reports Healthy, and never reaches a running agent. A version bump hides the
+problem, because a new image rolls the pods anyway.
+
+`rollOutCiliumPods: true` and `operator.rollOutPods: true` put a checksum of the
+ConfigMap on both pod templates. A changed value then rolls the agents node by
+node, and the operator with them, without anyone remembering to.
+
 ## Three values belong to Istio
 
 Istio runs in ambient mode on this cluster, and both it and Cilium want to touch
