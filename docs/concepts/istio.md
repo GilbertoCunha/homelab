@@ -159,6 +159,24 @@ live. Istio publishes them nowhere else. The rule that a chart's CRDs are never
 upgraded is a Helm rule, and ArgoCD is not Helm: it renders the chart and
 applies what comes out, CRDs included, on every sync.
 
+Two of them carry an `ignoreDifferences` block, and they need it. istiod
+patches its own validating webhooks once their endpoint is ready: it injects
+the `caBundle` and flips `failurePolicy` from the chart's `Ignore` to `Fail`.
+ArgoCD renders `Ignore`, the cluster holds `Fail`, and `istio-base` and
+`istiod` sit `OutOfSync` for good — which costs the word "OutOfSync" its
+meaning for every other Application in the list.
+
+The block names `pilot-discovery`, istiod's field manager, rather than a field
+path: it owns whatever it patches, so the exemption still holds when a later
+version patches something new. `RespectIgnoreDifferences=true` goes with it,
+because on its own `ignoreDifferences` silences the report and still lets
+ArgoCD write `Ignore` back on every sync, opening a moment of fail-open
+validation each time.
+
+The `istio-sidecar-injector` mutating webhook needs no such block. istiod
+patches only its `caBundle`, and ArgoCD never renders that field, so nothing
+claims it.
+
 An `ambient` umbrella chart exists upstream and is not used. It hides the CRDs
 in a subchart and gives no ordering between the four, which is what the waves
 are for.

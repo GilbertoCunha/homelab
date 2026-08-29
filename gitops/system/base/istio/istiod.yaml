@@ -30,9 +30,24 @@ spec:
         # including the `istio-waypoint` GatewayClass. Without it istiod comes
         # up expecting to inject sidecars and ztunnel gets no configuration.
         profile: ambient
+  # The same webhook patching described in base.yaml, on this chart's own
+  # validator. The `istio-sidecar-injector` mutating webhook alongside it needs
+  # no entry: istiod only patches its `caBundle`, which ArgoCD never renders.
+  ignoreDifferences:
+    - group: admissionregistration.k8s.io
+      kind: ValidatingWebhookConfiguration
+      name: istio-validator-istio-system
+      managedFieldsManagers:
+        - pilot-discovery
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
     syncOptions:
+      # Without this, `ignoreDifferences` above only silences the report:
+      # ArgoCD would still write `failurePolicy: Ignore` on every sync, and
+      # istiod would patch it back within the same second. This is what stops
+      # the write, and with it the moment of fail-open validation each sync
+      # used to open.
+      - RespectIgnoreDifferences=true
       - ServerSideApply=true
