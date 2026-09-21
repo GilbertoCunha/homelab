@@ -10,12 +10,3 @@ environments:
       repo_url: https://github.com/GilbertoCunha/system-design
       revision: gitops/dev
       path: url-shortener/overlays/dev
-  - name: prod
-    quotas:
-      cpu: 2
-      memory: 2Gi
-      storage: 20Gi
-    sync:
-      repo_url: https://github.com/GilbertoCunha/system-design
-      revision: gitops/prod
-      path: url-shortener/overlays/prod
