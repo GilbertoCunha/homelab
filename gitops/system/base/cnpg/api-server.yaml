@@ -1,0 +1,30 @@
+---
+# Every pod CNPG creates for a database reads its Cluster from the API server:
+# the instances, and the initdb and join jobs before them. The default-deny
+# every project namespace gets drops that, and in the mesh it surfaces as
+# `TLS handshake timeout` rather than a refused connection, because ztunnel
+# accepts inside the pod before the drop.
+#
+# A Cilium policy rather than a NetworkPolicy, because the API server runs on
+# the nodes' host network, which only Cilium's `kube-apiserver` entity names.
+# Cluster-wide, because the databases live in project namespaces, not here.
+# `cnpg.io/cluster` is on every one of those pods; `cnpg.io/podRole` is not on
+# the jobs.
+apiVersion: cilium.io/v2
+kind: CiliumClusterwideNetworkPolicy
+metadata:
+  name: allow-cnpg-api-server
+spec:
+  description: "Allows pods of CloudNativePG clusters to reach the API server"
+  # Without this the policy would itself become a default-deny for every pod
+  # it selects.
+  enableDefaultDeny:
+    egress: false
+    ingress: false
+  endpointSelector:
+    matchExpressions:
+      - key: cnpg.io/cluster
+        operator: Exists
+  egress:
+    - toEntities:
+        - kube-apiserver
