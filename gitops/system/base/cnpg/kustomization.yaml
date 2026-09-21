@@ -5,4 +5,4 @@ kind: Kustomization
 resources:
   # Cloud Native Postgres operator manifest
   # See: https://cloudnative-pg.io/documentation/1.17/installation_upgrade/#directly-using-the-operator-manifest
-  - https://raw.githubusercontent.com/cloudnative-pg/artifacts/release-1.17/manifests/operator-manifest.yaml
+  - https://raw.githubusercontent.com/cloudnative-pg/artifacts/release-1.30/manifests/operator-manifest.yaml
