@@ -1,0 +1,10 @@
+---
+# Declared here rather than left to the Application's `CreateNamespace`: the
+# system Application already owns this namespace, and would prune it, along
+# with the operator inside it, if it stopped declaring it.
+#
+# Wave 0 by default, which is ahead of the wave 1 Application.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: cnpg-system

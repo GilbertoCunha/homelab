@@ -1,0 +1,36 @@
+---
+# The CloudNativePG operator: runs PostgreSQL clusters declared as `Cluster`
+# resources.
+#
+# Wave 1: it needs only the API server and its CRDs, which the crds
+# Application applies at wave -1.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cnpg
+  namespace: argocd
+  labels:
+    tier: system
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  project: default
+  destination:
+    namespace: cnpg-system
+    server: https://kubernetes.default.svc
+  source:
+    chart: cloudnative-pg
+    repoURL: https://cloudnative-pg.github.io/charts
+    targetRevision: 0.29.0
+    helm:
+      valuesObject:
+        # CRDs come from gitops/crds instead. Keep that version in step with
+        # the chart's appVersion.
+        crds:
+          create: false
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - ServerSideApply=true
