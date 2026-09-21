@@ -8,6 +8,7 @@ resources:
   - cert-manager
   - cilium
   - cloudflared
+  - cnpg
   - external-dns
   - grafana
   - istio
