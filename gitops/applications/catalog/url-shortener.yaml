@@ -3,8 +3,8 @@ name: url-shortener
 environments:
   - name: dev
     quotas:
-      cpu: 2
-      memory: 2Gi
+      cpu: 4
+      memory: 4Gi
       storage: 20Gi
     sync:
       repo_url: https://github.com/GilbertoCunha/system-design
