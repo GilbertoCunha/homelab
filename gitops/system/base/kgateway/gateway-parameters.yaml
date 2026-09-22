@@ -14,10 +14,7 @@ spec:
   kube:
     service:
       type: LoadBalancer
-      # The client's mesh address survives to the backend, so a policy can be
-      # written against it. The cost is that Cilium only announces the address
-      # from nodes running an Envoy pod, which is why there are two replicas.
-      externalTrafficPolicy: Local
+      externalTrafficPolicy: Cluster
     deployment:
       replicas: 2
     serviceOverlay:
@@ -39,7 +36,7 @@ spec:
   kube:
     service:
       type: LoadBalancer
-      externalTrafficPolicy: Local
+      externalTrafficPolicy: Cluster
     deployment:
       replicas: 2
     serviceOverlay:
