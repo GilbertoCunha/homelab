@@ -52,6 +52,10 @@ spec:
         # and so has no prefix.
         txtPrefix: edns-
 
+        # Deliberately no `service` source, which the mesh instance does have:
+        # a LoadBalancer Service holds a private address from the Cilium pool,
+        # and Cloudflare will not proxy one. Reaching such a workload from
+        # outside the mesh is a tunnel ingress, not a record.
         sources:
           - gateway-httproute
 

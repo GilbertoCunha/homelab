@@ -1,6 +1,8 @@
 ---
-# Writes the DNS records for every HTTPRoute, so adding a service means adding
-# a route and nothing else. See docs/concepts/ingress.md.
+# Writes the mesh DNS records: one for every HTTPRoute, so publishing an HTTP
+# workload means adding a route and nothing else, and one for every
+# LoadBalancer Service that asks for a name by annotation, which is how the
+# non-HTTP workloads get one. See docs/concepts/ingress.md.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -45,6 +47,15 @@ spec:
         sources:
           - gateway-httproute
 
+          # For what an HTTPRoute cannot carry: anything that is not HTTP.
+          # A Gateway listener is bound to one port and cannot dispatch raw TCP
+          # by hostname, so a database or cache is exposed as its own
+          # LoadBalancer Service with an address from the Cilium pool, and the
+          # record follows that address. Opt-in per Service, by the hostname
+          # annotation -- a Service without it is never written.
+          # See docs/concepts/ingress.md.
+          - service
+
         # Only the mesh Gateways. external-dns reads cloudflare-proxied from
         # the HTTPRoute and never from the Gateway, so proxying cannot be set
         # per Gateway by annotation. Splitting into two instances filtered by
@@ -52,6 +63,14 @@ spec:
         # other half. See docs/concepts/ingress.md.
         extraArgs:
           - --gateway-label-filter=dns-mode==direct
+
+          # Applies to the service source only, and the gateway filter above
+          # applies only to the gateway source, so the two do not overlap.
+          # Without this a ClusterIP Service carrying the annotation would
+          # resolve to an address reachable from nowhere outside the cluster.
+          # Mesh addresses come from the Cilium pool, which only fills
+          # status.loadBalancer on this type.
+          - --service-type-filter=LoadBalancer
 
         env:
           - name: CF_API_TOKEN
