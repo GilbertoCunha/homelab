@@ -120,9 +120,12 @@ environment it is wide open, and narrowing it further would look like security
 and provide none — every connection is 15008 and the port no longer says what
 the caller asked for.
 
-It has no rule for `gateway-system`. A workload is exposed by writing a policy
-for it, exactly as before; the only change is that the policy names port 15008
-rather than the application's own. See
+It has no rule for `gateway-system`, which carries no `env` label. That is
+`allow-gateways`, the policy beside it: 15008 from the Gateway pods that route
+to the namespace's environment — `gw-internal-dev` for dev, `gw-internal-prod`
+and `gw-public` for prod — and from no other Gateway, so the separation above
+holds for ingress too. The list is `defaults.gateways` in the project chart's
+values. A workload is still exposed by its `HTTPRoute`; see
 [Exposing a service](../manual/maintenance/exposing-a-service.md).
 
 Kubelet's health probes reach an enrolled pod SNAT-ed from a link-local address

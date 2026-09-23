@@ -29,6 +29,19 @@ defaults:
     - prod
     - dev
 
+  # Which Gateways may reach a namespace of each environment, on HBONE port
+  # 15008. Written from the same file: a Gateway listed under an environment
+  # must select `env: <that environment>` there, or its packets are let in and
+  # every route it would carry is refused. Listing only those keeps the prod
+  # and public Gateways off dev pods, as `allow-hbone` keeps the namespaces
+  # themselves apart.
+  gateways:
+    prod:
+      - gw-internal-prod
+      - gw-public
+    dev:
+      - gw-internal-dev
+
   # Applied to a namespace whose environment does not name its own.
   podSecurity: restricted
 

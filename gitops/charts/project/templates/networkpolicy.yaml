@@ -119,9 +119,8 @@ spec:
 # Istio AuthorizationPolicy, which names a service account rather than an
 # address. See docs/concepts/istio.md.
 #
-# Deliberately no rule for gateway-system. A workload is exposed by writing a
-# policy for it, exactly as before ambient; the only change is that the policy
-# names port 15008. See docs/manual/maintenance/exposing-a-service.md.
+# No rule for gateway-system here: gateway-system carries no `env` label, so
+# its traffic is opened separately, by `allow-gateways` below.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -149,6 +148,44 @@ spec:
         - namespaceSelector:
             matchLabels:
               env: {{ $env.name }}
+      ports:
+        - protocol: TCP
+          port: 15008
+---
+# The Gateways live in gateway-system, which `allow-hbone` above does not
+# select, so without this every HTTPRoute into the namespace is
+# `Accepted: True` and its backend answers 503. Opened here rather than in each
+# project because every project with a route needs exactly this rule, and
+# missing it looks like a broken workload rather than a policy.
+#
+# Only the Gateways that route to this environment, from `defaults.gateways`.
+# A prod or public Gateway can never route into a dev namespace, and letting
+# its packets in would undo the separation `allow-hbone` draws. Exposure is
+# still decided by the HTTPRoute; this only lets the route be answered.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-gateways
+  namespace: {{ $ns }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+  labels:
+    {{- include "project.labels" (dict "root" $) | nindent 4 }}
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: gateway-system
+          podSelector:
+            matchExpressions:
+              - key: gateway.networking.k8s.io/gateway-name
+                operator: In
+                values:
+                  {{- toYaml (index $.Values.defaults.gateways $env.name) | nindent 18 }}
       ports:
         - protocol: TCP
           port: 15008

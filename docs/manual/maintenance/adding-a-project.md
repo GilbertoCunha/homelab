@@ -95,12 +95,11 @@ longer distinguishes anything. Write access rules as an Istio
 `AuthorizationPolicy` instead, which can name a service account rather than an
 address. [Istio in ambient mode](../../concepts/istio.md) explains why.
 
-**Nothing can reach the workload yet.** The default-deny still drops all
-ingress from `gateway-system`, so an `HTTPRoute` will be `Accepted: True` and
-the backend still unreachable. Add a `NetworkPolicy` allowing ingress from
-`gateway-system` in the project's own repository — exposure is meant to be a
-decision, not a side effect. Because both namespaces are in the mesh, that
-policy names **port 15008**, not the application's port. See
+**The Gateways can already reach the workload; nothing routes to it yet.** The
+chart's `allow-gateways` policy lets in, on **port 15008**, the Gateways that
+serve the namespace's environment: `gw-internal-dev` for dev,
+`gw-internal-prod` and `gw-public` for prod. A workload is exposed by writing
+an `HTTPRoute` for it, and needs no `NetworkPolicy` of its own for that. See
 [Exposing a service](./exposing-a-service.md).
 
 **Deleting the file deletes the project.** Namespaces and volumes included, and
