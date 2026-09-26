@@ -3,7 +3,7 @@ name: url-shortener
 environments:
   - name: dev
     quotas:
-      cpu: 4
+      cpu: 10
       memory: 4Gi
       storage: 20Gi
     sync:
@@ -12,7 +12,7 @@ environments:
       path: url-shortener/overlays/dev
   - name: prod
     quotas:
-      cpu: 4
+      cpu: 10
       memory: 4Gi
       storage: 20Gi
     sync:
