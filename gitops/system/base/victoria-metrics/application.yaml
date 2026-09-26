@@ -155,6 +155,29 @@ spec:
                       action: replace
                       regex: "(.+)"
                       target_label: __metrics_path__
+                    # A pod can ask to be scraped more often than the global
+                    # 15s, with `prometheus.io/interval: 5s`. Opt-in, so the
+                    # cost grows only with the workloads that need it: an
+                    # app being load tested wants its graphs to lag seconds
+                    # behind, not the half-minute a 1m rate window gives.
+                    #
+                    - source_labels:
+                        [__meta_kubernetes_pod_annotation_prometheus_io_interval]
+                      regex: "(.+)"
+                      target_label: __scrape_interval__
+                    # The interval again, as the timeout. Not a typo: the
+                    # default timeout (10s) would outlast a 5s interval, and
+                    # VictoriaMetrics doesn't cap it per target on its own
+                    # (checked on v1.150: interval 5s kept a 10s timeout).
+                    - source_labels:
+                        [__meta_kubernetes_pod_annotation_prometheus_io_interval]
+                      regex: "(.+)"
+                      target_label: __scrape_timeout__
+                    # An explicit `prometheus.io/timeout` wins, being last.
+                    - source_labels:
+                        [__meta_kubernetes_pod_annotation_prometheus_io_timeout]
+                      regex: "(.+)"
+                      target_label: __scrape_timeout__
                     # Without these the only identity a series carries is an
                     # address, which changes every time the pod restarts.
                     - source_labels: [__meta_kubernetes_namespace]
