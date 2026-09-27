@@ -24,5 +24,6 @@ metadata:
     # nothing injected into its pods. It also changes what a NetworkPolicy can
     # say here: see the `allow-hbone` policy alongside this file, and
     # [Istio in ambient mode](../../../../docs/concepts/istio.md).
-    istio.io/dataplane-mode: ambient
+    # istio.io/dataplane-mode: ambient
+    istio.io/dataplane-mode: none
 {{- end }}
