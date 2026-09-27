@@ -1,6 +1,5 @@
 {{- range $env := .Values.environments }}
 {{- $ns := include "project.namespace" (dict "root" $ "env" $env) }}
-{{- $mesh := eq (include "project.mesh" (dict "root" $ "env" $env)) "true" }}
 ---
 # Wave 1. Cilium runs in `default` enforcement, so a pod is unrestricted until
 # some policy selects it — and this one selects everything. From here the
@@ -74,9 +73,9 @@ spec:
               kubernetes.io/metadata.name: victoria-metrics
 ---
 # The CloudNativePG operator reads each database pod's status on 8000 and
-# connects to PostgreSQL on 5432. It runs in cnpg-system, outside the mesh, so
-# this arrives on those ports rather than on 15008, and the deny above drops
-# it. The Cluster then never becomes ready, and nothing says why. CNPG labels
+# connects to PostgreSQL on 5432. It runs in cnpg-system, which
+# `allow-environment` below does not select, so the deny above drops it. The
+# Cluster then never becomes ready, and nothing says why. CNPG labels
 # every pod it creates for a database with `cnpg.io/cluster`, so a project
 # writes nothing for this. Selected the same way as the API server rule in
 # gitops/system/base/cnpg/api-server.yaml.
@@ -107,30 +106,22 @@ spec:
         - protocol: TCP
           port: 5432
 ---
-# This namespace is in the mesh, so traffic between it and another enrolled pod
-# arrives on HBONE port 15008 rather than on the application's own port. The
-# deny above drops all of it, and the failure looks like the network being
-# broken rather than like a policy.
+# Lets the environment's pods talk to each other, and to the other namespaces
+# of the same environment. Without it the deny above drops every connection
+# between them, an API to its own database included, and the failure looks
+# like the network being broken rather than like a policy.
 #
-# Scoped to namespaces in the same environment, which is the one distinction
-# still worth making here: it keeps dev and prod apart at the packet level, as
-# docs/concepts/ingress.md says they are. Inside an environment there is
-# nothing left to be narrow about, because every connection is 15008 and the
-# port no longer says what the caller asked for. That specificity moves to an
-# Istio AuthorizationPolicy, which names a service account rather than an
-# address. See docs/concepts/istio.md.
+# Scoped to namespaces in the same environment, which keeps dev and prod apart
+# at the packet level, as docs/concepts/ingress.md says they are. Any port:
+# which pod talks to which inside an environment is for a project to narrow
+# with policies of its own, beside its manifests.
 #
 # No rule for gateway-system here: gateway-system carries no `env` label, so
 # its traffic is opened separately, by `allow-gateways` below.
-#
-# Out of the mesh (`mesh: false`), connections arrive on the application's own
-# ports instead, so the same rule is rendered without the port and under a
-# name that says so. Without that, leaving the mesh drops every connection
-# between the environment's pods, on ports this policy never mentions.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: {{ ternary "allow-hbone" "allow-environment" $mesh }}
+  name: allow-environment
   namespace: {{ $ns }}
   annotations:
     argocd.argoproj.io/sync-wave: "1"
@@ -146,23 +137,13 @@ spec:
         - namespaceSelector:
             matchLabels:
               env: {{ $env.name }}
-      {{- if $mesh }}
-      ports:
-        - protocol: TCP
-          port: 15008
-      {{- end }}
   egress:
     - to:
         - namespaceSelector:
             matchLabels:
               env: {{ $env.name }}
-      {{- if $mesh }}
-      ports:
-        - protocol: TCP
-          port: 15008
-      {{- end }}
 ---
-# The Gateways live in gateway-system, which `allow-hbone` above does not
+# The Gateways live in gateway-system, which `allow-environment` above does not
 # select, so without this every HTTPRoute into the namespace is
 # `Accepted: True` and its backend answers 503. Opened here rather than in each
 # project because every project with a route needs exactly this rule, and
@@ -170,12 +151,9 @@ spec:
 #
 # Only the Gateways that route to this environment, from `defaults.gateways`.
 # A prod or public Gateway can never route into a dev namespace, and letting
-# its packets in would undo the separation `allow-hbone` draws. Exposure is
-# still decided by the HTTPRoute; this only lets the route be answered.
-#
-# Out of the mesh, the Gateway connects to the backend's own port rather than
-# to 15008, so the port is left open; which backend and port are reachable is
-# still decided by the HTTPRoute.
+# its packets in would undo the separation `allow-environment` draws. Any
+# port: which backend and port are reachable is decided by the HTTPRoute; this
+# only lets the route be answered.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -200,9 +178,4 @@ spec:
                 operator: In
                 values:
                   {{- toYaml (index $.Values.defaults.gateways $env.name) | nindent 18 }}
-      {{- if $mesh }}
-      ports:
-        - protocol: TCP
-          port: 15008
-      {{- end }}
 {{- end }}

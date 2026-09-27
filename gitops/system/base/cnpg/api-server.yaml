@@ -1,9 +1,7 @@
 ---
 # Every pod CNPG creates for a database reads its Cluster from the API server:
 # the instances, and the initdb and join jobs before them. The default-deny
-# every project namespace gets drops that, and in the mesh it surfaces as
-# `TLS handshake timeout` rather than a refused connection, because ztunnel
-# accepts inside the pod before the drop.
+# every project namespace gets drops that.
 #
 # A Cilium policy rather than a NetworkPolicy, because the API server runs on
 # the nodes' host network, which only Cilium's `kube-apiserver` entity names.
