@@ -46,9 +46,9 @@ Per environment, in a namespace named `project-<name>-<environment>`:
 
 | Object | What it does |
 | --- | --- |
-| `Namespace` | Labelled `env`, `tier: applications`, a Pod Security level, and into the mesh |
+| `Namespace` | Labelled `env`, `tier: applications` and a Pod Security level |
 | `ResourceQuota` | Caps cpu, memory, storage and PVCs |
-| `NetworkPolicy` ×4 | Denies everything, then allows DNS, metric scraping and mesh traffic |
+| `NetworkPolicy` ×6 | Denies everything, then allows DNS, metric scraping, the CloudNativePG operator, traffic within the environment, and the environment's Gateways |
 | `Application` | Deploys `sync` into the namespace |
 
 Plus one `AppProject` for the whole project, limiting it to the repositories
@@ -88,16 +88,16 @@ kubectl get ns project-<name>-prod -o jsonpath='{.metadata.labels}'
 them. There is no `LimitRange` filling them in. The error names the missing
 resource.
 
-**The namespace is in the mesh, and that changes what a `NetworkPolicy` can
-say.** Traffic between this namespace and any other pod arrives on port 15008
-under mutual TLS, not on the application's port, so a rule naming a port no
-longer distinguishes anything. Write access rules as an Istio
-`AuthorizationPolicy` instead, which can name a service account rather than an
-address. [Istio in ambient mode](../../concepts/istio.md) explains why.
+**Everything is denied, except inside the environment.** The chart's
+`default-deny` policy blocks all traffic in and out, and `allow-environment`
+then opens every port between namespaces of the same environment. So a dev API
+reaches its dev database with no policy of its own, and never a prod one. To
+narrow it further, a project writes its own `NetworkPolicy` beside its
+manifests.
 
 **The Gateways can already reach the workload; nothing routes to it yet.** The
-chart's `allow-gateways` policy lets in, on **port 15008**, the Gateways that
-serve the namespace's environment: `gw-internal-dev` for dev,
+chart's `allow-gateways` policy lets in the Gateways that serve the namespace's
+environment: `gw-internal-dev` for dev,
 `gw-internal-prod` and `gw-public` for prod. A workload is exposed by writing
 an `HTTPRoute` for it, and needs no `NetworkPolicy` of its own for that. See
 [Exposing a service](./exposing-a-service.md).
