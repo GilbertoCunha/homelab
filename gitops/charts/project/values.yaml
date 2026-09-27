@@ -16,6 +16,7 @@ name: ""
 #       path: deploy/prod
 #     quotas: {...}
 #     podSecurity: restricted
+#     mesh: true
 environments: []
 
 defaults:
@@ -44,6 +45,14 @@ defaults:
 
   # Applied to a namespace whose environment does not name its own.
   podSecurity: restricted
+
+  # Whether namespaces join the Istio ambient mesh, unless an environment sets
+  # its own `mesh`. Also decides whether the policies in
+  # templates/networkpolicy.yaml open HBONE port 15008 or the workloads' own
+  # ports, so the two can't disagree.
+  #
+  # Off for now, to measure load tests without ztunnel in the path.
+  mesh: false
 
   # Applied to an environment that does not name its own. There is deliberately
   # no LimitRange in this chart: naming requests and limits here is what makes

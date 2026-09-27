@@ -1,5 +1,6 @@
 {{- range $env := .Values.environments }}
 {{- $ns := include "project.namespace" (dict "root" $ "env" $env) }}
+{{- $mesh := eq (include "project.mesh" (dict "root" $ "env" $env)) "true" }}
 ---
 # Wave 1. Cilium runs in `default` enforcement, so a pod is unrestricted until
 # some policy selects it — and this one selects everything. From here the
@@ -121,10 +122,15 @@ spec:
 #
 # No rule for gateway-system here: gateway-system carries no `env` label, so
 # its traffic is opened separately, by `allow-gateways` below.
+#
+# Out of the mesh (`mesh: false`), connections arrive on the application's own
+# ports instead, so the same rule is rendered without the port and under a
+# name that says so. Without that, leaving the mesh drops every connection
+# between the environment's pods, on ports this policy never mentions.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: allow-hbone
+  name: {{ ternary "allow-hbone" "allow-environment" $mesh }}
   namespace: {{ $ns }}
   annotations:
     argocd.argoproj.io/sync-wave: "1"
@@ -140,17 +146,21 @@ spec:
         - namespaceSelector:
             matchLabels:
               env: {{ $env.name }}
+      {{- if $mesh }}
       ports:
         - protocol: TCP
           port: 15008
+      {{- end }}
   egress:
     - to:
         - namespaceSelector:
             matchLabels:
               env: {{ $env.name }}
+      {{- if $mesh }}
       ports:
         - protocol: TCP
           port: 15008
+      {{- end }}
 ---
 # The Gateways live in gateway-system, which `allow-hbone` above does not
 # select, so without this every HTTPRoute into the namespace is
@@ -162,6 +172,10 @@ spec:
 # A prod or public Gateway can never route into a dev namespace, and letting
 # its packets in would undo the separation `allow-hbone` draws. Exposure is
 # still decided by the HTTPRoute; this only lets the route be answered.
+#
+# Out of the mesh, the Gateway connects to the backend's own port rather than
+# to 15008, so the port is left open; which backend and port are reachable is
+# still decided by the HTTPRoute.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -186,7 +200,9 @@ spec:
                 operator: In
                 values:
                   {{- toYaml (index $.Values.defaults.gateways $env.name) | nindent 18 }}
+      {{- if $mesh }}
       ports:
         - protocol: TCP
           port: 15008
+      {{- end }}
 {{- end }}

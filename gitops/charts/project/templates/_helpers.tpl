@@ -41,6 +41,15 @@ storage: {{ $q.storage | default $d.storage | quote }}
 persistentvolumeclaims: {{ $q.persistentvolumeclaims | default $d.persistentvolumeclaims | quote }}
 {{- end -}}
 
+{{/*
+Whether an environment's namespace is in the mesh, as "true" or "false".
+`hasKey` rather than `default`: `default` treats an explicit `false` as unset
+and would put the environment back in the mesh.
+*/}}
+{{- define "project.mesh" -}}
+{{- if hasKey .env "mesh" -}}{{ .env.mesh }}{{- else -}}{{ .root.Values.defaults.mesh }}{{- end -}}
+{{- end -}}
+
 {{- define "project.labels" -}}
 app.kubernetes.io/managed-by: {{ .root.Release.Service }}
 app.kubernetes.io/part-of: {{ .root.Values.name }}
