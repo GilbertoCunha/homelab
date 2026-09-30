@@ -85,7 +85,7 @@ born with, and skipping it leaves `tofu plan` permanently dirty.
 kubectl -n kube-system get pods -l k8s-app=cilium -o wide
 ```
 
-One pod per node, eight in all, `Running` and `1/1`.
+One pod per node, `Running` and `1/1`.
 
 ```bash
 kubectl -n kube-system exec ds/cilium -- cilium-dbg status --brief

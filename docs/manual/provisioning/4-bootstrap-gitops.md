@@ -5,8 +5,8 @@ workloads reachable. After it, changing what runs in the cluster is a commit to
 this repo.
 
 Before you start, finish
-[Provision the Kubernetes cluster](./3-provision-cluster.md). All eight nodes must
-be `Ready`:
+[Provision the Kubernetes cluster](./3-provision-cluster.md). Every node must be
+`Ready`:
 
 ```bash
 export KUBECONFIG=$PWD/kubeconfig

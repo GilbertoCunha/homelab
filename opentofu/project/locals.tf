@@ -1,13 +1,12 @@
-# The one place a node is described. Everything else derives from this map, so
-# adding a worker means adding a line here and nothing else.
+# The one place a node is described. Everything else in OpenTofu derives from
+# this map, so adding a worker means changing one count here.
 #
 # Three pools: control planes, system nodes for the cluster's own components,
 # and workers for applications. docs/concepts/node-pools.md explains the split.
 #
-# Sizing, against a 6-core/12-thread host with 125 GiB of usable memory:
-#   22 vCPU total is 1.8:1 overcommit, which idles comfortably.
-#   88 GiB allocated leaves roughly 37 GiB for the host, Headscale and Caddy.
-# Disks are qcow2 and thin, so the 1 TiB below costs far less until used.
+# The sizes below are copied into the table in docs/concepts/node-pools.md,
+# with the totals against the host. Update it in the same commit.
+# Disks are qcow2 and thin, so they cost far less than their size until used.
 # `data_disk_gb` is the second disk Talos turns into the local-path-provisioner
 # user volume, so a persistent volume never shares a partition with container
 # images. Control planes run no workloads and get none.
