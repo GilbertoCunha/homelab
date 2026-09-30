@@ -163,6 +163,12 @@ Nothing writes state to this repo.
 - **A chart's own resource beats a hand-written copy.** If a chart templates the
   `HTTPRoute` you need, enable it in `values.yaml` rather than writing a second
   one; the hostname is then written once.
+- **A system component runs on the system nodes.** Every Deployment and
+  StatefulSet under `gitops/system/` gets the toleration and the
+  `nodeSelector` in [Node pools](docs/concepts/node-pools.md). A DaemonSet runs
+  everywhere, and Cilium's operator stays where Cilium puts it. An application
+  gets neither: the workers carry no taint. A system component also sets
+  resource requests, sized from what it actually uses.
 
 ## Git
 
