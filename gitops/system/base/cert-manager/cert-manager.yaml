@@ -33,6 +33,23 @@ spec:
         # nothing about grncunha.com, and every challenge times out.
         dns01RecursiveNameservers: 1.1.1.1:53,9.9.9.9:53
         dns01RecursiveNameserversOnly: true
+
+        # Requests only, sized from `kubectl top` on 2026-09-30 with some
+        # headroom: 29Mi, 19Mi and 44Mi. Without them all three were BestEffort.
+        resources:
+          requests:
+            cpu: 10m
+            memory: 64Mi
+        webhook:
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+        cainjector:
+          resources:
+            requests:
+              cpu: 10m
+              memory: 64Mi
   syncPolicy:
     automated:
       prune: true

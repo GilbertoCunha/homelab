@@ -46,6 +46,11 @@ configs:
     policy.default: role:readonly
 
 server:
+  # See the note on requests at the end of this file.
+  resources:
+    requests:
+      cpu: 10m
+      memory: 64Mi
   # The chart owns this HTTPRoute, so the hostname is not written twice.
   # Attaching here is only permitted because the argocd namespace carries
   # `env: prod`; see gitops/system/base/argocd/namespace.yaml.
@@ -83,3 +88,45 @@ server:
         namespace: gateway-system
     hostnames:
       - argocd.k8s.homelab.grncunha.com
+
+# Requests only, sized from `kubectl top` on 2026-09-30 with some headroom.
+# Without them every pod here was BestEffort: first to be evicted under memory
+# pressure, and invisible to the scheduler when it decides what fits.
+# No limits, so a sync that needs a burst of CPU or memory still gets it.
+controller:
+  # Holds the whole cluster's state in memory; used 340Mi.
+  resources:
+    requests:
+      cpu: 50m
+      memory: 512Mi
+
+repoServer:
+  # Idles at 40Mi, but renders every chart and kustomization on a sync.
+  resources:
+    requests:
+      cpu: 20m
+      memory: 128Mi
+
+applicationSet:
+  resources:
+    requests:
+      cpu: 10m
+      memory: 48Mi
+
+dex:
+  resources:
+    requests:
+      cpu: 5m
+      memory: 32Mi
+
+notifications:
+  resources:
+    requests:
+      cpu: 5m
+      memory: 48Mi
+
+redis:
+  resources:
+    requests:
+      cpu: 10m
+      memory: 32Mi

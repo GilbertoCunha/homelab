@@ -34,6 +34,11 @@ spec:
           - name: sops-age-key
             mountPath: /etc/sops-age
             secretName: sops-age-key
+        # Sized from `kubectl top` on 2026-09-30: 16Mi.
+        resources:
+          requests:
+            cpu: 5m
+            memory: 32Mi
         extraEnv:
           - name: SOPS_AGE_KEY_FILE
             value: /etc/sops-age/keys.txt

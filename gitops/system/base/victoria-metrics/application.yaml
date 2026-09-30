@@ -28,6 +28,12 @@ spec:
           # Without this the chart names everything after the release and the
           # chart both, giving `victoria-metrics-victoria-metrics-single-server`.
           fullnameOverride: victoria-metrics
+          # The busiest system component. Sized from `kubectl top` on
+          # 2026-09-30: 80m and 720Mi.
+          resources:
+            requests:
+              cpu: 100m
+              memory: 1Gi
           # The volume keeps the chart's 16Gi default. No storageClassName:
           # local-path is the default class.
           extraArgs:

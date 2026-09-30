@@ -34,6 +34,12 @@ spec:
             - --config
             - /etc/cloudflared/config/config.yaml
             - run
+          # Sized from `kubectl top` on 2026-09-30: 16Mi. Without a request
+          # the whole public path was BestEffort, first to go under pressure.
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
           livenessProbe:
             httpGet:
               path: /ready

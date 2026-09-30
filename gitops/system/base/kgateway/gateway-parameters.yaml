@@ -17,6 +17,12 @@ spec:
       externalTrafficPolicy: Cluster
     deployment:
       replicas: 2
+    # Sized from `kubectl top` on 2026-09-30: 22Mi per replica.
+    envoyContainer:
+      resources:
+        requests:
+          cpu: 10m
+          memory: 64Mi
     serviceOverlay:
       metadata:
         annotations:
@@ -39,6 +45,13 @@ spec:
       externalTrafficPolicy: Cluster
     deployment:
       replicas: 2
+    # Sized from `kubectl top` on 2026-09-30: 150Mi per replica, far more
+    # than prod's, because load tests run against dev.
+    envoyContainer:
+      resources:
+        requests:
+          cpu: 10m
+          memory: 192Mi
     serviceOverlay:
       metadata:
         annotations:
@@ -60,3 +73,9 @@ spec:
       type: ClusterIP
     deployment:
       replicas: 2
+    # Sized from `kubectl top` on 2026-09-30: 20Mi per replica.
+    envoyContainer:
+      resources:
+        requests:
+          cpu: 10m
+          memory: 64Mi

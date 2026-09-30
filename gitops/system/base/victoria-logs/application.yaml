@@ -37,6 +37,11 @@ spec:
             prometheus.io/scrape: "true"
             prometheus.io/port: "9428"
           retentionPeriod: 7d
+          # Sized from `kubectl top` on 2026-09-30: 148Mi.
+          resources:
+            requests:
+              cpu: 20m
+              memory: 256Mi
           persistentVolume:
             # No storageClassName anywhere: local-path is the default class.
             size: 10Gi

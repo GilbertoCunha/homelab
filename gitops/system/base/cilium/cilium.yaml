@@ -115,10 +115,27 @@ spec:
           enabled: true
 
         hubble:
+          # Requests sized from `kubectl top` on 2026-09-30: relay 15Mi, the
+          # UI's backend 40m and 106Mi. The agent and operator keep the chart's
+          # own settings; they run the network and are left alone.
           relay:
             enabled: true
+            resources:
+              requests:
+                cpu: 5m
+                memory: 32Mi
           ui:
             enabled: true
+            backend:
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 128Mi
+            frontend:
+              resources:
+                requests:
+                  cpu: 5m
+                  memory: 16Mi
           # Certificates are minted in the cluster by a job. The chart's default
           # is to mint them while rendering, which would put a fresh private key
           # in the machine configuration on every plan: a secret in the state
