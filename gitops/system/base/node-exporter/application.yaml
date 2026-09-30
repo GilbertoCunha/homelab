@@ -1,0 +1,54 @@
+---
+# Host-level metrics: CPU steal, pressure, filesystems, disks. cAdvisor sees
+# containers and kube-state-metrics sees objects, so before this nothing could
+# say whether a node's data disk was filling up, or whether its vCPUs were
+# waiting on the host.
+#
+# Wave 1: it needs only the API server.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: node-exporter
+  namespace: argocd
+  labels:
+    tier: system
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  project: default
+  destination:
+    namespace: node-exporter
+    server: https://kubernetes.default.svc
+  source:
+    chart: prometheus-node-exporter
+    repoURL: https://prometheus-community.github.io/helm-charts
+    targetRevision: 4.59.0
+    # Inlined for the same reason as victoria-logs; see that application.yaml.
+    helm:
+      valuesObject:
+        # The chart annotates its Service for scraping by default, which the
+        # `kubernetes-service-endpoints` job would pick up. That job does not
+        # record which node a target is on, and on a node exporter that is the
+        # one label every query needs. So the Service is left alone and the pod
+        # is annotated instead: the `kubernetes-pods` job in
+        # gitops/system/base/victoria-metrics/application.yaml adds `node`.
+        prometheusScrape: false
+        podAnnotations:
+          prometheus.io/scrape: "true"
+          prometheus.io/port: "9100"
+
+        # The chart's default tolerations already accept every NoSchedule
+        # taint, so this runs on the control planes too. Nothing to set.
+
+        resources:
+          requests:
+            cpu: 10m
+            memory: 32Mi
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - ServerSideApply=true
+    # No CreateNamespace: namespace.yaml declares it, because it carries a
+    # label an implicitly created namespace would not have.

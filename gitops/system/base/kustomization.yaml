@@ -15,6 +15,7 @@ resources:
   - kube-state-metrics
   - local-path-provisioner
   - metrics-server
+  - node-exporter
   - sops
   - victoria-logs
   - victoria-metrics
