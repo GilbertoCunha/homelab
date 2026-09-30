@@ -1,0 +1,101 @@
+---
+# Profile storage, and the Alloy that fills it. A single server, for the same
+# reason VictoriaMetrics is one: one host does not produce enough to shard.
+#
+# Alloy pulls pprof from every pod that asks for it with annotations, the way
+# VictoriaMetrics pulls /metrics:
+#
+#   profiles.grafana.com/cpu.scrape: "true"
+#   profiles.grafana.com/cpu.port: "6060"
+#
+# and the same pair for `memory`, `goroutine`, `block` and `mutex`. The config
+# doing that ships with the chart, as the `alloy-config-pyroscope` ConfigMap.
+#
+# Wave 1: it claims a volume, so the storage class in wave 0 has to exist first.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: pyroscope
+  namespace: argocd
+  labels:
+    tier: system
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  destination:
+    namespace: pyroscope
+    server: https://kubernetes.default.svc
+  project: default
+  source:
+    chart: pyroscope
+    repoURL: https://grafana.github.io/helm-charts
+    targetRevision: 2.3.1
+    # Inlined for the same reason as victoria-logs; see that application.yaml.
+    helm:
+      valuesObject:
+        pyroscope:
+          extraArgs:
+            # The chart's default is debug.
+            log.level: info
+            # Written down rather than left at the binary's 31d. Profiles are
+            # read around a load test, soon after it runs.
+            retention-period: 14d
+          # Pyroscope exports its own metrics. The discovery job in
+          # gitops/system/base/victoria-metrics/application.yaml scrapes
+          # whatever carries these.
+          podAnnotations:
+            prometheus.io/scrape: "true"
+            prometheus.io/port: "4040"
+          # On the system nodes; see docs/concepts/node-pools.md.
+          tolerations:
+            - key: homelab.grncunha.com/pool
+              operator: Equal
+              value: system
+              effect: NoSchedule
+          nodeSelector:
+            homelab.grncunha.com/pool: system
+          # A first guess, set on 2026-09-30 before it ever ran. Resize from
+          # `kubectl top` once it has held a few days of profiles.
+          resources:
+            requests:
+              cpu: 50m
+              memory: 256Mi
+          # Off by default, which keeps profiles in the pod and loses them on
+          # restart. With no object storage configured, Pyroscope writes to
+          # the filesystem under /data, which is this volume. No
+          # storageClassName: local-path is the default class.
+          persistence:
+            enabled: true
+            size: 10Gi
+
+        alloy:
+          controller:
+            # On the system nodes; see docs/concepts/node-pools.md.
+            tolerations:
+              - key: homelab.grncunha.com/pool
+                operator: Equal
+                value: system
+                effect: NoSchedule
+            nodeSelector:
+              homelab.grncunha.com/pool: system
+          # A first guess, as above.
+          alloy:
+            resources:
+              requests:
+                cpu: 20m
+                memory: 128Mi
+          configReloader:
+            resources:
+              requests:
+                cpu: 5m
+                memory: 16Mi
+  syncPolicy:
+    automated:
+      # Prune resources during auto-syncing (default is false)
+      prune: true
+      # Sync the app in part when resources are changed
+      # only in the target Kubernetes cluster
+      # but not in the git source (default is false).
+      selfHeal: true
+    # No CreateNamespace: namespace.yaml declares it, and says why it carries
+    # no labels.

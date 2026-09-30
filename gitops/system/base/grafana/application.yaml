@@ -125,6 +125,15 @@ spec:
                 access: proxy
                 editable: true
 
+              - name: pyroscope
+                # Profiles, drawn as flame graphs. Built into Grafana, so no
+                # plugin above.
+                type: grafana-pyroscope-datasource
+                orgId: 1
+                url: http://pyroscope.pyroscope.svc.cluster.local:4040
+                access: proxy
+                editable: true
+
         dashboardProviders:
           dashboardproviders.yaml:
             apiVersion: 1

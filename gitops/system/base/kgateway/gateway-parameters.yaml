@@ -59,7 +59,8 @@ spec:
     # replica, far more than prod's, because load tests run against dev. The
     # CPU request is what matters: it sets Envoy's share when a system node is
     # saturated, which it was, and at 10m Envoy got no more than
-    # VictoriaMetrics did.
+    # VictoriaMetrics did. Half a CPU, not the full 1.2: a full one per
+    # replica left the system pool too little to schedule anything else.
     podTemplate:
       tolerations:
         - key: homelab.grncunha.com/pool
@@ -71,7 +72,7 @@ spec:
     envoyContainer:
       resources:
         requests:
-          cpu: "1"
+          cpu: 500m
           memory: 512Mi
     serviceOverlay:
       metadata:

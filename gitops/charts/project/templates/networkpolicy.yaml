@@ -72,6 +72,28 @@ spec:
             matchLabels:
               kubernetes.io/metadata.name: victoria-metrics
 ---
+# Alloy pulls pprof profiles from pod addresses, from the pyroscope namespace,
+# and fails as silently as a metrics scrape does. A pod still has to ask for
+# it with annotations; see gitops/system/base/pyroscope/application.yaml.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-profiles-scrape
+  namespace: {{ $ns }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+  labels:
+    {{- include "project.labels" (dict "root" $) | nindent 4 }}
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: pyroscope
+---
 # The CloudNativePG operator reads each database pod's status on 8000 and
 # connects to PostgreSQL on 5432. It runs in cnpg-system, which
 # `allow-environment` below does not select, so the deny above drops it. The

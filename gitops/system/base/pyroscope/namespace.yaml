@@ -1,0 +1,9 @@
+---
+# No `env` label: nothing here attaches a route to a Gateway, and the label
+# would also let this namespace into every prod project through
+# `allow-environment`. Projects let Alloy in by name instead; see
+# gitops/charts/project/templates/networkpolicy.yaml.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: pyroscope

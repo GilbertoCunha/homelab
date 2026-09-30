@@ -16,6 +16,7 @@ resources:
   - local-path-provisioner
   - metrics-server
   - node-exporter
+  - pyroscope
   - sops
   - victoria-logs
   - victoria-metrics

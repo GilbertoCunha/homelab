@@ -1,12 +1,13 @@
 # Seeing what the cluster is doing
 
-Three questions, three tools. This explains which one answers which, how the
+Four questions, four tools. This explains which one answers which, how the
 data gets there, and — more usefully — what is not collected at all.
 
 | Question | Where to look |
 | --- | --- |
 | Is it up, how much is it using, and what did that look like an hour ago | Grafana, reading VictoriaMetrics |
 | What did it print | VictoriaLogs |
+| Which functions is it spending its CPU and memory in | Grafana, reading Pyroscope |
 | What is talking to what | Hubble, which is part of Cilium |
 
 Hubble is not covered here. It is a property of the CNI and lives in
@@ -14,8 +15,8 @@ Hubble is not covered here. It is a property of the CNI and lives in
 
 ## What is used
 
-**VictoriaMetrics** for metrics, **VictoriaLogs** for logs, both single-server,
-with **Grafana** in front of them.
+**VictoriaMetrics** for metrics, **VictoriaLogs** for logs, **Pyroscope** for
+profiles, all single-server, with **Grafana** in front of them.
 
 | Namespace | What runs there |
 | --- | --- |
@@ -23,7 +24,8 @@ with **Grafana** in front of them.
 | `victoria-logs` | The log store, and a collector on every node |
 | `kube-state-metrics` | Turns the API server's object list into metrics |
 | `node-exporter` | Host-level metrics from every node, control planes included |
-| `grafana` | The dashboards, reading both stores |
+| `pyroscope` | The profile store, and the Alloy that scrapes profiles into it |
+| `grafana` | The dashboards, reading all three stores |
 
 Chart versions and volume sizes live in each Application and are not repeated
 here.
@@ -92,6 +94,17 @@ rest opt in with a `podAnnotations` value beside their own manifest, which is
 the same rule the repo follows for everything else: a component owns what it
 declares about itself.
 
+Profiles work the same way, with their own annotations, one pair per profile
+type. Alloy, in the `pyroscope` namespace, fetches the pod's pprof endpoints:
+
+```yaml
+profiles.grafana.com/cpu.scrape: "true"
+profiles.grafana.com/cpu.port: "6060"
+```
+
+`memory`, `goroutine`, `block` and `mutex` take the same pair. Every project
+namespace lets the `pyroscope` namespace in, as it does `victoria-metrics`.
+
 Two jobs rather than one because charts disagree about where the annotation
 belongs. Pod annotations cover cert-manager, Envoy, Cilium's agent; Service
 annotations cover CoreDNS, `hubble-metrics` and kube-state-metrics. Neither job
@@ -131,15 +144,16 @@ It is in [Improvements](../improvements.md).
 | | Retention | Set where |
 | --- | --- | --- |
 | Logs | 7 days | Explicitly, in the Application |
+| Profiles | 14 days | Explicitly, in the Application |
 | Metrics | 1 month | Nowhere — it is the chart's default |
 
 The asymmetry is not deliberate, and the metrics figure is written down in no
 file, which is the part worth fixing.
 
-Both volumes come from `local-path`, so each lives on whichever system node its
+All three volumes come from `local-path`, so each lives on whichever system node its
 pod first landed on. Losing that node loses the history with it. That is an
 accepted trade for a homelab and is explained in
-[The cluster's storage](./storage.md); it is also the reason neither of these
+[The cluster's storage](./storage.md); it is also the reason none of these
 is a backup.
 
 ## Getting in

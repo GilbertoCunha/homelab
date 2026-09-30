@@ -49,7 +49,7 @@ one, and the pod would still land on a worker half the time.
 
 | Where | What |
 | --- | --- |
-| System nodes only | ArgoCD, cert-manager, cloudflared, the CloudNativePG operator, both external-dns instances, Grafana, kgateway and every gateway's Envoy, kube-state-metrics, local-path-provisioner, metrics-server, sops-secrets-operator, VictoriaLogs, VictoriaMetrics, Hubble relay and UI |
+| System nodes only | ArgoCD, cert-manager, cloudflared, the CloudNativePG operator, both external-dns instances, Grafana, kgateway and every gateway's Envoy, kube-state-metrics, local-path-provisioner, metrics-server, Pyroscope and its Alloy, sops-secrets-operator, VictoriaLogs, VictoriaMetrics, Hubble relay and UI |
 | Every node | Cilium's agent and its Envoy, node-exporter, the log collector |
 | Workers | Every application, and every database CloudNativePG creates for one |
 | Control planes or workers | Cilium's operator and CoreDNS. Their installers let them onto the control planes, not the system nodes, and they are left as installed |
