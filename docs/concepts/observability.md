@@ -22,6 +22,7 @@ with **Grafana** in front of them.
 | `victoria-metrics` | The metric store, and the scraper inside it |
 | `victoria-logs` | The log store, and a collector on every worker |
 | `kube-state-metrics` | Turns the API server's object list into metrics |
+| `node-exporter` | Host-level metrics from every node, control planes included |
 | `grafana` | The dashboards, reading both stores |
 
 Chart versions and volume sizes live in each Application and are not repeated
@@ -112,11 +113,6 @@ for traces or fan-out, not for this.
 The gaps matter more than the coverage, because nothing tells you they are
 there. A query simply returns nothing.
 
-**No node-level metrics.** There is no node-exporter, so `node_*` does not
-exist: no host disk usage, no filesystem pressure. cAdvisor gives per-container
-figures and `machine_*` gives capacity, but the question "is that worker's disk
-filling up" has no answer — which matters, because every volume is node-local.
-
 **No control-plane logs.** The collector is a DaemonSet, and `cp-1` to `cp-3`
 carry `node-role.kubernetes.io/control-plane:NoSchedule`, so it runs on the
 three workers and nowhere else. etcd, the API server, the scheduler and the
@@ -131,7 +127,7 @@ talosctl --nodes 10.10.10.11 logs -k kube-system/kube-apiserver-cp-1:kube-apiser
 
 `talosctl --nodes 10.10.10.11 containers -k` lists the ids.
 
-Both are in [Improvements](../improvements.md).
+It is in [Improvements](../improvements.md).
 
 ## How long it is kept
 
@@ -228,6 +224,7 @@ someone has been clicking.
 | Log storage | `gitops/system/base/victoria-logs/application.yaml` |
 | The log collector | `gitops/system/base/victoria-logs/collector.yaml` |
 | Object-state metrics | `gitops/system/base/kube-state-metrics/application.yaml` |
+| Host-level metrics | `gitops/system/base/node-exporter/application.yaml` |
 | Cilium and Hubble metrics, and their dashboards | `gitops/system/base/cilium/cilium.yaml` |
 | Grafana, its datasources, plugin and dashboards | `gitops/system/base/grafana/application.yaml` |
 | Grafana's admin login | `gitops/system/base/grafana/admin-credentials.sops.yaml` |

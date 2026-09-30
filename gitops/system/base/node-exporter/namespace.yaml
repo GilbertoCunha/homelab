@@ -1,0 +1,14 @@
+---
+# Declared here rather than left to the Application's `CreateNamespace`,
+# because the label below has to be on it before the DaemonSet is created.
+#
+# Wave 0 by default, which is ahead of the wave 1 Application.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: node-exporter
+  labels:
+    # node-exporter reads the host's /proc, /sys and root filesystem, and runs
+    # in the host's network and PID namespaces. Talos enforces `baseline` on any
+    # namespace that does not say otherwise, and baseline forbids all of that.
+    pod-security.kubernetes.io/enforce: privileged
