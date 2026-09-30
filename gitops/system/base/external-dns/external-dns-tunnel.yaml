@@ -71,6 +71,14 @@ spec:
           # a route reaching DNS and overwriting a hand-made record.
           - --exclude-domains=homelab.grncunha.com
 
+        # On the system nodes; see docs/concepts/node-pools.md.
+        tolerations:
+          - key: homelab.grncunha.com/pool
+            operator: Equal
+            value: system
+            effect: NoSchedule
+        nodeSelector:
+          homelab.grncunha.com/pool: system
         # Sized from `kubectl top` on 2026-09-30: 19Mi.
         resources:
           requests:
