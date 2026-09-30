@@ -37,10 +37,9 @@ is the likely way in.
 
 ## Node sizes and CPU weights are a first guess
 
-The pools were sized on 2026-09-30 from one afternoon of `kubectl top`, before
-node-exporter existed. The system nodes have 2 vCPU and 8 GB each, the workers
-6 vCPU, and the CPU weights are 200, 150 and 100. None of that has been checked
-against a busy host.
+The sizes and CPU weights in [Node pools](./concepts/node-pools.md) were set on
+2026-09-30 from one afternoon of `kubectl top`, before node-exporter existed.
+None of them has been checked against a busy host.
 
 Check the Node pools dashboard in Grafana after a few weeks of real use:
 
