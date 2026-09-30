@@ -26,14 +26,14 @@ the document or the manifests should change.
 `gitops/system/base/victoria-traces/` and `gitops/system/base/otel/` are empty
 directories: nothing is deployed, so there is nothing to give a volume to yet.
 
-## Control-plane logs are not collected
+## etcd and kubelet logs are not collected
 
-The log collector is a DaemonSet, and the control planes are tainted, so it runs
-on the three workers only. etcd, the API server, the scheduler and the
-controller manager are static pods on `cp-1` to `cp-3`, and none of their output
-reaches VictoriaLogs. `talosctl logs` is the only way to read them, which means
-the one place a cluster-wide failure shows up first is the one place there is no
-search.
+The log collector reads pod logs on every node. etcd and the kubelet are Talos
+services, not pods, so none of their output reaches VictoriaLogs.
+`talosctl logs` is the only way to read them, which means the one place a
+cluster-wide failure shows up first is the one place there is no search.
+Talos can send its service logs to a remote endpoint (`machine.logging`), which
+is the likely way in.
 
 ## Metric retention is written down nowhere
 

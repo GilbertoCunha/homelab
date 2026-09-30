@@ -20,7 +20,7 @@ with **Grafana** in front of them.
 | Namespace | What runs there |
 | --- | --- |
 | `victoria-metrics` | The metric store, and the scraper inside it |
-| `victoria-logs` | The log store, and a collector on every worker |
+| `victoria-logs` | The log store, and a collector on every node |
 | `kube-state-metrics` | Turns the API server's object list into metrics |
 | `node-exporter` | Host-level metrics from every node, control planes included |
 | `grafana` | The dashboards, reading both stores |
@@ -113,19 +113,16 @@ for traces or fan-out, not for this.
 The gaps matter more than the coverage, because nothing tells you they are
 there. A query simply returns nothing.
 
-**No control-plane logs.** The collector is a DaemonSet, and `cp-1` to `cp-3`
-carry `node-role.kubernetes.io/control-plane:NoSchedule`, so it runs on the
-three workers and nowhere else. etcd, the API server, the scheduler and the
-controller manager are static pods on the control planes, so **none of their
-logs reach VictoriaLogs**. Read those with `talosctl` instead, which takes a
-Talos service by name and a Kubernetes container by its full id:
+**No logs from Talos services.** The collector tolerates every taint, so it
+runs on every node and reads every pod's log, the API server, scheduler and
+controller manager included. etcd and the kubelet are not pods. They are Talos
+services, and **their logs never reach VictoriaLogs**. Read them with
+`talosctl` instead:
 
 ```bash
 talosctl --nodes 10.10.10.11 logs etcd
-talosctl --nodes 10.10.10.11 logs -k kube-system/kube-apiserver-cp-1:kube-apiserver
+talosctl --nodes 10.10.10.11 logs kubelet
 ```
-
-`talosctl --nodes 10.10.10.11 containers -k` lists the ids.
 
 It is in [Improvements](../improvements.md).
 
@@ -139,8 +136,8 @@ It is in [Improvements](../improvements.md).
 The asymmetry is not deliberate, and the metrics figure is written down in no
 file, which is the part worth fixing.
 
-Both volumes come from `local-path`, so each lives on whichever worker its pod
-first landed on. Losing that worker loses the history with it. That is an
+Both volumes come from `local-path`, so each lives on whichever system node its
+pod first landed on. Losing that node loses the history with it. That is an
 accepted trade for a homelab and is explained in
 [The cluster's storage](./storage.md); it is also the reason neither of these
 is a backup.
