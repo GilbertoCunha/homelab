@@ -34,6 +34,24 @@ spec:
         dns01RecursiveNameservers: 1.1.1.1:53,9.9.9.9:53
         dns01RecursiveNameserversOnly: true
 
+        # On the system nodes; see docs/concepts/node-pools.md. The chart
+        # merges the global nodeSelector into each component's, but has no
+        # global tolerations, so each component names its own.
+        global:
+          nodeSelector:
+            homelab.grncunha.com/pool: system
+        tolerations:
+          - key: homelab.grncunha.com/pool
+            operator: Equal
+            value: system
+            effect: NoSchedule
+        startupapicheck:
+          tolerations:
+            - key: homelab.grncunha.com/pool
+              operator: Equal
+              value: system
+              effect: NoSchedule
+
         # Requests only, sized from `kubectl top` on 2026-09-30 with some
         # headroom: 29Mi, 19Mi and 44Mi. Without them all three were BestEffort.
         resources:
@@ -41,11 +59,21 @@ spec:
             cpu: 10m
             memory: 64Mi
         webhook:
+          tolerations:
+            - key: homelab.grncunha.com/pool
+              operator: Equal
+              value: system
+              effect: NoSchedule
           resources:
             requests:
               cpu: 10m
               memory: 32Mi
         cainjector:
+          tolerations:
+            - key: homelab.grncunha.com/pool
+              operator: Equal
+              value: system
+              effect: NoSchedule
           resources:
             requests:
               cpu: 10m
