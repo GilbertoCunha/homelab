@@ -39,6 +39,11 @@ spec:
             - request.payload*
             - password
             - token
+        # Every node, whatever its taints: the control planes and the system
+        # nodes included. Before this it ran on the workers only, and the logs
+        # of etcd and the API server reached nothing.
+        tolerations:
+          - operator: Exists
         resources:
           limits:
             cpu: 100m
