@@ -28,9 +28,8 @@ What the plan should show:
 | Any `proxmox_virtual_environment_vm` replaced | Wrong. A resize never rebuilds a guest. Stop and read the diff |
 | Any `talos_machine_configuration_apply` changed | Something else changed too. Apply that on its own first |
 
-Update the sizes in [Networks and addresses](../../architecture/networks.md)
-and in [Provisioning the cluster](../provisioning/3-provision-cluster.md) to
-match.
+Update the sizes table in [Node pools](../../concepts/node-pools.md) in the
+same commit. It is the only place in the docs that repeats them.
 
 ## 2. Resizing one node
 
@@ -116,8 +115,9 @@ No changes. Your infrastructure matches the configuration.
 kubectl get nodes -o custom-columns=NAME:.metadata.name,CPU:.status.capacity.cpu,MEMORY:.status.capacity.memory
 ```
 
-Each node shows its new vCPU count, and its memory in KiB. 6 GiB shows as a
-little under `6291456Ki`, because the kernel keeps some for itself.
+Each node shows its new vCPU count, and its memory in KiB. Expect a little
+under the size you set, because the kernel keeps some for itself: a node given
+1 GiB shows just under `1048576Ki`.
 
 The Node pools dashboard in Grafana shows whether the new sizes are right:
 CPU steal and pressure per node, and how much of each pool is requested.
