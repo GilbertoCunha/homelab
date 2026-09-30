@@ -47,6 +47,17 @@ spec:
           # exists. Any dashboard still asking for that one will not bind.
           - victoriametrics-logs-datasource
 
+        grafana.ini:
+          plugins:
+            # Grafana ships Prometheus, Loki and other datasources as bundled
+            # plugins, and by default updates them from grafana.com at every
+            # start. The update unloads the plugin, then fails to delete it:
+            # the image's filesystem is read-only. The plugin stays unloaded
+            # until the next restart, and every dashboard reports its
+            # datasource as not found. Plugins then change with the image,
+            # which is what a pinned chart already promises.
+            preinstall_auto_update: false
+
         # Sized from `kubectl top` on 2026-09-30: 430Mi, and 75Mi for the
         # dashboard sidecar below.
         resources:
