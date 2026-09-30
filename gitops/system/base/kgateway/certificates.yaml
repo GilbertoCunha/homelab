@@ -16,6 +16,12 @@ spec:
   issuerRef:
     name: letsencrypt
     kind: ClusterIssuer
+  # ECDSA, not the RSA default: a TLS handshake costs Envoy about a tenth of
+  # the CPU, and clients connect by the thousand during a load test.
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+    rotationPolicy: Always
   dnsNames:
     - "*.k8s.homelab.grncunha.com"
 ---
@@ -31,5 +37,11 @@ spec:
   issuerRef:
     name: letsencrypt
     kind: ClusterIssuer
+  # ECDSA, not the RSA default: a TLS handshake costs Envoy about a tenth of
+  # the CPU, and clients connect by the thousand during a load test.
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+    rotationPolicy: Always
   dnsNames:
     - "*.dev.k8s.homelab.grncunha.com"

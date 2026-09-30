@@ -19,3 +19,8 @@ output "nodes" {
   description = "Node names mapped to their addresses."
   value       = local.node_ips
 }
+
+output "worker_installer_image" {
+  description = "The image workers install and upgrade from. It carries their kernel arguments; see image.tf."
+  value       = data.talos_image_factory_urls.workers.urls.installer
+}

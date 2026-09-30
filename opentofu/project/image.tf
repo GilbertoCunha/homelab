@@ -1,18 +1,38 @@
 # The Image Factory builds a Talos image carrying the extensions named here and
 # returns an id for it. Changing the extension list produces a new id, which is
 # what makes the image reproducible rather than something uploaded by hand.
+locals {
+  talos_extensions = [
+    # Lets Proxmox see the guest's address and shut it down cleanly.
+    "siderolabs/qemu-guest-agent",
+    # Not needed yet. Longhorn and most other CSI drivers require it, and
+    # adding an extension later costs a rolling upgrade of every node, so
+    # it is cheaper to carry it from the start.
+    "siderolabs/iscsi-tools",
+  ]
+}
+
 resource "talos_image_factory_schematic" "this" {
   schematic = yamlencode({
     customization = {
       systemExtensions = {
-        officialExtensions = [
-          # Lets Proxmox see the guest's address and shut it down cleanly.
-          "siderolabs/qemu-guest-agent",
-          # Not needed yet. Longhorn and most other CSI drivers require it, and
-          # adding an extension later costs a rolling upgrade of every node, so
-          # it is cheaper to carry it from the start.
-          "siderolabs/iscsi-tools",
-        ]
+        officialExtensions = local.talos_extensions
+      }
+    }
+  })
+}
+
+# Workers run without the kernel's CPU vulnerability mitigations; see
+# docs/concepts/node-pools.md for why only them. Kernel arguments are part of
+# the image: the nodes boot the command line baked into it, not one from the
+# machine configuration. `-pti` removes Talos' own `pti=on`, which would
+# otherwise keep one of them on.
+resource "talos_image_factory_schematic" "workers" {
+  schematic = yamlencode({
+    customization = {
+      extraKernelArgs = ["-pti", "mitigations=off"]
+      systemExtensions = {
+        officialExtensions = local.talos_extensions
       }
     }
   })
@@ -21,6 +41,13 @@ resource "talos_image_factory_schematic" "this" {
 data "talos_image_factory_urls" "this" {
   talos_version = var.talos_version
   schematic_id  = talos_image_factory_schematic.this.id
+  platform      = "nocloud"
+  architecture  = "amd64"
+}
+
+data "talos_image_factory_urls" "workers" {
+  talos_version = var.talos_version
+  schematic_id  = talos_image_factory_schematic.workers.id
   platform      = "nocloud"
   architecture  = "amd64"
 }

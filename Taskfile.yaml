@@ -171,6 +171,13 @@ tasks:
     cmds:
       - '{{.WITH_SECRETS}} "tofu destroy {{.CLI_ARGS}}"'
 
+  tofu:output:
+    desc: Prints an output, e.g. `task tofu:output -- -raw worker_installer_image`
+    dir: "{{.TOFU_DIR}}"
+    silent: true
+    cmds:
+      - '{{.WITH_SECRETS}} "tofu output {{.CLI_ARGS}}"'
+
   tofu:unlock:
     desc: Releases a stale state lock, e.g. `task tofu:unlock -- <lock id>`
     dir: "{{.TOFU_DIR}}"

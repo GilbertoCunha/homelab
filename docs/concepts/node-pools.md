@@ -140,3 +140,40 @@ Grafana. **CPU steal** is time a node's vCPUs were ready to run but the host ran
 another guest: the noisy-neighbour signal. Sustained steal above about 5% on a
 worker means the weights or the sizes need another look. Changing either is
 [Resizing a node](../manual/maintenance/resizing-a-node.md).
+
+## Workers run without CPU mitigations
+
+The kernel protects against CPU flaws such as Meltdown and Spectre by making
+every switch into the kernel more expensive. On this host's i7-8700 that cost is
+high, and it falls hardest on work that makes many small system calls: Envoy,
+Postgres, Redis.
+
+Only the workers turn the protections off, with `mitigations=off`. What they
+guard against is code on a node reading memory it should not, so each pool is
+weighed by what it holds and who can run code on it:
+
+| Pool | Mitigations | Why |
+| --- | --- | --- |
+| Control planes | On | etcd holds every Secret. Little is gained: nothing on them serves requests. |
+| System nodes | On | They hold the Gateways' TLS keys and ArgoCD's credentials, and run the internet-facing Envoy. |
+| Workers | Off | They run only this repo's own applications. |
+
+The arguments are part of the Talos image, not the machine configuration, so
+workers install from their own image; see `opentofu/project/image.tf`. A worker
+only picks up a change to them when it is upgraded, and it must be upgraded to
+that image:
+
+```bash
+talosctl --nodes 10.10.10.21 upgrade --image "$(task tofu:output -- -raw worker_installer_image)"
+```
+
+Upgrading a worker to the image the other pools use turns its mitigations back
+on. Check a node with:
+
+```bash
+talosctl --nodes 10.10.10.21 read /sys/devices/system/cpu/vulnerabilities/meltdown
+```
+
+```
+Vulnerable
+```

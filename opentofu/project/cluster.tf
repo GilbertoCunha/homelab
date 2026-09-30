@@ -108,6 +108,19 @@ locals {
     } if node.data_disk_gb > 0
   }
 
+  # Workers install from their own image, which carries their kernel arguments;
+  # see `image.tf`. Setting it here is what makes a `talosctl upgrade` or a
+  # reinstall keep them. A running node only picks it up on its next upgrade.
+  worker_patches = {
+    for name, node in local.workers : name => {
+      machine = {
+        install = {
+          image = data.talos_image_factory_urls.workers.urls.installer
+        }
+      }
+    }
+  }
+
   # Reserves the system nodes for the cluster's own components; see
   # docs/concepts/node-pools.md.
   #
@@ -193,6 +206,7 @@ resource "talos_machine_configuration_apply" "this" {
     each.value.machine_type == "controlplane" ? [yamlencode(local.cilium_patch)] : [],
     each.value.data_disk_gb > 0 ? [yamlencode(local.user_volume_patches[each.key])] : [],
     contains(keys(local.system_nodes), each.key) ? [yamlencode(local.system_pool_patches[each.key])] : [],
+    contains(keys(local.workers), each.key) ? [yamlencode(local.worker_patches[each.key])] : [],
   )
 
   depends_on = [module.talos_node]
