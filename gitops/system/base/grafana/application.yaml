@@ -54,6 +54,15 @@ spec:
             cpu: 20m
             memory: 512Mi
 
+        # On the system nodes; see docs/concepts/node-pools.md.
+        tolerations:
+          - key: homelab.grncunha.com/pool
+            operator: Equal
+            value: system
+            effect: NoSchedule
+        nodeSelector:
+          homelab.grncunha.com/pool: system
+
         podAnnotations:
           # Grafana exports its own metrics. The discovery job in
           # gitops/system/base/victoria-metrics/application.yaml scrapes
