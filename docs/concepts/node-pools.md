@@ -105,7 +105,7 @@ node/system-1 tainted
 To check every node's taints:
 
 ```bash
-kubectl get nodes -o custom-columns=NAME:.metadata.name,TAINTS:.spec.taints[*].key
+kubectl get nodes -o 'custom-columns=NAME:.metadata.name,TAINTS:.spec.taints[*].key'
 ```
 
 ```
