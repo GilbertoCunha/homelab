@@ -1,13 +1,21 @@
 # The one place a node is described. Everything else derives from this map, so
 # adding a worker means adding a line here and nothing else.
 #
+# Three pools: control planes, system nodes for the cluster's own components,
+# and workers for applications. docs/concepts/node-pools.md explains the split.
+#
 # Sizing, against a 6-core/12-thread host with 125 GiB of usable memory:
-#   18 vCPU total is 1.5:1 overcommit, which idles comfortably.
-#   72 GiB allocated leaves roughly 53 GiB for the host, Headscale and Caddy.
-# Disks are qcow2 and thin, so the 720 GiB below costs far less until used.
+#   22 vCPU total is 1.8:1 overcommit, which idles comfortably.
+#   88 GiB allocated leaves roughly 37 GiB for the host, Headscale and Caddy.
+# Disks are qcow2 and thin, so the 1 TiB below costs far less until used.
 # `data_disk_gb` is the second disk Talos turns into the local-path-provisioner
 # user volume, so a persistent volume never shares a partition with container
 # images. Control planes run no workloads and get none.
+#
+# `cpu_units` is the guest's CPU weight in Proxmox: when the host is busy, a
+# guest with a higher weight gets a larger share of it. Null leaves the guest
+# at the Proxmox default. Changing it reboots the guest, so an existing node's
+# weight is changed only when it is resized anyway.
 locals {
   control_planes = {
     for i in range(3) :
@@ -18,8 +26,35 @@ locals {
       memory_mb    = 4096
       disk_gb      = 40
       data_disk_gb = 0
+      cpu_units    = null
       machine_type = "controlplane"
     }
+  }
+
+  # Workers as far as Talos is concerned. What sets them apart is the label and
+  # taint in `system_pool`, which keep applications off them.
+  system_nodes = {
+    for i in range(2) :
+    "system-${i + 1}" => {
+      vm_id        = 131 + i
+      ip_cidr      = "10.10.10.${31 + i}/24"
+      cpu_cores    = 2
+      memory_mb    = 8192
+      disk_gb      = 40
+      data_disk_gb = 100
+      cpu_units    = 100
+      machine_type = "worker"
+    }
+  }
+
+  # The label system components select, and the taint that keeps everything
+  # else away. The key and value are repeated in every system component's
+  # tolerations and nodeSelector under gitops/system/, which cannot read them
+  # from here.
+  system_pool = {
+    key    = "homelab.grncunha.com/pool"
+    value  = "system"
+    effect = "NoSchedule"
   }
 
   workers = {
@@ -31,11 +66,12 @@ locals {
       memory_mb    = 20480
       disk_gb      = 100
       data_disk_gb = 100
+      cpu_units    = null
       machine_type = "worker"
     }
   }
 
-  nodes = merge(local.control_planes, local.workers)
+  nodes = merge(local.control_planes, local.system_nodes, local.workers)
 
   # Addresses without the prefix length, which is what talosctl and the
   # provider address nodes by.

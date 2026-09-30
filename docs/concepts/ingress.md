@@ -86,7 +86,7 @@ firewall change, no new mesh plumbing.
 
 BGP peering with the host would fail over in under a second instead of the
 fifteen or so a lease timeout takes. It also means running a routing daemon on
-the server for six guests on one bridge. Not worth it here.
+the server for a handful of guests on one bridge. Not worth it here.
 
 Two consequences worth knowing before you debug this at two in the morning:
 

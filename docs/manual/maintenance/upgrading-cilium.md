@@ -75,8 +75,8 @@ born with, and skipping it leaves `tofu plan` permanently dirty.
 
 | What the plan shows | What it means |
 | --- | --- |
-| 3 × `talos_machine_configuration_apply` updated | Correct. The workers do not carry the manifest. |
-| 6 × updated | The change touched `common_patch`, not just Cilium. Stop and read the diff. |
+| 3 × `talos_machine_configuration_apply` updated | Correct. The workers and system nodes do not carry the manifest. |
+| Every node updated | The change touched `common_patch`, not just Cilium. Stop and read the diff. |
 | Any `proxmox_virtual_environment_vm` replaced | Wrong. Nothing here should rebuild a guest. Stop. |
 
 ## Checking it worked
@@ -85,7 +85,7 @@ born with, and skipping it leaves `tofu plan` permanently dirty.
 kubectl -n kube-system get pods -l k8s-app=cilium -o wide
 ```
 
-Six pods, one per node, `Running` and `1/1`.
+One pod per node, eight in all, `Running` and `1/1`.
 
 ```bash
 kubectl -n kube-system exec ds/cilium -- cilium-dbg status --brief

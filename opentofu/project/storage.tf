@@ -1,5 +1,5 @@
-# The workers' data disk. `locals.tf` gives them the disk; this turns it into
-# something Kubernetes can hand out.
+# The data disk on workers and system nodes. `locals.tf` gives them the disk;
+# this turns it into something Kubernetes can hand out.
 #
 # The volume name and the path local-path-provisioner writes to are the same
 # fact, and ArgoCD owns the provisioner, so the name is read back out of its

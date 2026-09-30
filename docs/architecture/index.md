@@ -20,7 +20,7 @@ internet through NAT. To reach a guest, you join the mesh: the server advertises
 the guest subnet into it and forwards the traffic, so a guest needs no mesh
 client of its own.
 
-The guests are a six-node Kubernetes cluster running Talos Linux, built by
+The guests are an eight-node Kubernetes cluster running Talos Linux, built by
 OpenTofu.
 
 The Proxmox interface is served by Caddy at `proxmox.homelab.grncunha.com`, with
@@ -35,6 +35,7 @@ internet ──▶ 22, 80, 443 ──▶ homelab.grncunha.com
                               ├── tailscale client ──▶ mesh
                               └── proxmox ──▶ vmbr1 ──▶ guests (NAT, no public IP)
                                                         ├── cp-1..3      ──▶ etcd, kube-apiserver
+                                                        ├── system-1..2  ──▶ the cluster's own components
                                                         └── worker-1..3  ──▶ workloads
 
 internet ──▶ cloudflare edge ──▶ tunnel ──▶ cloudflared (in cluster)

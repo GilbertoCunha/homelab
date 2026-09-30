@@ -1,7 +1,7 @@
 # GitOps with ArgoCD
 
 Everything inside the cluster is described in `gitops/` and applied by ArgoCD.
-OpenTofu stops at the cluster's edge: it builds six Talos guests and installs a
+OpenTofu stops at the cluster's edge: it builds the Talos guests and installs a
 CNI, and nothing else. To run the bootstrap, see
 [Bootstrapping GitOps](../manual/provisioning/4-bootstrap-gitops.md).
 
