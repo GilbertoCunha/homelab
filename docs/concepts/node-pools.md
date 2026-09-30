@@ -43,6 +43,21 @@ A **taint** is a mark on a node that repels every pod that does not
 A toleration alone is not enough. It allows a system node without requiring
 one, and the pod would still land on a worker half the time.
 
+## What runs where
+
+| Where | What |
+| --- | --- |
+| System nodes only | ArgoCD, cert-manager, cloudflared, the CloudNativePG operator, both external-dns instances, Grafana, kgateway and every gateway's Envoy, kube-state-metrics, local-path-provisioner, metrics-server, sops-secrets-operator, VictoriaLogs, VictoriaMetrics, Hubble relay and UI |
+| Every node | Cilium's agent and its Envoy, node-exporter, the log collector |
+| Workers | Every application, and every database CloudNativePG creates for one |
+| Control planes or workers | Cilium's operator and CoreDNS. Their installers let them onto the control planes, not the system nodes, and they are left as installed |
+
+The gateways and cloudflared count as system components. They are the way into
+the cluster, so an application's load cannot starve them.
+
+A new system component needs both settings below. Without them it lands on a
+worker, and nothing warns you.
+
 ## The label and the taint
 
 Both use the same key and value:
