@@ -50,6 +50,29 @@ A pod with a persistent volume on this node cannot move, because its volume
 cannot. It stays `Pending` until the node is back. See
 [The cluster's storage](../../concepts/storage.md).
 
+**The drain retries forever on a database.** A CloudNativePG database with one
+instance has a PodDisruptionBudget allowing no evictions, so the drain prints
+this every 5 seconds:
+
+```
+error when evicting pods/"url-shortener-db-1" -n "project-url-shortener-prod" (will retry after 5s): Cannot evict pod as it would violate the pod's disruption budget.
+```
+
+The database cannot leave this node anyway, because its volume cannot. Stop the
+drain with Ctrl-C and run it again with `--disable-eviction`, which deletes pods
+directly instead of evicting them, so the budget no longer applies:
+
+```bash
+kubectl drain worker-1 --ignore-daemonsets --delete-emptydir-data --disable-eviction
+```
+
+```
+node/worker-1 drained
+```
+
+The database is down until the node is back and uncordoned. Its data stays on
+its volume.
+
 **A control plane:** check that etcd has all three members before taking one
 away.
 
