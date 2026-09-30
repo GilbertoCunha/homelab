@@ -1,11 +1,11 @@
 # Manual 3 - Provision the Kubernetes cluster
 
-This describes how to build the Kubernetes cluster with OpenTofu. It creates six
+This describes how to build the Kubernetes cluster with OpenTofu. It creates eight
 Talos Linux guests on Proxmox and hands you a working `kubectl`.
 
 Before you start, finish [Configure the server](./2-configure-server.md). Your
 own device must be on the mesh, because Proxmox is only reachable there, **and it
-must be accepting subnet routes**, because the six guests are only reachable
+must be accepting subnet routes**, because the guests are only reachable
 through the route the server advertises:
 
 ```bash
@@ -26,7 +26,12 @@ cannot be automated.
 | Role | Count | vCPU | RAM | Disk | Addresses |
 | --- | --- | --- | --- | --- | --- |
 | Control plane | 3 | 2 | 4 GB | 40 GB | `10.10.10.11`-`.13` |
-| Worker | 3 | 4 | 20 GB | 100 GB | `10.10.10.21`-`.23` |
+| System | 2 | 2 | 8 GB | 40 GB + 100 GB | `10.10.10.31`-`.32` |
+| Worker | 3 | 4 | 20 GB | 100 GB + 100 GB | `10.10.10.21`-`.23` |
+
+System nodes run the cluster's own components, and workers run applications.
+[Node pools](../../concepts/node-pools.md) explains the split. The second disk
+holds persistent volumes; see step 8.
 
 The Kubernetes API answers on `10.10.10.10`, a virtual address the three control
 planes share. Talos moves it to a healthy node on its own, so there is no load
@@ -198,7 +203,7 @@ task tofu:init
 task tofu:plan
 ```
 
-The plan should create six guests, one image download, and the Talos
+The plan should create eight guests, one image download, and the Talos
 configuration. Nothing else.
 
 ```bash
@@ -209,7 +214,7 @@ This takes several minutes and does a lot:
 
 1. The Talos Image Factory builds an image with the guest agent and iSCSI tools.
 2. Proxmox downloads it.
-3. Six guests boot that image and reach maintenance mode, each with the static
+3. Eight guests boot that image and reach maintenance mode, each with the static
    address given to it by a cloud-init drive. **There is no DHCP on the guest
    bridge**, which is why the drive exists.
 4. OpenTofu applies each machine configuration. Talos installs itself to disk.
@@ -235,7 +240,7 @@ Both files are ignored by git.
 kubectl get nodes -o wide
 ```
 
-You should see six nodes, all `Ready`, all running `v1.36.2`, with the addresses
+You should see eight nodes, all `Ready`, all running `v1.36.2`, with the addresses
 from the table at the top.
 
 ```bash
@@ -270,7 +275,7 @@ A route on `utun`. If the server side is right and this prints nothing, run
 
 ## 8. Storage
 
-Each worker gets a second disk, which Talos claims as a user volume. Check one:
+Each worker and system node gets a second disk, which Talos claims as a user volume. Check one:
 
 ```bash
 talosctl --nodes 10.10.10.21 get uservolumestatus
@@ -328,7 +333,7 @@ pvesh get /storage/local
 `images` and `snippets` should both be listed.
 
 **`talos_machine_configuration_apply` times out on every node at once**, with
-`dial tcp 10.10.10.x:50000: i/o timeout` for all six. The guests are fine; your
+`dial tcp 10.10.10.x:50000: i/o timeout` for all of them. The guests are fine; your
 device has no route to them. Check the client half:
 
 ```bash
@@ -349,7 +354,7 @@ tailscale status --json | grep -A3 AllowedIPs
   Fix `acl.hujson` and re-apply the `headscale` role.
 
 Either way, apply again afterwards. The run hangs for several minutes before
-failing, because each of the six retries the connection until it gives up.
+failing, because each guest retries the connection until it gives up.
 [The mesh network](../../concepts/mesh.md) has the full path.
 
 **`talos_machine_configuration_apply` times out on one node.** That guest is

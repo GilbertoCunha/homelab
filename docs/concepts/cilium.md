@@ -18,7 +18,7 @@ Being honest about the reasons, because they are not the usual ones:
 
 | Reason | Does it apply here? |
 | --- | --- |
-| Faster datapath, less iptables overhead | **No.** All six nodes are guests on one host, on one bridge. There is no network to speed up. |
+| Faster datapath, less iptables overhead | **No.** All the nodes are guests on one host, on one bridge. There is no network to speed up. |
 | NetworkPolicy that actually works | Yes. |
 | Hubble: seeing what talks to what | Yes, and it is the strongest reason on a homelab. |
 

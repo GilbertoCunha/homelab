@@ -177,7 +177,7 @@ install is correct, not a fault.
 
 | Command | Good result |
 | --- | --- |
-| `qm list` | Six guests, `cp-1` to `cp-3` and `worker-1` to `worker-3`, all `running` |
+| `qm list` | Eight guests, `cp-1` to `cp-3`, `system-1` to `system-2` and `worker-1` to `worker-3`, all `running` |
 | `pvesh get /storage/local` | Content types include `images` and `snippets` |
 | `pveum user list` | `opentofu@pve` present |
 | `pveum user token list opentofu@pve` | One token, named `tofu` |
@@ -260,12 +260,12 @@ Talos has no SSH and no shell. `talosctl` is the only way in.
 
 | Command | Good result |
 | --- | --- |
-| `kubectl get nodes -o wide` | Six nodes, all `Ready`, all `v1.36.2` |
+| `kubectl get nodes -o wide` | Eight nodes, all `Ready`, all `v1.36.2` |
 | `kubectl get pods -A` | Everything `Running` or `Completed` |
 | `talosctl --nodes 10.10.10.11 health` | Every check passes |
 | `talosctl --nodes 10.10.10.11 service etcd status` | `Running` and healthy |
 | `talosctl --nodes 10.10.10.11 dmesg` | Kernel and Talos logs for one node |
-| `talosctl --nodes 10.10.10.11 get members` | All six nodes known to the cluster |
+| `talosctl --nodes 10.10.10.11 get members` | All eight nodes known to the cluster |
 | `talosctl --nodes 10.10.10.11 get addresses` | Includes `10.10.10.10` on whichever node holds the virtual IP |
 
 | Address | What it is |
@@ -273,6 +273,7 @@ Talos has no SSH and no shell. `talosctl` is the only way in.
 | `10.10.10.10` | The Kubernetes API. Virtual, moves between control planes |
 | `10.10.10.11`-`.13` | `cp-1` to `cp-3` |
 | `10.10.10.21`-`.23` | `worker-1` to `worker-3` |
+| `10.10.10.31`-`.32` | `system-1` to `system-2` |
 | `10.10.10.200` | `gw-internal-prod`, every prod workload on the mesh |
 | `10.10.10.201` | `gw-internal-dev`, every dev workload on the mesh |
 
@@ -286,7 +287,7 @@ as well. See [The cluster's networking](./concepts/cilium.md).
 
 | Command | Good result |
 | --- | --- |
-| `kubectl -n kube-system get pods -l k8s-app=cilium` | Six pods, `Running`, `1/1` |
+| `kubectl -n kube-system get pods -l k8s-app=cilium` | Eight pods, one per node, `Running`, `1/1` |
 | `kubectl -n kube-system exec ds/cilium -- cilium-dbg status --brief` | `OK` |
 | `kubectl -n kube-system get daemonset cilium -o jsonpath='{.spec.template.spec.containers[0].image}'` | The version pinned in `gitops/system/base/cilium/cilium.yaml` |
 | `kubectl -n kube-system get pods -l k8s-app=kube-proxy` | **No resources found.** There is no kube-proxy, on purpose |

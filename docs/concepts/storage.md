@@ -6,9 +6,10 @@ in the cluster stayed `Pending` forever, and the pod behind it never scheduled.
 ## What is used
 
 **Rancher's local-path-provisioner**, as the cluster's default storage class,
-writing into a **Talos user volume** on a second disk on each worker.
+writing into a **Talos user volume** on a second disk on each worker and
+system node.
 
-A volume is a directory on one worker. There is no replication, no network
+A volume is a directory on one node. There is no replication, no network
 storage and no CSI driver.
 
 ## Why a second disk
@@ -19,7 +20,8 @@ Persistent volumes could live there, but then a workload filling its volume
 would also stop the node pulling images, and `talosctl reset` would take the
 data with it.
 
-So each worker gets a second, empty disk. OpenTofu attaches it
+So each worker and system node gets a second, empty disk. Control planes run
+no workloads and get none. OpenTofu attaches it
 (`opentofu/modules/talos-node/main.tf`) and Talos claims it as a user volume
 (`opentofu/project/cluster.tf`):
 
@@ -56,12 +58,12 @@ last element of it back as the volume's name.
 ## What a volume costs you
 
 The class binds with `WaitForFirstConsumer`: nothing is created until a pod is
-scheduled, and the volume is then created on whichever worker that pod landed
+scheduled, and the volume is then created on whichever node that pod landed
 on. From that moment the pod is pinned there. It cannot move, and if that
-worker is lost, so is the volume.
+node is lost, so is the volume.
 
 That is acceptable here because every node is a guest on one host: losing the
-host loses all three workers anyway, so replicating between them buys less than
+host loses every node anyway, so replicating between them buys less than
 it looks. It stops being acceptable as soon as something in the cluster holds
 data that is not cheap to lose. Replicated storage is in the
 [Backlog](../backlog.md).

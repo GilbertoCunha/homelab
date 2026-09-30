@@ -78,17 +78,17 @@ locals {
     }
   }
 
-  # The workers' second disk, claimed as a user volume. Talos mounts a user
-  # volume at /var/mnt/<name> and propagates that mount into the kubelet
-  # container, which is the whole reason for doing it this way: a plain
-  # directory under /var would need a `machine.kubelet.extraMounts` bind mount
-  # before a hostPath pod could see it. local-path-provisioner writes here; see
-  # docs/concepts/storage.md.
+  # Every node with a second disk, which is every node but the control planes,
+  # claims it as a user volume. Talos mounts a user volume at /var/mnt/<name>
+  # and propagates that mount into the kubelet container, which is the whole
+  # reason for doing it this way: a plain directory under /var would need a
+  # `machine.kubelet.extraMounts` bind mount before a hostPath pod could see
+  # it. local-path-provisioner writes here; see docs/concepts/storage.md.
   #
   # `!system_disk` matches the only other disk the guest has. No maxSize, so
   # the volume grows to fill it.
   user_volume_patches = {
-    for name, node in local.workers : name => {
+    for name, node in local.nodes : name => {
       apiVersion = "v1alpha1"
       kind       = "UserVolumeConfig"
       name       = local.local_path_volume
@@ -97,6 +97,30 @@ locals {
         minSize      = "10GB"
       }
       filesystem = { type = "xfs" }
+    } if node.data_disk_gb > 0
+  }
+
+  # Reserves the system nodes for the cluster's own components; see
+  # docs/concepts/node-pools.md.
+  #
+  # The label is ordinary: Talos keeps it in step with this file. The taint is
+  # not. Kubernetes lets a worker's kubelet set taints only when it first
+  # registers the node, never afterwards, so `machine.nodeTaints` would fail on
+  # a worker. `registerWithTaints` is the kubelet setting for that first
+  # registration, which also means changing it here reaches a new node only.
+  # To change the taint on a running node, use `kubectl taint`.
+  system_pool_patches = {
+    for name, node in local.system_nodes : name => {
+      machine = {
+        nodeLabels = {
+          (local.system_pool.key) = local.system_pool.value
+        }
+        kubelet = {
+          extraConfig = {
+            registerWithTaints = [local.system_pool]
+          }
+        }
+      }
     }
   }
 
@@ -159,7 +183,8 @@ resource "talos_machine_configuration_apply" "this" {
       yamlencode(local.hostname_patches[each.key]),
     ],
     each.value.machine_type == "controlplane" ? [yamlencode(local.cilium_patch)] : [],
-    each.value.machine_type == "worker" ? [yamlencode(local.user_volume_patches[each.key])] : [],
+    each.value.data_disk_gb > 0 ? [yamlencode(local.user_volume_patches[each.key])] : [],
+    contains(keys(local.system_nodes), each.key) ? [yamlencode(local.system_pool_patches[each.key])] : [],
   )
 
   depends_on = [module.talos_node]
@@ -194,7 +219,11 @@ data "talos_cluster_health" "this" {
   client_configuration = talos_machine_secrets.this.client_configuration
   endpoints            = local.control_plane_ips
   control_plane_nodes  = local.control_plane_ips
-  worker_nodes         = [for k, v in local.workers : local.node_ips[k]]
+  worker_nodes         = [for k, v in local.nodes : local.node_ips[k] if v.machine_type == "worker"]
 
-  depends_on = [talos_cluster_kubeconfig.this]
+  # A data source is read at plan time unless something it depends on is about
+  # to change. Depending on the configuration applies is what defers it when a
+  # node is being added: otherwise the plan itself waits for a node that does
+  # not exist yet, and fails after ten minutes.
+  depends_on = [talos_cluster_kubeconfig.this, talos_machine_configuration_apply.this]
 }

@@ -37,6 +37,7 @@ resource "proxmox_virtual_environment_vm" "this" {
   cpu {
     cores = var.cpu_cores
     type  = "host"
+    units = var.cpu_units
   }
 
   memory {
@@ -52,9 +53,9 @@ resource "proxmox_virtual_environment_vm" "this" {
     discard      = "on"
   }
 
-  # A second disk, on the workers only, so persistent volumes do not share a
-  # partition with container images and logs. Talos claims it as the
-  # `local-path-provisioner` user volume; see `cluster.tf`.
+  # A second disk, on every node that runs workloads, so persistent volumes do
+  # not share a partition with container images and logs. Talos claims it as
+  # the `local-path-provisioner` user volume; see `cluster.tf`.
   dynamic "disk" {
     for_each = var.data_disk_gb > 0 ? [var.data_disk_gb] : []
 

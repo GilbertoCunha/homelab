@@ -18,6 +18,12 @@ variable "cpu_cores" {
   type        = number
 }
 
+variable "cpu_units" {
+  description = "CPU weight against the other guests when the host is busy. Null leaves the Proxmox default. Changing it reboots the guest."
+  type        = number
+  default     = null
+}
+
 variable "memory_mb" {
   description = "Memory given to the guest, in MiB."
   type        = number

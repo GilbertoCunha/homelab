@@ -28,7 +28,7 @@ with **Grafana** in front of them.
 Chart versions and volume sizes live in each Application and are not repeated
 here.
 
-Single-server, not clustered. Six nodes on one host do not produce enough of
+Single-server, not clustered. A handful of nodes on one host do not produce enough of
 either to need sharding, and a cluster of three components has three ways to be
 half-broken.
 

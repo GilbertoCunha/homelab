@@ -5,7 +5,7 @@ workloads reachable. After it, changing what runs in the cluster is a commit to
 this repo.
 
 Before you start, finish
-[Provision the Kubernetes cluster](./3-provision-cluster.md). All six nodes must
+[Provision the Kubernetes cluster](./3-provision-cluster.md). All eight nodes must
 be `Ready`:
 
 ```bash
@@ -18,6 +18,8 @@ NAME       STATUS   ROLES           AGE   VERSION
 cp-1       Ready    control-plane   35h   v1.36.2
 cp-2       Ready    control-plane   35h   v1.36.2
 cp-3       Ready    control-plane   35h   v1.36.2
+system-1   Ready    <none>          35h   v1.36.2
+system-2   Ready    <none>          35h   v1.36.2
 worker-1   Ready    <none>          35h   v1.36.2
 worker-2   Ready    <none>          35h   v1.36.2
 worker-3   Ready    <none>          35h   v1.36.2
