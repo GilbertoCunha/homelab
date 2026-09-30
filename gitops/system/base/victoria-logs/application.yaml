@@ -37,6 +37,14 @@ spec:
             prometheus.io/scrape: "true"
             prometheus.io/port: "9428"
           retentionPeriod: 7d
+          # On the system nodes; see docs/concepts/node-pools.md.
+          tolerations:
+            - key: homelab.grncunha.com/pool
+              operator: Equal
+              value: system
+              effect: NoSchedule
+          nodeSelector:
+            homelab.grncunha.com/pool: system
           # Sized from `kubectl top` on 2026-09-30: 148Mi.
           resources:
             requests:
