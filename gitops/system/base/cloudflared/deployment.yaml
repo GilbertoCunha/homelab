@@ -18,6 +18,14 @@ spec:
       labels:
         app: cloudflared
     spec:
+      # On the system nodes; see docs/concepts/node-pools.md.
+      tolerations:
+        - key: homelab.grncunha.com/pool
+          operator: Equal
+          value: system
+          effect: NoSchedule
+      nodeSelector:
+        homelab.grncunha.com/pool: system
       # Two replicas on one node buy nothing: a node reboot takes both.
       topologySpreadConstraints:
         - maxSkew: 1
