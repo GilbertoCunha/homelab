@@ -28,6 +28,14 @@ spec:
     targetRevision: 3.14.0
     helm:
       valuesObject:
+        # On the system nodes; see docs/concepts/node-pools.md.
+        tolerations:
+          - key: homelab.grncunha.com/pool
+            operator: Equal
+            value: system
+            effect: NoSchedule
+        nodeSelector:
+          homelab.grncunha.com/pool: system
         args:
           # Talos kubelets serve a self-signed certificate, which metrics-server
           # rejects, and it then reports every node as unavailable.
