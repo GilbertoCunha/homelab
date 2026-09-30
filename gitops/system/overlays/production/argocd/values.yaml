@@ -5,6 +5,18 @@
 crds:
   install: false
 
+# Every ArgoCD component, including the redis init job. Replaces the chart's
+# default nodeSelector, `kubernetes.io/os: linux`, which every node here meets.
+global:
+  # On the system nodes; see docs/concepts/node-pools.md.
+  tolerations:
+    - key: homelab.grncunha.com/pool
+      operator: Equal
+      value: system
+      effect: NoSchedule
+  nodeSelector:
+    homelab.grncunha.com/pool: system
+
 configs:
   cm:
     # Used for ArgoCD generated links. The mesh zone, not the public one: the
