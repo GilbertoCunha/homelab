@@ -28,6 +28,14 @@ spec:
           # Without this the chart names everything after the release and the
           # chart both, giving `victoria-metrics-victoria-metrics-single-server`.
           fullnameOverride: victoria-metrics
+          # On the system nodes; see docs/concepts/node-pools.md.
+          tolerations:
+            - key: homelab.grncunha.com/pool
+              operator: Equal
+              value: system
+              effect: NoSchedule
+          nodeSelector:
+            homelab.grncunha.com/pool: system
           # The busiest system component. Sized from `kubectl top` on
           # 2026-09-30: 80m and 720Mi.
           resources:
