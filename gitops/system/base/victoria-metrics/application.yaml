@@ -221,6 +221,13 @@ spec:
                         [__meta_kubernetes_service_annotation_prometheus_io_scrape]
                       action: keep
                       regex: "true"
+                    # CNPG copies a database pod's annotations onto its -r, -ro
+                    # and -rw Services, so each would scrape the exporter the
+                    # `kubernetes-pods` job already does: every metric twice or
+                    # three times, and sums on a dashboard off by that much.
+                    - source_labels: [__meta_kubernetes_service_label_cnpg_io_cluster]
+                      action: drop
+                      regex: .+
                     - source_labels:
                         [__address__,
                          __meta_kubernetes_service_annotation_prometheus_io_port]
