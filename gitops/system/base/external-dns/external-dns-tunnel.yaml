@@ -71,6 +71,12 @@ spec:
           # a route reaching DNS and overwriting a hand-made record.
           - --exclude-domains=homelab.grncunha.com
 
+        # Sized from `kubectl top` on 2026-09-30: 19Mi.
+        resources:
+          requests:
+            cpu: 5m
+            memory: 32Mi
+
         env:
           - name: CF_API_TOKEN
             valueFrom:

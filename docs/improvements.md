@@ -3,12 +3,6 @@
 Things that work but are not right yet. Everything here is running; the
 [backlog](./backlog.md) is for what is not built at all.
 
-## cloudflared has no resource requests
-
-Both pods are `BestEffort`, so they are among the first evicted under memory
-pressure, and they are the whole public path. Nothing in `gitops/` sets
-`resources` on anything.
-
 ## cloudflared does not meet the restricted PodSecurity profile
 
 `kubectl` warns on every apply: no `runAsNonRoot`, `allowPrivilegeEscalation`,

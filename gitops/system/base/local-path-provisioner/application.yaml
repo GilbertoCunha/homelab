@@ -43,6 +43,11 @@ spec:
               # last element of this path back as the volume's name, so the
               # two ends of the mount cannot drift.
               - /var/mnt/local-path-provisioner
+        # Sized from `kubectl top` on 2026-09-30: 11Mi.
+        resources:
+          requests:
+            cpu: 5m
+            memory: 32Mi
         helperImage:
           # The chart asks for `latest`, which is not a version.
           tag: "1.37.0"

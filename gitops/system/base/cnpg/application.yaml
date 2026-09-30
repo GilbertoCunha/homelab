@@ -28,6 +28,12 @@ spec:
         # the chart's appVersion.
         crds:
           create: false
+        # The operator only. Each database's own requests are set in its
+        # project. Sized from `kubectl top` on 2026-09-30: 34Mi.
+        resources:
+          requests:
+            cpu: 10m
+            memory: 64Mi
   syncPolicy:
     automated:
       prune: true

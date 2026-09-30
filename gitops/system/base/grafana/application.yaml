@@ -47,6 +47,13 @@ spec:
           # exists. Any dashboard still asking for that one will not bind.
           - victoriametrics-logs-datasource
 
+        # Sized from `kubectl top` on 2026-09-30: 430Mi, and 75Mi for the
+        # dashboard sidecar below.
+        resources:
+          requests:
+            cpu: 20m
+            memory: 512Mi
+
         podAnnotations:
           # Grafana exports its own metrics. The discovery job in
           # gitops/system/base/victoria-metrics/application.yaml scrapes
@@ -55,6 +62,10 @@ spec:
           prometheus.io/port: "3000"
 
         sidecar:
+          resources:
+            requests:
+              cpu: 5m
+              memory: 96Mi
           dashboards:
             # Watches every namespace for ConfigMaps carrying the label below
             # and loads them as dashboards. That is what lets a component ship
