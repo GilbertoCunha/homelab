@@ -28,6 +28,18 @@ spec:
           effect: NoSchedule
       nodeSelector:
         homelab.grncunha.com/pool: system
+      # Two replicas on one node buy nothing: a node reboot takes both, and
+      # the other system node's CPU goes unused. `pod-template-hash` spreads
+      # a rollout's new pods among themselves, not around the old ones.
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/instance: gw-internal-prod
+          matchLabelKeys:
+            - pod-template-hash
     envoyContainer:
       resources:
         requests:
@@ -66,6 +78,18 @@ spec:
           effect: NoSchedule
       nodeSelector:
         homelab.grncunha.com/pool: system
+      # Two replicas on one node buy nothing: a node reboot takes both, and
+      # the other system node's CPU goes unused. `pod-template-hash` spreads
+      # a rollout's new pods among themselves, not around the old ones.
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/instance: gw-internal-dev
+          matchLabelKeys:
+            - pod-template-hash
     envoyContainer:
       resources:
         requests:
@@ -101,6 +125,18 @@ spec:
           effect: NoSchedule
       nodeSelector:
         homelab.grncunha.com/pool: system
+      # Two replicas on one node buy nothing: a node reboot takes both, and
+      # the other system node's CPU goes unused. `pod-template-hash` spreads
+      # a rollout's new pods among themselves, not around the old ones.
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/instance: gw-public
+          matchLabelKeys:
+            - pod-template-hash
     envoyContainer:
       resources:
         requests:
