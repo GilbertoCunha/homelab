@@ -120,12 +120,28 @@ spec:
           # own settings; they run the network and are left alone.
           relay:
             enabled: true
+            # On the system nodes; see docs/concepts/node-pools.md.
+            tolerations:
+              - key: homelab.grncunha.com/pool
+                operator: Equal
+                value: system
+                effect: NoSchedule
+            nodeSelector:
+              homelab.grncunha.com/pool: system
             resources:
               requests:
                 cpu: 5m
                 memory: 32Mi
           ui:
             enabled: true
+            # On the system nodes; see docs/concepts/node-pools.md.
+            tolerations:
+              - key: homelab.grncunha.com/pool
+                operator: Equal
+                value: system
+                effect: NoSchedule
+            nodeSelector:
+              homelab.grncunha.com/pool: system
             backend:
               resources:
                 requests:
