@@ -23,6 +23,10 @@ locals {
   # by the values above, and `cluster.tf` pins it in the machine configuration,
   # so the port is read from there rather than written in both places.
   kubeprism_port = local.cilium_app.spec.source.helm.valuesObject.k8sServicePort
+
+  # Cilium routes this range natively and Kubernetes carves node podCIDRs out
+  # of it, so it is read from the Application for the same reason.
+  pod_subnet = local.cilium_app.spec.source.helm.valuesObject.ipv4NativeRoutingCIDR
 }
 
 data "helm_template" "cilium" {

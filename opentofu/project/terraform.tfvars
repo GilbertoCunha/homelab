@@ -24,5 +24,6 @@ kubernetes_version = "v1.36.2"
 cluster_vip    = "10.10.10.10"
 gateway        = "10.10.10.1"
 nameservers    = ["1.1.1.1", "1.0.0.1"]
-pod_subnet     = "10.244.0.0/16"
 service_subnet = "10.96.0.0/12"
+# The pod subnet is not here: Cilium routes it, so it lives with Cilium's
+# values in gitops/system/base/cilium/cilium.yaml.

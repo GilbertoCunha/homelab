@@ -30,11 +30,19 @@ locals {
           enabled = true
           port    = local.kubeprism_port
         }
+        # CoreDNS forwards to the nameservers above rather than through the
+        # DNS cache Talos runs on each node. Talos' own Cilium guide lists that
+        # forwarding as broken once Cilium masquerades in eBPF, which it does;
+        # see `gitops/system/base/cilium/cilium.yaml`.
+        hostDNS = {
+          enabled              = true
+          forwardKubeDNSToHost = false
+        }
       }
     }
     cluster = {
       network = {
-        podSubnets     = [var.pod_subnet]
+        podSubnets     = [local.pod_subnet]
         serviceSubnets = [var.service_subnet]
 
         # Talos would otherwise install Flannel, which cannot enforce a

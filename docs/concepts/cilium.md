@@ -18,7 +18,7 @@ Being honest about the reasons, because they are not the usual ones:
 
 | Reason | Does it apply here? |
 | --- | --- |
-| Faster datapath, less iptables overhead | **No.** All the nodes are guests on one host, on one bridge. There is no network to speed up. |
+| Faster datapath, less iptables overhead | **Yes, under load.** Every packet costs CPU on a host that is shared by all the nodes. See [Routing](#routing). |
 | NetworkPolicy that actually works | Yes. |
 | Hubble: seeing what talks to what | Yes, and it is the strongest reason on a homelab. |
 
@@ -106,6 +106,37 @@ cannot be used here, for two reasons that are really the same reason:
 Setting `hubble.tls.auto.method: cronJob` moves certificate generation into the
 cluster. The render is then byte-identical every time, and carries no secrets.
 
+## Routing
+
+Every node is a guest on one bridge, so Cilium can hand packets straight to the
+right node without dressing them up first. A load test on 2026-09-30 put about
+half of each system node's CPU in the kernel, handling packets, which is why
+these are not the chart's defaults.
+
+| Setting | What it does |
+| --- | --- |
+| `routingMode: native` | Pod packets cross between nodes as they are, instead of wrapped in a VXLAN tunnel. |
+| `autoDirectNodeRoutes: true` | Each node gets a route to every other node's pod range, through that node's address on the bridge. |
+| `ipv4NativeRoutingCIDR` | The pod subnet. Traffic inside it keeps pod addresses; traffic leaving it is masqueraded to the node's address. |
+| `bpf.masquerade: true` | Masquerading is done in eBPF, not iptables. This also turns on eBPF host routing, which skips the node's iptables and routing stack. |
+| `loadBalancer.mode: dsr` | Direct server return; see [Getting traffic into the cluster](./ingress.md#why-externaltrafficpolicy-cluster-with-direct-server-return). |
+
+eBPF masquerading breaks Talos' `forwardKubeDNSToHost`, which Talos' own Cilium
+guide lists as a known issue. `cluster.tf` turns it off, so CoreDNS forwards
+straight to the nodes' nameservers.
+
+To confirm what the agent is running:
+
+```bash
+kubectl -n kube-system exec ds/cilium -- cilium-dbg status | grep -E 'Routing|Masquerading|KubeProxyReplacement'
+```
+
+```
+KubeProxyReplacement:    True   [eth0   10.10.10.21 ... (Direct Routing)]
+Routing:                 Network: Native   Host: BPF
+Masquerading:            BPF   [eth0]   10.244.0.0/16 [IPv4: Enabled, IPv6: Disabled]
+```
+
 ## Load balancer addresses
 
 `l2announcements` is on. That is what lets a `Service` of `type: LoadBalancer`
@@ -148,4 +179,4 @@ Where the pieces live:
 | Chart version and values | `gitops/system/base/cilium/cilium.yaml` |
 | The bootstrap render, from that file | `opentofu/project/cilium.tf` |
 | Address pool, L2 announcement policy | `gitops/system/base/cilium/` |
-| CNI off, kube-proxy off | `opentofu/project/cluster.tf` |
+| CNI off, kube-proxy off, host DNS forwarding off | `opentofu/project/cluster.tf` |

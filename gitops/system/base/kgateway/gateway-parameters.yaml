@@ -55,8 +55,11 @@ spec:
       externalTrafficPolicy: Cluster
     deployment:
       replicas: 2
-    # Sized from `kubectl top` on 2026-09-30: 150Mi per replica, far more
-    # than prod's, because load tests run against dev.
+    # Sized from a peak load test on 2026-09-30: ~1.2 CPU and 490Mi per
+    # replica, far more than prod's, because load tests run against dev. The
+    # CPU request is what matters: it sets Envoy's share when a system node is
+    # saturated, which it was, and at 10m Envoy got no more than
+    # VictoriaMetrics did.
     podTemplate:
       tolerations:
         - key: homelab.grncunha.com/pool
@@ -68,8 +71,8 @@ spec:
     envoyContainer:
       resources:
         requests:
-          cpu: 10m
-          memory: 192Mi
+          cpu: "1"
+          memory: 512Mi
     serviceOverlay:
       metadata:
         annotations:

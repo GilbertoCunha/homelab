@@ -29,12 +29,40 @@ spec:
     helm:
       valuesObject:
         # Pod addresses come from the podCIDR Kubernetes gives each node, which
-        # is carved out of `pod_subnet`. Cilium does not need its own address
-        # management on top of that.
+        # is carved out of `ipv4NativeRoutingCIDR` below. Cilium does not need
+        # its own address management on top of that.
         ipam:
           mode: kubernetes
 
         kubeProxyReplacement: true
+
+        # Pod traffic between nodes is routed as is, not wrapped in a VXLAN
+        # tunnel. Every node is on the same guest bridge, so each can reach the
+        # others' pod ranges directly, and `autoDirectNodeRoutes` installs those
+        # routes. A tunnel adds a header and a trip through the kernel to every
+        # packet, which a load test showed as half a system node's CPU.
+        routingMode: native
+        autoDirectNodeRoutes: true
+        # The pod subnet. Traffic inside it keeps its pod addresses; anything
+        # leaving it is masqueraded to the node's address. `cilium.tf` reads it
+        # back from here for the machine configuration, so it is written once.
+        ipv4NativeRoutingCIDR: 10.244.0.0/16
+
+        # Masquerading in eBPF instead of iptables. This is also what switches
+        # on eBPF host routing, where pod traffic skips the node's iptables and
+        # routing stack. It breaks Talos' DNS forwarding to the host, which
+        # `cluster.tf` turns off for that reason.
+        bpf:
+          masquerade: true
+
+        # Direct server return. A load balancer address lives on one node, and
+        # its backend is often on another. The backend's node then answers the
+        # client directly instead of sending the reply back through the first
+        # node, and the backend sees the caller's real address. The service
+        # address travels to the backend in an IPv4 option, which the guest
+        # bridge passes untouched. Requires native routing.
+        loadBalancer:
+          mode: dsr
 
         # Every value on this page reaches the agent through the `cilium-config`
         # ConfigMap, and the agent reads it once, at startup. The chart's default

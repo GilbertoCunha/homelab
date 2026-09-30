@@ -54,11 +54,6 @@ variable "nameservers" {
   type        = list(string)
 }
 
-variable "pod_subnet" {
-  description = "CIDR for pod addresses. Recorded in the README network table."
-  type        = string
-}
-
 variable "service_subnet" {
   description = "CIDR for service addresses. Recorded in the README network table."
   type        = string

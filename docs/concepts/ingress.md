@@ -99,13 +99,18 @@ Two consequences worth knowing before you debug this at two in the morning:
   `lbipam.cilium.io/ips` annotation. Without that, prod and dev could swap
   addresses across a rebuild and the DNS records would quietly follow.
 
-## Why `externalTrafficPolicy: Local`
+## Why `externalTrafficPolicy: Cluster`, with direct server return
 
-The mesh address of whoever is calling survives to the backend, so a
-NetworkPolicy can be written against it. The cost is that Cilium only announces
-a `Local` service from nodes that are running one of its pods. Each Gateway
-therefore runs two Envoy replicas; with one, the address goes dark whenever that
-node reboots.
+`Cluster` lets any node hold an address's lease and pass requests on to an
+Envoy on another node. `Local` would announce only from nodes running an Envoy,
+and send every request to that one node's Envoy.
+
+Passing a request on normally costs two things: the reply comes back through
+the node holding the lease, and the backend sees that node's address instead of
+the caller's. Cilium's **direct server return** (DSR, `loadBalancer.mode: dsr`)
+removes both. The backend's node replies to the caller directly, and the
+caller's mesh address reaches the backend, so a NetworkPolicy can be written
+against it. See [The cluster's networking](./cilium.md#routing).
 
 ## Names and certificates are automatic
 
