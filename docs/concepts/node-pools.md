@@ -17,13 +17,15 @@ big they are. Everywhere else links here.
 
 | Pool | Nodes | vCPU each | Memory each | Disks each | CPU weight |
 | --- | --- | --- | --- | --- | --- |
-| Control plane | 3 | 2 | 4 GiB | 40 GB | Default (100) |
+| Control plane | 3 | 2 | 6 GiB | 40 GB | 150 |
 | System | 2 | 2 | 8 GiB | 40 GB + 100 GB data | 100 |
-| Worker | 3 | 4 | 20 GiB | 100 GB + 100 GB data | Default (100) |
-| **Total** | **8** | **22** | **88 GiB** | | |
+| Worker | 3 | 6 | 20 GiB | 100 GB + 100 GB data | 200 |
+| **Total** | **8** | **28** | **94 GiB** | | |
 
-The host has 6 cores, 12 threads and 125 GiB of usable memory. That makes 1.8:1
-CPU overcommit, and leaves about 37 GiB for the host itself.
+The host has 6 cores, 12 threads and 125 GiB of usable memory. That makes 2.3:1
+CPU overcommit, and leaves about 31 GiB for the host itself. The cluster idles
+at about one busy vCPU, so the overcommit only matters when the CPU weights
+below have to decide who waits.
 
 `opentofu/project/locals.tf` is what actually sets these. Change a size there
 and update this table in the same commit. Addresses are in
@@ -124,3 +126,17 @@ Every node is a guest on one host with 12 threads, and together they have more
 vCPUs than that. When the host is busy, Proxmox shares the threads by each
 guest's **CPU weight**, `cpu_units` in `locals.tf`. A guest with twice the
 weight gets twice the share. Weights do nothing while the host is idle.
+
+The weights are in the sizes table above. Their order is the point:
+
+1. **Workers** weigh most, so applications win when the host is contended.
+2. **Control planes** come next. etcd misses heartbeats when starved, and the
+   API goes with it.
+3. **System nodes** weigh least, at the Proxmox default. Their components can
+   wait a moment.
+
+Whether the weights and sizes are right shows on the Node pools dashboard in
+Grafana. **CPU steal** is time a node's vCPUs were ready to run but the host ran
+another guest: the noisy-neighbour signal. Sustained steal above about 5% on a
+worker means the weights or the sizes need another look. Changing either is
+[Resizing a node](../manual/maintenance/resizing-a-node.md).
