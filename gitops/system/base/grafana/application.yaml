@@ -127,7 +127,9 @@ spec:
 
               - name: pyroscope
                 # Profiles, drawn as flame graphs. Built into Grafana, so no
-                # plugin above.
+                # plugin above. A fixed uid, because provisioned dashboards
+                # reference a datasource by uid.
+                uid: pyroscope
                 type: grafana-pyroscope-datasource
                 orgId: 1
                 url: http://pyroscope.pyroscope.svc.cluster.local:4040
