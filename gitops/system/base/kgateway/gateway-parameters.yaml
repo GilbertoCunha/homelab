@@ -3,6 +3,8 @@
 # Cilium load balancer and kgateway meet: kgateway provisions the Service, and
 # Cilium fills in the address of any Service that asks to be a LoadBalancer.
 # docs/concepts/ingress.md has the full path.
+# Every Envoy runs on the system nodes; see docs/concepts/node-pools.md. They
+# are the way into the cluster, not an application.
 apiVersion: gateway.kgateway.dev/v1alpha1
 kind: GatewayParameters
 metadata:
@@ -18,6 +20,14 @@ spec:
     deployment:
       replicas: 2
     # Sized from `kubectl top` on 2026-09-30: 22Mi per replica.
+    podTemplate:
+      tolerations:
+        - key: homelab.grncunha.com/pool
+          operator: Equal
+          value: system
+          effect: NoSchedule
+      nodeSelector:
+        homelab.grncunha.com/pool: system
     envoyContainer:
       resources:
         requests:
@@ -47,6 +57,14 @@ spec:
       replicas: 2
     # Sized from `kubectl top` on 2026-09-30: 150Mi per replica, far more
     # than prod's, because load tests run against dev.
+    podTemplate:
+      tolerations:
+        - key: homelab.grncunha.com/pool
+          operator: Equal
+          value: system
+          effect: NoSchedule
+      nodeSelector:
+        homelab.grncunha.com/pool: system
     envoyContainer:
       resources:
         requests:
@@ -74,6 +92,14 @@ spec:
     deployment:
       replicas: 2
     # Sized from `kubectl top` on 2026-09-30: 20Mi per replica.
+    podTemplate:
+      tolerations:
+        - key: homelab.grncunha.com/pool
+          operator: Equal
+          value: system
+          effect: NoSchedule
+      nodeSelector:
+        homelab.grncunha.com/pool: system
     envoyContainer:
       resources:
         requests:
