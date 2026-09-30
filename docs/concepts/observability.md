@@ -225,6 +225,7 @@ someone has been clicking.
 | The log collector | `gitops/system/base/victoria-logs/collector.yaml` |
 | Object-state metrics | `gitops/system/base/kube-state-metrics/application.yaml` |
 | Host-level metrics | `gitops/system/base/node-exporter/application.yaml` |
+| The Node pools dashboard: steal, pressure, usage and requests per pool | `gitops/system/base/node-exporter/node-pools.json` |
 | Cilium and Hubble metrics, and their dashboards | `gitops/system/base/cilium/cilium.yaml` |
 | Grafana, its datasources, plugin and dashboards | `gitops/system/base/grafana/application.yaml` |
 | Grafana's admin login | `gitops/system/base/grafana/admin-credentials.sops.yaml` |

@@ -145,6 +145,12 @@ spec:
               gnetId: 13332
               revision: 12
               datasource: victoriametrics
+            node-exporter-full:
+              # One node at a time, in detail. The per-pool view is the
+              # Node pools dashboard, shipped beside node-exporter itself.
+              gnetId: 1860
+              revision: 45
+              datasource: victoriametrics
             cert-manager:
               gnetId: 11001
               revision: 1

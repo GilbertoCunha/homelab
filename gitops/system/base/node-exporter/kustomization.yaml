@@ -5,3 +5,19 @@ kind: Kustomization
 resources:
   - namespace.yaml
   - application.yaml
+
+# Built from the real file, so the dashboard is edited as JSON rather than as a
+# string inside a manifest. Grafana's sidecar finds it by the label below, in
+# any namespace; see gitops/system/base/grafana/application.yaml.
+configMapGenerator:
+  - name: node-pools-dashboard
+    # Required: without it the generated ConfigMap lands in no namespace.
+    namespace: node-exporter
+    files:
+      - node-pools.json
+    options:
+      labels:
+        grafana_dashboard: "1"
+      # Nothing refers to this ConfigMap by name, so a content hash in the name
+      # would only replace it on every edit instead of updating it.
+      disableNameSuffixHash: true
