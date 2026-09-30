@@ -27,6 +27,8 @@ Standalone procedures. Read the one you need.
   reachable by name, which is one `HTTPRoute` and nothing else
 - [Upgrading Cilium](./maintenance/upgrading-cilium.md): the CNI, which is also
   the thing every pod depends on to have a network at all
+- [Resizing a node](./maintenance/resizing-a-node.md): more vCPUs, memory or
+  CPU weight, one node at a time, because each change reboots the guest
 
 ## Elsewhere
 

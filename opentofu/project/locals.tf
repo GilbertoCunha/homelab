@@ -12,9 +12,12 @@
 # images. Control planes run no workloads and get none.
 #
 # `cpu_units` is the guest's CPU weight in Proxmox: when the host is busy, a
-# guest with a higher weight gets a larger share of it. Null leaves the guest
-# at the Proxmox default. Changing it reboots the guest, so an existing node's
-# weight is changed only when it is resized anyway.
+# guest with a higher weight gets a larger share of it. Workers weigh most, so
+# applications win; control planes next, so etcd never starves; system nodes
+# least.
+#
+# Changing any size or weight here reboots the guest. Apply it one node at a
+# time; see docs/manual/maintenance/resizing-a-node.md.
 locals {
   control_planes = {
     for i in range(3) :
@@ -22,10 +25,10 @@ locals {
       vm_id        = 111 + i
       ip_cidr      = "10.10.10.${11 + i}/24"
       cpu_cores    = 2
-      memory_mb    = 4096
+      memory_mb    = 6144
       disk_gb      = 40
       data_disk_gb = 0
-      cpu_units    = null
+      cpu_units    = 150
       machine_type = "controlplane"
     }
   }
@@ -61,11 +64,11 @@ locals {
     "worker-${i + 1}" => {
       vm_id        = 121 + i
       ip_cidr      = "10.10.10.${21 + i}/24"
-      cpu_cores    = 4
+      cpu_cores    = 6
       memory_mb    = 20480
       disk_gb      = 100
       data_disk_gb = 100
-      cpu_units    = null
+      cpu_units    = 200
       machine_type = "worker"
     }
   }
