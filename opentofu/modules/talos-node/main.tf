@@ -81,11 +81,8 @@ resource "proxmox_virtual_environment_vm" "this" {
   # maintenance mode on every reboot.
   boot_order = ["virtio0", "ide3"]
 
-  # One queue per vCPU. With a single queue, every packet is handled on one
-  # vCPU however many the guest has.
   network_device {
     bridge = var.bridge
-    queues = var.cpu_cores
   }
 
   # The guest bridge has no DHCP server, so a node booting the Talos image would
