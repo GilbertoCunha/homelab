@@ -48,6 +48,24 @@ spec:
           requests:
             cpu: 5m
             memory: 32Mi
+        # On the system nodes; see docs/concepts/node-pools.md.
+        tolerations:
+          - key: homelab.grncunha.com/pool
+            operator: Equal
+            value: system
+            effect: NoSchedule
+        nodeSelector:
+          homelab.grncunha.com/pool: system
+        configmap:
+          helperPod:
+            # The helper pod creates and deletes each volume's directory on the
+            # node that holds it, which can now be a system node. It is pinned
+            # to that node by name, so it needs the toleration and nothing else.
+            tolerations:
+              - key: homelab.grncunha.com/pool
+                operator: Equal
+                value: system
+                effect: NoSchedule
         helperImage:
           # The chart asks for `latest`, which is not a version.
           tag: "1.37.0"
