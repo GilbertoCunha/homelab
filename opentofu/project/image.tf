@@ -25,12 +25,15 @@ resource "talos_image_factory_schematic" "this" {
 # Workers run without the kernel's CPU vulnerability mitigations; see
 # docs/concepts/node-pools.md for why only them. Kernel arguments are part of
 # the image: the nodes boot the command line baked into it, not one from the
-# machine configuration. `-pti` removes Talos' own `pti=on`, which would
-# otherwise keep one of them on.
+# machine configuration.
+#
+# Talos' own `pti=on` stays. Talos checks for it at boot and stops before the
+# network comes up without it, so the Meltdown mitigation is the one that
+# remains on.
 resource "talos_image_factory_schematic" "workers" {
   schematic = yamlencode({
     customization = {
-      extraKernelArgs = ["-pti", "mitigations=off"]
+      extraKernelArgs = ["mitigations=off"]
       systemExtensions = {
         officialExtensions = local.talos_extensions
       }
