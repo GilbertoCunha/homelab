@@ -35,6 +35,24 @@ cluster-wide failure shows up first is the one place there is no search.
 Talos can send its service logs to a remote endpoint (`machine.logging`), which
 is the likely way in.
 
+## Node sizes and CPU weights are a first guess
+
+The pools were sized on 2026-09-30 from one afternoon of `kubectl top`, before
+node-exporter existed. The system nodes have 2 vCPU and 8 GB each, the workers
+6 vCPU, and the CPU weights are 200, 150 and 100. None of that has been checked
+against a busy host.
+
+Check the Node pools dashboard in Grafana after a few weeks of real use:
+
+| Signal | Means |
+| --- | --- |
+| Sustained CPU steal above 5% on a worker | The weights or the total vCPUs need another look |
+| A pool's CPU or memory requested above 80% | The pool is close to refusing new pods |
+| System nodes mostly idle | They could shrink, and give the host back memory |
+
+[Resizing a node](./manual/maintenance/resizing-a-node.md) is the procedure.
+This item leaves once the numbers have been checked.
+
 ## Metric retention is written down nowhere
 
 Logs are kept 7 days, set explicitly. Metrics are kept one month, which is the
