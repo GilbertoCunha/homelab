@@ -28,6 +28,14 @@ spec:
         # the chart's appVersion.
         crds:
           create: false
+        # On the system nodes; see docs/concepts/node-pools.md.
+        tolerations:
+          - key: homelab.grncunha.com/pool
+            operator: Equal
+            value: system
+            effect: NoSchedule
+        nodeSelector:
+          homelab.grncunha.com/pool: system
         # The operator only. Each database's own requests are set in its
         # project. Sized from `kubectl top` on 2026-09-30: 34Mi.
         resources:
