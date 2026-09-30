@@ -271,15 +271,17 @@ A route on `utun`. If the server side is right and this prints nothing, run
 
 ## 8. Storage
 
-Each worker and system node gets a second disk, which Talos claims as a user volume. Check one:
+Each worker and system node gets a second disk, which Talos claims as a user
+volume. Talos reports a user volume as a `VolumeStatus`, with `u-` in front of
+its name. Check one:
 
 ```bash
-talosctl --nodes 10.10.10.21 get uservolumestatus
+talosctl --nodes 10.10.10.21 get volumestatus u-local-path-provisioner
 ```
 
 ```
-NODE          NAMESPACE   TYPE               ID                       VERSION   PHASE
-10.10.10.21   runtime     UserVolumeStatus   local-path-provisioner   2         ready
+NODE          NAMESPACE   TYPE           ID                         VERSION   TYPE        PHASE   LOCATION    SIZE
+10.10.10.21   runtime     VolumeStatus   u-local-path-provisioner   2         partition   ready   /dev/vdb1   107 GB
 ```
 
 `ready` means the disk is partitioned, formatted and mounted at
