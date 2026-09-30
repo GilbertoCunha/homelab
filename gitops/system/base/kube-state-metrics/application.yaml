@@ -32,6 +32,14 @@ spec:
     targetRevision: 8.4.1
     helm:
       valuesObject:
+        # On the system nodes; see docs/concepts/node-pools.md.
+        tolerations:
+          - key: homelab.grncunha.com/pool
+            operator: Equal
+            value: system
+            effect: NoSchedule
+        nodeSelector:
+          homelab.grncunha.com/pool: system
         # Sized from `kubectl top` on 2026-09-30: 28Mi.
         resources:
           requests:
