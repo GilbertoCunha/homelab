@@ -40,7 +40,7 @@ spec:
         # tunnel. Every node is on the same guest bridge, so each can reach the
         # others' pod ranges directly, and `autoDirectNodeRoutes` installs those
         # routes. A tunnel adds a header and a trip through the kernel to every
-        # packet, which a load test showed as half a system node's CPU.
+        # packet, for nothing on a single bridge.
         routingMode: native
         autoDirectNodeRoutes: true
         # The pod subnet. Traffic inside it keeps its pod addresses; anything

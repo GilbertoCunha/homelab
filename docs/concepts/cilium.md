@@ -109,9 +109,8 @@ cluster. The render is then byte-identical every time, and carries no secrets.
 ## Routing
 
 Every node is a guest on one bridge, so Cilium can hand packets straight to the
-right node without dressing them up first. A load test on 2026-09-30 put about
-half of each system node's CPU in the kernel, handling packets, which is why
-these are not the chart's defaults.
+right node without dressing them up first. Every packet costs CPU on a host all
+the nodes share, so these settings keep that cost low.
 
 | Setting | What it does |
 | --- | --- |
