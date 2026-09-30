@@ -1,7 +1,7 @@
 # Manual 3 - Provision the Kubernetes cluster
 
-This describes how to build the Kubernetes cluster with OpenTofu. It creates eight
-Talos Linux guests on Proxmox and hands you a working `kubectl`.
+This describes how to build the Kubernetes cluster with OpenTofu. It creates the
+cluster's Talos Linux guests on Proxmox and hands you a working `kubectl`.
 
 Before you start, finish [Configure the server](./2-configure-server.md). Your
 own device must be on the mesh, because Proxmox is only reachable there, **and it
@@ -23,15 +23,10 @@ cannot be automated.
 
 ## What gets built
 
-| Role | Count | vCPU | RAM | Disk | Addresses |
-| --- | --- | --- | --- | --- | --- |
-| Control plane | 3 | 2 | 4 GB | 40 GB | `10.10.10.11`-`.13` |
-| System | 2 | 2 | 8 GB | 40 GB + 100 GB | `10.10.10.31`-`.32` |
-| Worker | 3 | 4 | 20 GB | 100 GB + 100 GB | `10.10.10.21`-`.23` |
-
-System nodes run the cluster's own components, and workers run applications.
-[Node pools](../../concepts/node-pools.md) explains the split. The second disk
-holds persistent volumes; see step 8.
+Three pools of Talos guests: control planes, system nodes for the cluster's own
+components, and workers for applications. How many there are, and how big, is
+in [Node pools](../../concepts/node-pools.md). Their addresses are in
+[Networks and addresses](../../architecture/networks.md).
 
 The Kubernetes API answers on `10.10.10.10`, a virtual address the three control
 planes share. Talos moves it to a healthy node on its own, so there is no load
@@ -203,7 +198,7 @@ task tofu:init
 task tofu:plan
 ```
 
-The plan should create eight guests, one image download, and the Talos
+The plan should create one guest per node, one image download, and the Talos
 configuration. Nothing else.
 
 ```bash
@@ -214,7 +209,7 @@ This takes several minutes and does a lot:
 
 1. The Talos Image Factory builds an image with the guest agent and iSCSI tools.
 2. Proxmox downloads it.
-3. Eight guests boot that image and reach maintenance mode, each with the static
+3. The guests boot that image and reach maintenance mode, each with the static
    address given to it by a cloud-init drive. **There is no DHCP on the guest
    bridge**, which is why the drive exists.
 4. OpenTofu applies each machine configuration. Talos installs itself to disk.
@@ -240,8 +235,9 @@ Both files are ignored by git.
 kubectl get nodes -o wide
 ```
 
-You should see eight nodes, all `Ready`, all running `v1.36.2`, with the addresses
-from the table at the top.
+You should see every node from [Node pools](../../concepts/node-pools.md), all
+`Ready`, all running `v1.36.2`, with the addresses from
+[Networks and addresses](../../architecture/networks.md).
 
 ```bash
 talosctl --nodes 10.10.10.11 health

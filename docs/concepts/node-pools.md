@@ -10,8 +10,25 @@ nodes.
 | System | `system-1` to `system-2` | The cluster's own components | `homelab.grncunha.com/pool=system:NoSchedule` |
 | Worker | `worker-1` to `worker-3` | Applications | Nothing |
 
-Sizes and addresses are in [Networks and addresses](../architecture/networks.md).
-Every node is described in `opentofu/project/locals.tf`.
+## Sizes
+
+This is the one place in the docs that says how many nodes there are and how
+big they are. Everywhere else links here.
+
+| Pool | Nodes | vCPU each | Memory each | Disks each | CPU weight |
+| --- | --- | --- | --- | --- | --- |
+| Control plane | 3 | 2 | 4 GiB | 40 GB | Default (100) |
+| System | 2 | 2 | 8 GiB | 40 GB + 100 GB data | 100 |
+| Worker | 3 | 4 | 20 GiB | 100 GB + 100 GB data | Default (100) |
+| **Total** | **8** | **22** | **88 GiB** | | |
+
+The host has 6 cores, 12 threads and 125 GiB of usable memory. That makes 1.8:1
+CPU overcommit, and leaves about 37 GiB for the host itself.
+
+`opentofu/project/locals.tf` is what actually sets these. Change a size there
+and update this table in the same commit. Addresses are in
+[Networks and addresses](../architecture/networks.md). The data disk holds
+persistent volumes; see [The cluster's storage](./storage.md).
 
 ## Why workers carry no taint
 
@@ -88,7 +105,7 @@ worker-3   <none>
 
 ## CPU weights
 
-All eight nodes are guests on one host with 12 threads, and together they have
-more vCPUs than that. When the host is busy, Proxmox shares the threads by each
+Every node is a guest on one host with 12 threads, and together they have more
+vCPUs than that. When the host is busy, Proxmox shares the threads by each
 guest's **CPU weight**, `cpu_units` in `locals.tf`. A guest with twice the
 weight gets twice the share. Weights do nothing while the host is idle.
