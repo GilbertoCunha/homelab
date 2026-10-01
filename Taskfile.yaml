@@ -217,6 +217,38 @@ tasks:
         done
       - 'echo "All overlays render, and every project in the catalog."'
 
+  cluster:render:diff:
+    desc: Shows what the working tree would change in the cluster, against a git ref (default origin/main)
+    silent: true
+    cmds:
+      # `cluster:render` proves the overlays build. This shows what they build
+      # into, before and after, with every Helm chart templated the way ArgoCD
+      # would; see .github/render.sh. A chart version bump is one changed line
+      # in git and can be hundreds here.
+      #
+      # The other side is checked out into a temporary worktree, so nothing in
+      # the working tree is touched. Prints nothing when nothing differs.
+      - |
+        set -eu
+        base="{{.CLI_ARGS | default "origin/main"}}"
+        work="$(mktemp -d)"
+        trap 'git worktree remove --force "$work/tree" > /dev/null 2>&1 || true; rm -rf "$work"' EXIT
+        git worktree add --detach "$work/tree" "$base" > /dev/null 2>&1
+        # Quiet unless a render fails, so the output is the diff and nothing else.
+        for side in before after; do
+          tree="$work/tree"; [ "$side" = after ] && tree=.
+          .github/render.sh "$tree" "$work/$side" > "$work/log" 2>&1 || {
+            echo "Rendering the $side side failed:" >&2
+            cat "$work/log" >&2
+            exit 1
+          }
+        done
+        cd "$work"
+        # diff exits 1 when it finds a difference, which is not a failure here.
+        # The two labels are on every object a chart renders and change with
+        # every version, so a hunk holding nothing else is left out.
+        diff -ruN -I 'helm.sh/chart:' -I 'app.kubernetes.io/version:' before after || true
+
   cluster:diff:
     desc: Shows what `task cluster:bootstrap` would change
     env:

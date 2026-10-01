@@ -32,6 +32,10 @@ ArgoCD owns Cilium, so the upgrade is a commit. Talos created the CNI once, when
 the cluster was born, and cannot change it now; see
 [The cluster's networking](../../concepts/cilium.md).
 
+Renovate opens steps 1 to 3 as a pull request when a new version is out, one
+minor version at a time. If you are here from one, merging it is step 3; see
+[Updating a component](./updating-a-component.md).
+
 **1. Bump the version.** It is written in exactly one place,
 `gitops/system/base/cilium/cilium.yaml`:
 

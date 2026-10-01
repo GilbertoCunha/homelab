@@ -20,6 +20,11 @@ output "nodes" {
   value       = local.node_ips
 }
 
+output "installer_image" {
+  description = "The image control planes and system nodes install and upgrade from."
+  value       = data.talos_image_factory_urls.this.urls.installer
+}
+
 output "worker_installer_image" {
   description = "The image workers install and upgrade from. It carries their kernel arguments; see image.tf."
   value       = data.talos_image_factory_urls.workers.urls.installer

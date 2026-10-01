@@ -1,0 +1,127 @@
+---
+name: check
+
+# Runs on every pull request, Renovate's included. It answers two questions
+# before a merge, which here is a deployment:
+#
+#   1. Does everything still build?  The same checks AGENTS.md asks for.
+#   2. What would the cluster run afterwards?  Posted as a comment: the
+#      rendered manifests before and after, with each Helm chart templated the
+#      way ArgoCD would. See .github/render.sh.
+#
+# Neither proves the change works. docs/concepts/updates.md says what does.
+
+on:
+  pull_request:
+
+permissions: {}
+
+# A new push to a pull request replaces the run for the old one.
+concurrency:
+  group: check-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+env:
+  # The versions on the machine these were last run from by hand. Renovate
+  # keeps them current, through the comment above each one.
+  # renovate: datasource=github-releases depName=kubernetes-sigs/kustomize extractVersion=^kustomize/(?<version>.+)$
+  KUSTOMIZE_VERSION: v5.8.2
+  # renovate: datasource=github-releases depName=helm/helm
+  HELM_VERSION: v4.3.0
+  # renovate: datasource=github-releases depName=go-task/task
+  TASK_VERSION: v3.53.1
+  # renovate: datasource=github-releases depName=opentofu/opentofu
+  TOFU_VERSION: v1.13.0
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write # to post the rendered diff
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # the diff needs the branch the pull request targets
+
+      - name: Install the tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          bin="${RUNNER_TEMP}/bin"
+          mkdir -p "${bin}"
+          fetch() { curl --fail --silent --show-error --location "$1"; }
+
+          fetch "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2F${KUSTOMIZE_VERSION}/kustomize_${KUSTOMIZE_VERSION}_linux_amd64.tar.gz" \
+            | tar -xz -C "${bin}" kustomize
+          fetch "https://get.helm.sh/helm-${HELM_VERSION}-linux-amd64.tar.gz" \
+            | tar -xz -C "${bin}" --strip-components 1 linux-amd64/helm
+          fetch "https://github.com/go-task/task/releases/download/${TASK_VERSION}/task_linux_amd64.tar.gz" \
+            | tar -xz -C "${bin}" task
+          fetch "https://github.com/opentofu/opentofu/releases/download/${TOFU_VERSION}/tofu_${TOFU_VERSION#v}_linux_amd64.tar.gz" \
+            | tar -xz -C "${bin}" tofu
+
+          echo "${bin}" >> "${GITHUB_PATH}"
+
+      - name: Render the overlays
+        run: task cluster:render
+
+      - name: Check the secrets are encrypted
+        run: task secrets:check
+
+      # Not `task tofu:validate`: that wraps the command in the credentials
+      # for the state bucket, which this check has no business holding.
+      # Validating needs the providers and nothing else.
+      - name: Validate OpenTofu
+        working-directory: opentofu/project
+        run: |
+          tofu fmt -check -recursive ..
+          tofu init -backend=false -input=false
+          tofu validate
+
+      - name: Render before and after
+        env:
+          BASE: origin/${{ github.base_ref }}
+        run: task cluster:render:diff -- "${BASE}" > rendered.diff
+
+      # One comment per pull request, replaced on every push. A comment holds
+      # 65,536 characters, so a long diff is cut there and the whole of it goes
+      # to the run's summary page instead.
+      - name: Post the rendered diff
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          limit=60000
+          {
+            echo "### What the cluster would run"
+            echo
+            if [ ! -s rendered.diff ]; then
+              echo "No difference. This change does not alter anything ArgoCD applies."
+            else
+              echo "Rendered manifests, before and after this change. A line here is a line ArgoCD would apply."
+              echo
+              echo '```diff'
+              head -c "${limit}" rendered.diff
+              echo
+              echo '```'
+              if [ "$(wc -c < rendered.diff)" -gt "${limit}" ]; then
+                echo
+                echo "Cut at ${limit} characters. The whole diff is in the [run summary](${RUN_URL})."
+              fi
+            fi
+          } > comment.md
+
+          {
+            echo "### Rendered diff"
+            echo
+            echo '```diff'
+            cat rendered.diff
+            echo '```'
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+          gh pr comment "${PR}" --body-file comment.md --edit-last --create-if-none

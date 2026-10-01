@@ -17,6 +17,11 @@ __pycache__/
 kubeconfig
 talosconfig
 
+# Where kustomize unpacks the ArgoCD chart when it renders it. Downloaded on
+# demand, by the version in the kustomization beside it; see
+# docs/concepts/gitops.md.
+gitops/system/overlays/production/argocd/charts/
+
 # The age private key must never be in the repo. It is the one secret that
 # cannot itself be stored encrypted here.
 *.agekey

@@ -1,0 +1,222 @@
+// Renovate opens a pull request when something this repo pins has a newer
+// version. It never merges one: a merge to main is a deployment, and that stays
+// a person's decision. docs/concepts/updates.md explains the whole arrangement,
+// and docs/manual/maintenance/updating-a-component.md is what to do with a
+// pull request once it exists.
+{
+  $schema: "https://docs.renovatebot.com/renovate-schema.json",
+
+  // Brings the dependency dashboard: one issue listing every update, open or
+  // waiting.
+  extends: ["config:recommended"],
+
+  timezone: "Europe/Berlin",
+  // Early on Monday, so the week's updates arrive together.
+  schedule: ["* 0-6 * * 1"],
+  prConcurrentLimit: 5,
+  labels: ["dependencies"],
+
+  // A release has to be a week old before it is proposed, so someone else finds
+  // the bad ones first. `strict` holds the pull request back until then, rather
+  // than opening it with a pending check.
+  minimumReleaseAge: "7 days",
+  internalChecksFilter: "strict",
+
+  // Renovate finds an Application or a plain manifest only when told which
+  // files to read. Everything under gitops/ is one or the other.
+  argocd: {
+    managerFilePatterns: ["/^gitops/.+\\.ya?ml$/"],
+  },
+  kubernetes: {
+    managerFilePatterns: ["/^gitops/.+\\.ya?ml$/"],
+  },
+
+  // grafana.com has no release feed Renovate knows, so these two read its API.
+  // A dashboard's version is its revision number; a plugin's is a normal one.
+  customDatasources: {
+    "grafana-dashboards": {
+      defaultRegistryUrlTemplate: "https://grafana.com/api/dashboards/{{packageName}}/revisions",
+      transformTemplates: [
+        // The square brackets keep a single revision a list of one.
+        '{"releases": [items.{"version": $string(revision), "releaseTimestamp": createdAt}]}',
+      ],
+    },
+    "grafana-plugins": {
+      defaultRegistryUrlTemplate: "https://grafana.com/api/plugins/{{packageName}}/versions",
+      transformTemplates: [
+        '{"releases": [items.{"version": version, "releaseTimestamp": createdAt}]}',
+      ],
+    },
+  },
+
+  // Versions written where no built-in manager looks.
+  customManagers: [
+    {
+      customType: "regex",
+      description: "Grafana dashboards pulled from grafana.com by id",
+      managerFilePatterns: ["/^gitops/system/base/grafana/application\\.yaml$/"],
+      matchStrings: ["gnetId:\\s*(?<packageName>\\d+)\\s+revision:\\s*(?<currentValue>\\d+)"],
+      depNameTemplate: "grafana dashboard {{packageName}}",
+      datasourceTemplate: "custom.grafana-dashboards",
+      // A revision is one whole number.
+      versioningTemplate: "regex:^(?<major>\\d+)$",
+    },
+    {
+      customType: "regex",
+      description: "Grafana plugins, pinned as id@version",
+      managerFilePatterns: ["/^gitops/system/base/grafana/application\\.yaml$/"],
+      matchStrings: ["- (?<depName>[a-z0-9-]+-datasource)@(?<currentValue>\\S+)"],
+      datasourceTemplate: "custom.grafana-plugins",
+    },
+    {
+      customType: "regex",
+      description: "Talos, in terraform.tfvars",
+      managerFilePatterns: ["/^opentofu/project/terraform\\.tfvars$/"],
+      matchStrings: ["talos_version\\s*=\\s*\"(?<currentValue>[^\"]+)\""],
+      depNameTemplate: "siderolabs/talos",
+      datasourceTemplate: "github-releases",
+    },
+    {
+      customType: "regex",
+      description: "Kubernetes, in terraform.tfvars",
+      managerFilePatterns: ["/^opentofu/project/terraform\\.tfvars$/"],
+      matchStrings: ["kubernetes_version\\s*=\\s*\"(?<currentValue>[^\"]+)\""],
+      depNameTemplate: "kubernetes/kubernetes",
+      datasourceTemplate: "github-releases",
+    },
+    {
+      customType: "regex",
+      description: "Headscale, installed on the server by Ansible",
+      managerFilePatterns: ["/^ansible/roles/headscale/defaults/main\\.yaml$/"],
+      matchStrings: ["headscale_version:\\s*\"(?<currentValue>[^\"]+)\""],
+      depNameTemplate: "juanfont/headscale",
+      datasourceTemplate: "github-releases",
+      // The release is tagged v0.29.3; the role writes 0.29.3.
+      extractVersionTemplate: "^v(?<version>.+)$",
+    },
+    {
+      customType: "regex",
+      description: "CRDs fetched from a GitHub release",
+      managerFilePatterns: ["/^gitops/crds/base/kustomization\\.yaml$/"],
+      matchStrings: [
+        "https://github\\.com/(?<depName>[^/\\s]+/[^/\\s]+)/releases/download/(?<currentValue>[^/\\s]+)/",
+      ],
+      datasourceTemplate: "github-releases",
+    },
+    {
+      customType: "regex",
+      description: "Tools the pull request check installs",
+      managerFilePatterns: ["/^\\.github/workflows/.+\\.ya?ml$/"],
+      matchStrings: [
+        "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)(?: extractVersion=(?<extractVersion>\\S+))?\\s+\\w+_VERSION:\\s*(?<currentValue>\\S+)",
+      ],
+    },
+  ],
+
+  packageRules: [
+    // --- Versions that must move together: one pull request for each set. ---
+    {
+      description: "The cert-manager chart and the CRDs it expects",
+      matchPackageNames: ["cert-manager", "cert-manager/cert-manager"],
+      groupName: "cert-manager",
+    },
+    {
+      description: "kgateway and its CRD chart",
+      matchPackageNames: ["/kgateway/"],
+      groupName: "kgateway",
+    },
+    {
+      description: "The ArgoCD chart and ArgoCD's CRDs",
+      matchPackageNames: ["argo-cd", "argoproj/argo-cd"],
+      groupName: "argocd",
+      prBodyNotes: [
+        "The chart and the CRDs carry different version numbers. Before merging, check that the chart's `appVersion` is the version the CRDs are fetched at in `gitops/crds/base/kustomization.yaml`.",
+      ],
+    },
+    {
+      description: "The CloudNativePG chart and the operator's CRDs",
+      matchPackageNames: ["cloudnative-pg", "cloudnative-pg/cloudnative-pg"],
+      groupName: "cloudnative-pg",
+      prBodyNotes: [
+        "The chart and the CRDs carry different version numbers. Before merging, check that the chart's `appVersion` is the version the CRDs are fetched at in `gitops/crds/base/kustomization.yaml`.",
+      ],
+    },
+
+    {
+      description: "Every dashboard revision in one pull request",
+      matchDatasources: ["custom.grafana-dashboards"],
+      groupName: "grafana dashboards",
+      prBodyNotes: [
+        "A dashboard has no release notes. Open it in Grafana after merging and check its panels still draw.",
+      ],
+    },
+
+    // --- Updates where merging is not the whole job. ---
+    {
+      description: "sops-secrets-operator's CRD is a copy in this repo",
+      matchPackageNames: ["sops-secrets-operator"],
+      prBodyNotes: [
+        "The CRD is copied into `gitops/crds/base/sops-secrets-operator/sopssecrets.yaml`, because the chart publishes no URL for it. If this version changes the CRD, replace the copy with the one in the chart's `crds/` directory, in this pull request.",
+      ],
+    },
+    {
+      description: "Cilium moves one minor version at a time",
+      matchPackageNames: ["cilium"],
+      separateMultipleMinor: true,
+      prBodyNotes: [
+        "Merging upgrades the running cluster. It does not finish the job: follow [Upgrading Cilium](../blob/main/docs/manual/maintenance/upgrading-cilium.md), which ends with a `task tofu:apply`.",
+      ],
+    },
+    {
+      description: "Talos and Kubernetes are upgraded with talosctl, not by a merge",
+      matchPackageNames: ["siderolabs/talos", "kubernetes/kubernetes"],
+      prBodyNotes: [
+        "Merging changes nothing on a running node. It records the version a rebuilt cluster would get. Follow [Upgrading Talos and Kubernetes](../blob/main/docs/manual/maintenance/upgrading-talos-and-kubernetes.md), which ends with this merge. Kubernetes must stay inside the range the Talos version supports.",
+      ],
+    },
+    {
+      description: "Headscale runs on the server, so Ansible installs it",
+      matchPackageNames: ["juanfont/headscale"],
+      prBodyNotes: [
+        "Merging changes nothing on the server. Apply it afterwards with `task ansible:role -- headscale`.",
+      ],
+    },
+    {
+      description: "OpenTofu providers are only used when OpenTofu next runs",
+      matchManagers: ["terraform"],
+      prBodyNotes: [
+        "Merging changes nothing by itself. Run `task tofu:init -- -upgrade` and `task tofu:plan` afterwards; the plan should show no changes.",
+      ],
+    },
+
+    // --- Where to find release notes, for images that do not say. ---
+    {
+      matchPackageNames: ["cloudflare/cloudflared"],
+      sourceUrl: "https://github.com/cloudflare/cloudflared",
+    },
+    {
+      matchPackageNames: ["ghcr.io/gethomepage/homepage"],
+      sourceUrl: "https://github.com/gethomepage/homepage",
+    },
+
+    {
+      description: "Gateway API CRDs are only as new as kgateway supports",
+      matchPackageNames: ["kubernetes-sigs/gateway-api"],
+      prBodyNotes: [
+        "kgateway supports a set range of Gateway API versions. Check its release notes for this one before merging.",
+      ],
+    },
+
+    // --- Left alone. ---
+    {
+      description: "`required_version` is a floor for OpenTofu, and Renovate reads it as Terraform's",
+      matchDepTypes: ["required_version"],
+      enabled: false,
+    },
+    {
+      description: "The collections are floors, not pins: the newest is installed anyway",
+      matchManagers: ["ansible-galaxy"],
+      enabled: false,
+    },
+  ],
+}

@@ -381,6 +381,7 @@ The cluster's contents come from `gitops/`, applied by ArgoCD. See
 | Command | Good result |
 | --- | --- |
 | `task cluster:render` | `Both overlays render.` Needs no cluster; run before committing |
+| `task cluster:render:diff` | What the change would alter in the cluster, against `origin/main`. Nothing printed means nothing changes |
 | `task cluster:diff` | Only the change you meant to make |
 | `task cluster:bootstrap` | Installs ArgoCD, or repairs it. Safe to re-run |
 | `task cluster:sops-key` | The one secret ArgoCD cannot supply. Re-run after a rebuild |

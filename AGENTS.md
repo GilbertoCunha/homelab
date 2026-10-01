@@ -187,6 +187,7 @@ Nothing writes state to this repo.
 ```bash
 task ansible:lint
 task cluster:render
+task cluster:render:diff
 task tofu:fmt
 task tofu:validate
 task secrets:check
@@ -196,7 +197,9 @@ task secrets:check
 report nothing changed: that, not a dry run, is what proves a role is
 idempotent.
 `cluster:render` must render both overlays; it needs no cluster, so there is no
-excuse for skipping it. `tofu:validate` must pass with no warnings; a
+excuse for skipping it. `cluster:render:diff` prints what the change would
+alter in the cluster, against `origin/main`: read it, and every line should be
+one you meant. A pull request runs both, and posts the diff as a comment. `tofu:validate` must pass with no warnings; a
 deprecation warning means the provider has renamed something and the code should
 follow. `secrets:check` must
 say the file is encrypted: it is deliberately not gitignored, so a plaintext one

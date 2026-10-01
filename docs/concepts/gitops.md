@@ -172,8 +172,11 @@ This needs `kustomize.buildOptions: --enable-helm` in `argocd-cm`. Without it
 ArgoCD cannot render a kustomization that inflates a chart, which is exactly
 what it does to manage itself.
 
-The chart is vendored under `charts/`, so a render does not depend on a remote
-repository being up.
+The chart itself is not in git. kustomize downloads it into `charts/` beside
+the kustomization whenever it renders, on your machine and inside ArgoCD alike,
+and that directory is ignored. A copy kept in git would have to be replaced by
+hand on every version bump, and every other chart here is fetched at sync time
+anyway.
 
 ## Access
 

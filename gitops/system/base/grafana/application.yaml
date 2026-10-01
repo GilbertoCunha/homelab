@@ -45,7 +45,11 @@ spec:
           #
           # `victorialogs-datasource` is the old id for this and no longer
           # exists. Any dashboard still asking for that one will not bind.
-          - victoriametrics-logs-datasource
+          #
+          # Pinned, as `id@version`. Left bare it takes whatever is newest
+          # when Grafana starts on an empty volume, and nothing in git says
+          # which version that was. Renovate proposes the next one.
+          - victoriametrics-logs-datasource@0.32.0
 
         grafana.ini:
           plugins:
