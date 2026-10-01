@@ -68,14 +68,14 @@ daemon set "cilium" successfully rolled out
 task tofu:apply
 ```
 
-Expect **three** resources to change, and nothing else: the machine
-configuration of `cp-1`, `cp-2` and `cp-3`. This changes nothing in the running
+Expect **one** resource to change, and nothing else: the machine
+configuration of `cp-1`. This changes nothing in the running
 cluster — Talos will not re-apply it — but it is what a rebuilt cluster would be
 born with, and skipping it leaves `tofu plan` permanently dirty.
 
 | What the plan shows | What it means |
 | --- | --- |
-| 3 × `talos_machine_configuration_apply` updated | Correct. The workers and system nodes do not carry the manifest. |
+| 1 × `talos_machine_configuration_apply` updated | Correct. The worker and the system node do not carry the manifest. |
 | Every node updated | The change touched `common_patch`, not just Cilium. Stop and read the diff. |
 | Any `proxmox_virtual_environment_vm` replaced | Wrong. Nothing here should rebuild a guest. Stop. |
 

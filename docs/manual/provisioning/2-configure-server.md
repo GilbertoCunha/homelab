@@ -80,6 +80,23 @@ headscale nodes list
 All four services should be `active (running)`. The node list should show
 `homelab` with an address starting `100.64.`, tagged `tag:infra`.
 
+Two more things the run sets up for the cluster, both checked on the **server**:
+
+```bash
+cat /sys/fs/cgroup/qemu.slice/cpuset.cpus
+systemctl is-active prometheus-node-exporter
+```
+
+```
+1-5,7-11
+active
+```
+
+The first line is the host threads guests may run on; the rest are the
+server's own. [Node pools](../../concepts/node-pools.md#host-threads) explains
+the split. The second is the server's own metrics, which the cluster scrapes;
+see [Seeing what the cluster is doing](../../concepts/observability.md).
+
 ## 5. Reaching the Proxmox interface
 
 The Proxmox interface is served at `https://proxmox.homelab.grncunha.com`, with

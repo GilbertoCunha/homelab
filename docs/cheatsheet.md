@@ -266,14 +266,14 @@ Talos has no SSH and no shell. `talosctl` is the only way in.
 | `talosctl --nodes 10.10.10.11 service etcd status` | `Running` and healthy |
 | `talosctl --nodes 10.10.10.11 dmesg` | Kernel and Talos logs for one node |
 | `talosctl --nodes 10.10.10.11 get members` | Every node known to the cluster |
-| `talosctl --nodes 10.10.10.11 get addresses` | Includes `10.10.10.10` on whichever node holds the virtual IP |
+| `talosctl --nodes 10.10.10.11 get addresses` | Includes `10.10.10.10`, the virtual IP |
 
 | Address | What it is |
 | --- | --- |
-| `10.10.10.10` | The Kubernetes API. Virtual, moves between control planes |
-| `10.10.10.11`-`.13` | `cp-1` to `cp-3` |
-| `10.10.10.21`-`.23` | `worker-1` to `worker-3` |
-| `10.10.10.31`-`.32` | `system-1` to `system-2` |
+| `10.10.10.10` | The Kubernetes API. Virtual, held by the control plane |
+| `10.10.10.11` | `cp-1` |
+| `10.10.10.21` | `worker-1` |
+| `10.10.10.31` | `system-1` |
 | `10.10.10.200` | `gw-internal-prod`, every prod workload on the mesh |
 | `10.10.10.201` | `gw-internal-dev`, every dev workload on the mesh |
 

@@ -16,13 +16,8 @@ kubectl get nodes
 ```
 NAME       STATUS   ROLES           AGE   VERSION
 cp-1       Ready    control-plane   35h   v1.36.2
-cp-2       Ready    control-plane   35h   v1.36.2
-cp-3       Ready    control-plane   35h   v1.36.2
 system-1   Ready    <none>          35h   v1.36.2
-system-2   Ready    <none>          35h   v1.36.2
 worker-1   Ready    <none>          35h   v1.36.2
-worker-2   Ready    <none>          35h   v1.36.2
-worker-3   Ready    <none>          35h   v1.36.2
 ```
 
 Your own device must be on the mesh and accepting subnet routes, as in step 3.
@@ -139,6 +134,27 @@ Bootstrapped. Check it with: kubectl -n argocd get applications
 
 This applies the same manifests ArgoCD then syncs, so it is repeatable: run it
 again and nothing changes. That is also how you repair a broken ArgoCD.
+
+**On a new cluster the first run ends in errors instead**, because it applies
+things whose namespace or kind only exists once ArgoCD has installed the
+component they belong to:
+
+```
+Error from server (NotFound): namespaces "cert-manager" not found
+Error from server (NotFound): namespaces "external-dns" not found
+task: Failed to run task "cluster:bootstrap": exit status 1
+```
+
+ArgoCD itself is running by then. Wait until the namespaces exist, and run it
+again:
+
+```bash
+kubectl get namespace cert-manager external-dns
+task cluster:bootstrap
+```
+
+Until the second run, the Cloudflare token never reaches cert-manager or
+external-dns, and the certificates in step 8 stay `READY: False`.
 
 ## 6. Watching it converge
 

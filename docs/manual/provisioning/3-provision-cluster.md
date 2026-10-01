@@ -28,9 +28,9 @@ components, and workers for applications. How many there are, and how big, is
 in [Node pools](../../concepts/node-pools.md). Their addresses are in
 [Networks and addresses](../../architecture/networks.md).
 
-The Kubernetes API answers on `10.10.10.10`, a virtual address the three control
-planes share. Talos moves it to a healthy node on its own, so there is no load
-balancer to run.
+The Kubernetes API answers on `10.10.10.10`, a virtual address the control
+planes share. With one control plane it never moves; it is kept so the API's
+address does not change when a second is added.
 
 Talos is immutable and has no SSH. Nodes are configured entirely through their
 machine configuration, which OpenTofu applies over the network.
@@ -213,7 +213,7 @@ This takes several minutes and does a lot:
    address given to it by a cloud-init drive. **There is no DHCP on the guest
    bridge**, which is why the drive exists.
 4. OpenTofu applies each machine configuration. Talos installs itself to disk.
-5. The first control plane is bootstrapped, and etcd forms. The other two join.
+5. The first control plane is bootstrapped, and etcd forms. Any others join.
 6. OpenTofu waits until the cluster reports healthy.
 
 The run finishing means Kubernetes is actually serving, not just that the guests

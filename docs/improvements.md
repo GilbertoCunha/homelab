@@ -9,11 +9,6 @@ Things that work but are not right yet. Everything here is running; the
 `capabilities.drop` or `seccompProfile`. Warn-only, so nothing is blocked, but
 it is the one workload reachable from the internet.
 
-## Nothing has a PodDisruptionBudget
-
-`cloudflared` and each Envoy run two replicas, spread across nodes. A drain can
-still take both at once.
-
 ## Routes disagree on `sectionName`
 
 [Exposing a service](./manual/maintenance/exposing-a-service.md) says to set it.
@@ -34,23 +29,6 @@ services, not pods, so none of their output reaches VictoriaLogs.
 cluster-wide failure shows up first is the one place there is no search.
 Talos can send its service logs to a remote endpoint (`machine.logging`), which
 is the likely way in.
-
-## Node sizes and CPU weights are a first guess
-
-The sizes and CPU weights in [Node pools](./concepts/node-pools.md) were set on
-2026-09-30 from one afternoon of `kubectl top`, before node-exporter existed.
-None of them has been checked against a busy host.
-
-Check the Node pools dashboard in Grafana after a few weeks of real use:
-
-| Signal | Means |
-| --- | --- |
-| Sustained CPU steal above 5% on a worker | The weights or the total vCPUs need another look |
-| A pool's CPU or memory requested above 80% | The pool is close to refusing new pods |
-| System nodes mostly idle | They could shrink, and give the host back memory |
-
-[Resizing a node](./manual/maintenance/resizing-a-node.md) is the procedure.
-This item leaves once the numbers have been checked.
 
 ## Metric retention is written down nowhere
 

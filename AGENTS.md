@@ -166,8 +166,10 @@ Nothing writes state to this repo.
 - **A system component runs on the system nodes.** Every Deployment and
   StatefulSet under `gitops/system/` gets the toleration and the
   `nodeSelector` in [Node pools](docs/concepts/node-pools.md). A DaemonSet runs
-  everywhere, and Cilium's operator stays where Cilium puts it. An application
-  gets neither: the workers carry no taint. A system component also sets
+  everywhere, and Cilium's operator stays where Cilium puts it. The Gateways'
+  Envoys are the exception: they select the worker pool, to sit beside the
+  applications they forward to. An application gets neither: the workers carry
+  no taint. A system component also sets
   resource requests, sized from what it actually uses.
 
 ## Git

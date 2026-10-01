@@ -31,11 +31,11 @@ cloud-init drive rather than finding one itself.
 
 | Address | Guest | Notes |
 | --- | --- | --- |
-| `10.10.10.1` | The server | The bridge, and the gateway every guest uses |
-| `10.10.10.10` | Kubernetes API | Virtual, shared by the control planes |
-| `10.10.10.11`-`.13` | `cp-1` to `cp-3` | Control planes |
-| `10.10.10.21`-`.23` | `worker-1` to `worker-3` | Workers |
-| `10.10.10.31`-`.32` | `system-1` to `system-2` | System nodes |
+| `10.10.10.1` | The server | The bridge, and the gateway every guest uses. Port `9100` answers guests with the server's own metrics |
+| `10.10.10.10` | Kubernetes API | Virtual, held by the control plane |
+| `10.10.10.11` | `cp-1` | Control plane. `.12`-`.19` are kept for more |
+| `10.10.10.21` | `worker-1` | Worker. `.22`-`.29` are kept for more |
+| `10.10.10.31` | `system-1` | System node. `.32`-`.39` are kept for more |
 | `10.10.10.100`-`.199` | Free | For anything that is not a cluster node |
 | `10.10.10.200`-`.250` | Kubernetes LoadBalancers | Assigned by Cilium, not by a machine. See [Getting traffic into the cluster](../concepts/ingress.md) |
 | `10.10.10.251`-`.254` | Free | |

@@ -52,8 +52,8 @@ Talos boots → creates it before the cluster is finished coming up
 ArgoCD      → owns it from then on
 ```
 
-Only the three control planes carry it. Workers never apply inline manifests, and
-the render is some 75 KB.
+Only a control plane carries it. Workers never apply inline manifests, and the
+render is some 75 KB.
 
 **Talos only ever creates.** Its manifest controller checks whether each object
 exists and skips it if it does; it never updates one. So the inline manifest is
@@ -118,7 +118,7 @@ the nodes share, so these settings keep that cost low.
 | `autoDirectNodeRoutes: true` | Each node gets a route to every other node's pod range, through that node's address on the bridge. |
 | `ipv4NativeRoutingCIDR` | The pod subnet. Traffic inside it keeps pod addresses; traffic leaving it is masqueraded to the node's address. |
 | `bpf.masquerade: true` | Masquerading is done in eBPF, not iptables. This also turns on eBPF host routing, which skips the node's iptables and routing stack. |
-| `loadBalancer.mode: dsr` | Direct server return; see [Getting traffic into the cluster](./ingress.md#why-externaltrafficpolicy-cluster-with-direct-server-return). |
+| `loadBalancer.mode: dsr` | Direct server return; see [Getting traffic into the cluster](./ingress.md#why-externaltrafficpolicy-local). |
 
 eBPF masquerading breaks Talos' `forwardKubeDNSToHost`, which Talos' own Cilium
 guide lists as a known issue. `cluster.tf` turns it off, so CoreDNS forwards

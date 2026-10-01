@@ -92,25 +92,41 @@ Two consequences worth knowing before you debug this at two in the morning:
 
 - **The announcement policy names an interface, and a wrong name fails
   silently.** There is no error. The Service gets its address and the address
-  never answers. On these workers it is `eth0`; confirm with
+  never answers. On the worker it is `eth0`; confirm with
   `talosctl --nodes 10.10.10.21 get addresses`.
 - **Addresses are pinned, not allocated.** LB IPAM gives no ordering guarantee,
   so each Gateway asks for its address by name with the
   `lbipam.cilium.io/ips` annotation. Without that, prod and dev could swap
   addresses across a rebuild and the DNS records would quietly follow.
 
-## Why `externalTrafficPolicy: Cluster`, with direct server return
+## Why `externalTrafficPolicy: Local`
 
-`Cluster` lets any node hold an address's lease and pass requests on to an
-Envoy on another node. `Local` would announce only from nodes running an Envoy,
-and send every request to that one node's Envoy.
+The node holding an address's lease receives every packet sent to it. `Local`
+announces a Gateway's address only from a node running that Gateway's Envoy,
+so the packet is already where it needs to be. `Cluster` lets any node hold
+the lease and pass the packet on to an Envoy elsewhere.
 
-Passing a request on normally costs two things: the reply comes back through
-the node holding the lease, and the backend sees that node's address instead of
-the caller's. Cilium's **direct server return** (DSR, `loadBalancer.mode: dsr`)
-removes both. The backend's node replies to the caller directly, and the
-caller's mesh address reaches the backend, so a NetworkPolicy can be written
-against it. See [The cluster's networking](./cilium.md#routing).
+Passing it on is what costs. Every node is a guest on one server, and a packet
+going from one guest to another is handled by the first guest's kernel, the
+server, and the second guest's kernel. Under `Cluster`, the lease for both
+Gateways sat on a worker that ran no Envoy, and that worker handled more
+packets than any other node just forwarding them. The measurements are in
+[Node pools](./node-pools.md#why-one-node-per-pool).
+
+Two settings keep the lease beside Envoy, and either alone would do today:
+
+| Setting | Where | Effect |
+| --- | --- | --- |
+| `externalTrafficPolicy: Local` | `gateway-parameters.yaml` | Only a node running the Envoy announces its address |
+| `nodeSelector` on the announcement policy | `l2-announcement.yaml` | Only workers announce any address |
+
+`Local` also means the Envoy sees the caller's mesh address, so a NetworkPolicy
+can be written against it.
+
+Other `LoadBalancer` Services keep the default, `Cluster`. For those, Cilium's
+**direct server return** (DSR, `loadBalancer.mode: dsr`) still applies: when
+the backend is on another node, that node replies to the caller directly. See
+[The cluster's networking](./cilium.md#routing).
 
 ## Names and certificates are automatic
 

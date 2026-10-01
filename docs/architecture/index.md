@@ -34,9 +34,9 @@ internet ──▶ 22, 80, 443 ──▶ homelab.grncunha.com
                               ├── caddy ──▶ headscale (loopback)
                               ├── tailscale client ──▶ mesh
                               └── proxmox ──▶ vmbr1 ──▶ guests (NAT, no public IP)
-                                                        ├── cp-1..3      ──▶ etcd, kube-apiserver
-                                                        ├── system-1..2  ──▶ the cluster's own components
-                                                        └── worker-1..3  ──▶ workloads
+                                                        ├── cp-1      ──▶ etcd, kube-apiserver
+                                                        ├── system-1  ──▶ the cluster's own components
+                                                        └── worker-1  ──▶ the Gateways and workloads
 
 internet ──▶ cloudflare edge ──▶ tunnel ──▶ cloudflared (in cluster)
                                              └──▶ gw-public ──▶ <app>.grncunha.com

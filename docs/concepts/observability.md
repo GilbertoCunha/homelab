@@ -23,7 +23,7 @@ profiles, all single-server, with **Grafana** in front of them.
 | `victoria-metrics` | The metric store, and the scraper inside it |
 | `victoria-logs` | The log store, and a collector on every node |
 | `kube-state-metrics` | Turns the API server's object list into metrics |
-| `node-exporter` | Host-level metrics from every node, control planes included |
+| `node-exporter` | Host-level metrics from every node, the control plane included |
 | `pyroscope` | The profile store, and the Alloy that scrapes profiles into it |
 | `grafana` | The dashboards, reading all three stores |
 
@@ -113,6 +113,22 @@ knows any names.
 VictoriaMetrics is the exception: it is scraped by the `victoriametrics` job on
 `localhost:8428` and is deliberately **not** annotated, because it would then be
 collected twice under two job names.
+
+The server is the other exception, because it is not in the cluster at all. A
+node's metrics stop at its own vCPUs: they cannot show what the server spends
+carrying the guests, or whether it has any threads left. So the server runs its
+own node-exporter, installed by the `node_exporter` Ansible role, and the
+`proxmox-host` job scrapes it at `10.10.10.1:9100`. Its series carry no `node`
+label, which is how a query tells them from a cluster node's:
+
+| Query selects | Gets |
+| --- | --- |
+| `{node!=""}` | Cluster nodes only |
+| `{job="proxmox-host"}` | The server only |
+
+The Node pools dashboard draws both. Its **Host threads in use** panel splits
+the server's 12 threads into what the guests use and what the server itself
+uses.
 
 This is also why there is no OpenTelemetry collector. A collector's Prometheus
 receiver would scrape exactly these endpoints, one hop further away, and none of

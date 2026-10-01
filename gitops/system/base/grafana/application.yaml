@@ -104,8 +104,18 @@ spec:
         datasources:
           datasources.yaml:
             apiVersion: 1
+            # Every datasource names its own `uid`, the same as its name.
+            # Dashboards refer to a datasource by uid, and without one Grafana
+            # derives it from a hash of the name: stable, but unreadable in a
+            # dashboard's JSON.
+            #
+            # A uid cannot be added to a datasource Grafana has already
+            # stored: it fails to start with `data source not found`. On a
+            # cluster that already runs, delete Grafana's volume and pod after
+            # changing one, and it starts again from this file.
             datasources:
               - name: victoriametrics
+                uid: victoriametrics
                 type: prometheus
                 orgId: 1
                 # The service the victoria-metrics chart creates, named by
@@ -117,6 +127,7 @@ spec:
                 editable: true
 
               - name: victorialogs
+                uid: victorialogs
                 # Logs, queried with LogsQL. Needs the plugin above; the type
                 # is the plugin's id, not a Grafana built-in.
                 type: victoriametrics-logs-datasource
@@ -126,11 +137,9 @@ spec:
                 editable: true
 
               - name: pyroscope
+                uid: pyroscope
                 # Profiles, drawn as flame graphs. Built into Grafana, so no
                 # plugin above.
-                #
-                # No `uid`: Grafana derives a stable one from the name, and
-                # dashboards reference that.
                 type: grafana-pyroscope-datasource
                 orgId: 1
                 url: http://pyroscope.pyroscope.svc.cluster.local:4040

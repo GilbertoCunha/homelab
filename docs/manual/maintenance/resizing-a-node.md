@@ -3,10 +3,18 @@
 Changing a node's vCPUs, memory or CPU weight, on a cluster that is running.
 
 **Every one of these changes reboots the guest.** The Proxmox provider cannot
-change them live, so it restarts the VM to apply them. A plain `task tofu:apply`
-changes every guest at once, which reboots all three control planes together:
-etcd loses quorum and the API goes down. So a resize is applied one node at a
-time, with `-target`.
+change them live, so it restarts the VM to apply them. Each pool is one node, so
+whatever that node runs is down until it is back:
+
+| Node | Down while it reboots |
+| --- | --- |
+| `cp-1` | The Kubernetes API. Running pods keep serving; nothing can be deployed or rescheduled |
+| `system-1` | ArgoCD, Grafana, metrics and logs. Metrics have a gap |
+| `worker-1` | Every application and every Gateway |
+
+A plain `task tofu:apply` changes every guest it has a change for at once. A
+resize is applied one node at a time, with `-target`, so only one of those rows
+is true at a time.
 
 Node sizes and CPU weights live in `opentofu/project/locals.tf`. What the
 weights do is in [Node pools](../../concepts/node-pools.md).
@@ -46,9 +54,10 @@ kubectl drain worker-1 --ignore-daemonsets --delete-emptydir-data
 node/worker-1 drained
 ```
 
-A pod with a persistent volume on this node cannot move, because its volume
-cannot. It stays `Pending` until the node is back. See
-[The cluster's storage](../../concepts/storage.md).
+With one node in the pool there is nowhere for the pods to go: they stay
+`Pending` until the node is back. The drain still stops them cleanly first. A
+pod with a persistent volume could not move anyway, because its volume cannot.
+See [The cluster's storage](../../concepts/storage.md).
 
 **The drain retries forever on a database.** A CloudNativePG database with one
 instance has a PodDisruptionBudget allowing no evictions, so the drain prints
@@ -73,8 +82,9 @@ node/worker-1 drained
 The database is down until the node is back and uncordoned. Its data stays on
 its volume.
 
-**A control plane:** check that etcd has all three members before taking one
-away.
+**The control plane:** nothing to move. etcd has one member, so the API is
+down from the moment the guest stops until it is back. Check the cluster is
+healthy first, so a problem afterwards is known to be new:
 
 ```bash
 talosctl --nodes 10.10.10.11 health
