@@ -113,6 +113,12 @@ spec:
             # stored: it fails to start with `data source not found`. On a
             # cluster that already runs, delete Grafana's volume and pod after
             # changing one, and it starts again from this file.
+            #
+            # On an empty volume the logs plugin is downloaded while Grafana
+            # is already checking plugins, fails that check, and stays
+            # unloaded: the victorialogs datasource answers `Plugin not
+            # registered`. Delete the pod once more. The plugin is on the
+            # volume by then and loads.
             datasources:
               - name: victoriametrics
                 uid: victoriametrics
