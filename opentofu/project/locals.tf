@@ -2,7 +2,8 @@
 # this map, so adding a worker means changing one count here.
 #
 # Three pools: control planes, system nodes for the cluster's own components,
-# and workers for applications. docs/concepts/node-pools.md explains the split.
+# and workers for applications. docs/concepts/node-pools.md explains the split,
+# and why each pool is a single node.
 #
 # The sizes below are copied into the table in docs/concepts/node-pools.md,
 # with the totals against the host. Update it in the same commit.
@@ -16,16 +17,16 @@
 # applications win; control planes next, so etcd never starves; system nodes
 # least.
 #
-# Changing any size or weight here reboots the guest. Apply it one node at a
-# time; see docs/manual/maintenance/resizing-a-node.md.
+# Changing any size or weight here reboots the guest. See
+# docs/manual/maintenance/resizing-a-node.md.
 locals {
   control_planes = {
-    for i in range(3) :
+    for i in range(1) :
     "cp-${i + 1}" => {
       vm_id        = 111 + i
       ip_cidr      = "10.10.10.${11 + i}/24"
       cpu_cores    = 2
-      memory_mb    = 6144
+      memory_mb    = 8192
       disk_gb      = 40
       data_disk_gb = 0
       cpu_units    = 150
@@ -36,12 +37,12 @@ locals {
   # Workers as far as Talos is concerned. What sets them apart is the label and
   # taint in `system_pool`, which keep applications off them.
   system_nodes = {
-    for i in range(2) :
+    for i in range(1) :
     "system-${i + 1}" => {
       vm_id        = 131 + i
       ip_cidr      = "10.10.10.${31 + i}/24"
       cpu_cores    = 2
-      memory_mb    = 8192
+      memory_mb    = 16384
       disk_gb      = 40
       data_disk_gb = 100
       cpu_units    = 100
@@ -59,13 +60,22 @@ locals {
     effect = "NoSchedule"
   }
 
+  # The label that marks a worker. No taint goes with it: applications need no
+  # scheduling settings to land here, because every other node repels them. It
+  # exists for the few things that must name the workers outright, which are
+  # the Gateways' Envoys and the load balancer announcements under gitops/.
+  worker_pool = {
+    key   = local.system_pool.key
+    value = "worker"
+  }
+
   workers = {
-    for i in range(3) :
+    for i in range(1) :
     "worker-${i + 1}" => {
       vm_id        = 121 + i
       ip_cidr      = "10.10.10.${21 + i}/24"
-      cpu_cores    = 6
-      memory_mb    = 20480
+      cpu_cores    = 8
+      memory_mb    = 65536
       disk_gb      = 100
       data_disk_gb = 100
       cpu_units    = 200
@@ -81,7 +91,7 @@ locals {
 
   control_plane_ips = [for k, v in local.control_planes : local.node_ips[k]]
 
-  # Bootstrap runs against exactly one control plane, never all three.
+  # Bootstrap runs against exactly one control plane, however many there are.
   first_control_plane = local.control_plane_ips[0]
 
   cluster_endpoint = "https://${var.cluster_vip}:6443"

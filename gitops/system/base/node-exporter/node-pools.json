@@ -54,7 +54,7 @@
       "id": 2,
       "type": "stat",
       "title": "Busy vCPUs, whole cluster",
-      "description": "vCPUs doing work across every node, right now. The host has 12 threads; past about 10 the guests start waiting on each other.",
+      "description": "vCPUs doing work across every node, right now. The guests share 10 of the host's 12 threads; past about 8 they start waiting on each other.",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
@@ -72,7 +72,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum(rate(node_cpu_seconds_total{mode!~\"idle|iowait|steal\"}[$__rate_interval]))",
+          "expr": "sum(rate(node_cpu_seconds_total{node!=\"\", mode!~\"idle|iowait|steal\"}[$__rate_interval]))",
           "instant": true
         }
       ],
@@ -131,7 +131,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "max(sum by (node) (rate(node_cpu_seconds_total{mode=\"steal\"}[$__rate_interval])) / count by (node) (node_cpu_seconds_total{mode=\"idle\"}))",
+          "expr": "max(sum by (node) (rate(node_cpu_seconds_total{node!=\"\", mode=\"steal\"}[$__rate_interval])) / count by (node) (node_cpu_seconds_total{node!=\"\", mode=\"idle\"}))",
           "instant": true
         }
       ],
@@ -190,7 +190,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "max(rate(node_pressure_cpu_waiting_seconds_total[$__rate_interval]))",
+          "expr": "max(rate(node_pressure_cpu_waiting_seconds_total{node!=\"\"}[$__rate_interval]))",
           "instant": true
         }
       ],
@@ -290,7 +290,7 @@
       "id": 6,
       "type": "timeseries",
       "title": "Busy vCPUs, whole cluster",
-      "description": "vCPUs doing work across every node. The dashed lines mark 10 and 12: the host has 12 threads.",
+      "description": "vCPUs doing work across every node. The dashed lines mark 8 and 10: the guests share 10 of the host's 12 threads.",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
@@ -308,7 +308,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum(rate(node_cpu_seconds_total{mode!~\"idle|iowait|steal\"}[$__rate_interval]))",
+          "expr": "sum(rate(node_cpu_seconds_total{node!=\"\", mode!~\"idle|iowait|steal\"}[$__rate_interval]))",
           "legendFormat": "busy vCPUs"
         }
       ],
@@ -325,11 +325,11 @@
               },
               {
                 "color": "yellow",
-                "value": 10
+                "value": 8
               },
               {
                 "color": "red",
-                "value": 12
+                "value": 10
               }
             ]
           },
@@ -380,7 +380,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum by (node) (rate(node_cpu_seconds_total{mode=\"steal\"}[$__rate_interval])) / count by (node) (node_cpu_seconds_total{mode=\"idle\"})",
+          "expr": "sum by (node) (rate(node_cpu_seconds_total{node!=\"\", mode=\"steal\"}[$__rate_interval])) / count by (node) (node_cpu_seconds_total{node!=\"\", mode=\"idle\"})",
           "legendFormat": "{{node}}"
         }
       ],
@@ -431,13 +431,79 @@
       }
     },
     {
+      "id": 16,
+      "type": "timeseries",
+      "title": "Host threads in use",
+      "description": "The server's 12 threads, from its own node-exporter. Guests are the vCPUs; the server itself is everything it does to carry them: the mesh client, the guest bridge and Proxmox. Guests may use 10 threads, so the two together reach 12 only when the server's own two are full as well.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 13,
+        "w": 24,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum(rate(node_cpu_guest_seconds_total{job=\"proxmox-host\"}[$__rate_interval]))",
+          "legendFormat": "guests"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum(rate(node_cpu_seconds_total{job=\"proxmox-host\", mode!~\"idle|iowait\"}[$__rate_interval])) - sum(rate(node_cpu_guest_seconds_total{job=\"proxmox-host\"}[$__rate_interval]))",
+          "legendFormat": "the server itself"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "min": 0,
+          "max": 12,
+          "custom": {
+            "fillOpacity": 30,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "mean",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
       "id": 8,
       "type": "row",
       "title": "Pools",
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 13,
+        "y": 21,
         "w": 24,
         "h": 1
       },
@@ -454,7 +520,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 14,
+        "y": 22,
         "w": 12,
         "h": 8
       },
@@ -465,7 +531,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum by (pool) (label_replace(sum by (node) (rate(node_cpu_seconds_total{mode!~\"idle|iowait|steal\"}[$__rate_interval])), \"pool\", \"$1\", \"node\", \"(.+)-[0-9]+\")) / sum by (pool) (label_replace(count by (node) (node_cpu_seconds_total{mode=\"idle\"}), \"pool\", \"$1\", \"node\", \"(.+)-[0-9]+\"))",
+          "expr": "sum by (pool) (label_replace(sum by (node) (rate(node_cpu_seconds_total{node!=\"\", mode!~\"idle|iowait|steal\"}[$__rate_interval])), \"pool\", \"$1\", \"node\", \"(.+)-[0-9]+\")) / sum by (pool) (label_replace(count by (node) (node_cpu_seconds_total{node!=\"\", mode=\"idle\"}), \"pool\", \"$1\", \"node\", \"(.+)-[0-9]+\"))",
           "legendFormat": "{{pool}}"
         }
       ],
@@ -519,7 +585,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 14,
+        "y": 22,
         "w": 12,
         "h": 8
       },
@@ -530,7 +596,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum by (pool) (label_replace(node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes, \"pool\", \"$1\", \"node\", \"(.+)-[0-9]+\")) / sum by (pool) (label_replace(node_memory_MemTotal_bytes, \"pool\", \"$1\", \"node\", \"(.+)-[0-9]+\"))",
+          "expr": "sum by (pool) (label_replace(node_memory_MemTotal_bytes{node!=\"\"} - node_memory_MemAvailable_bytes{node!=\"\"}, \"pool\", \"$1\", \"node\", \"(.+)-[0-9]+\")) / sum by (pool) (label_replace(node_memory_MemTotal_bytes{node!=\"\"}, \"pool\", \"$1\", \"node\", \"(.+)-[0-9]+\"))",
           "legendFormat": "{{pool}}"
         }
       ],
@@ -592,7 +658,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 22,
+        "y": 30,
         "w": 12,
         "h": 8
       },
@@ -665,7 +731,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 22,
+        "y": 30,
         "w": 12,
         "h": 8
       },
@@ -734,7 +800,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 30,
+        "y": 38,
         "w": 24,
         "h": 1
       },
@@ -751,7 +817,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 31,
+        "y": 39,
         "w": 12,
         "h": 8
       },
@@ -762,7 +828,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "rate(node_pressure_cpu_waiting_seconds_total[$__rate_interval])",
+          "expr": "rate(node_pressure_cpu_waiting_seconds_total{node!=\"\"}[$__rate_interval])",
           "legendFormat": "{{node}}"
         }
       ],
@@ -823,7 +889,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 31,
+        "y": 39,
         "w": 12,
         "h": 8
       },

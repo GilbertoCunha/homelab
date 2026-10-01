@@ -10,12 +10,12 @@ metadata:
     argocd.argoproj.io/sync-wave: "2"
   name: guest-bridge
 spec:
-  # Workers only. The control planes carry etcd and the API server, and an
-  # announcement lease adds traffic they do not need.
+  # Workers only. The node holding an address receives every packet sent to
+  # it. On a control plane or a system node that packet then has to cross to
+  # the worker, which costs CPU in both guests and on the server.
   nodeSelector:
-    matchExpressions:
-      - key: node-role.kubernetes.io/control-plane
-        operator: DoesNotExist
+    matchLabels:
+      homelab.grncunha.com/pool: worker
 
   # The interface holding 10.10.10.0/24 on a worker. Confirmed with
   # `talosctl --nodes 10.10.10.21 get addresses`; a wrong value here is the

@@ -70,6 +70,17 @@ spec:
                 - job_name: victoriametrics
                   static_configs:
                     - targets: ["localhost:8428"]
+                # The server itself, not a cluster node: its node-exporter is
+                # installed by Ansible (ansible/roles/node_exporter) and
+                # answers guests on the bridge address. A node's own metrics
+                # stop at its vCPUs, so this is the only view of what carrying
+                # the guests costs the server.
+                #
+                # Its series carry no `node` label, which is how the Node
+                # pools dashboard tells them from a cluster node's.
+                - job_name: proxmox-host
+                  static_configs:
+                    - targets: ["10.10.10.1:9100"]
                 - job_name: "kubernetes-apiservers"
                   kubernetes_sd_configs:
                     - role: endpoints

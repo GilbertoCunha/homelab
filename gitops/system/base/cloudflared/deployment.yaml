@@ -9,7 +9,9 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "4"
 spec:
-  replicas: 2
+  # One, because there is one system node. A second on the same node survives
+  # nothing the first does not.
+  replicas: 1
   selector:
     matchLabels:
       app: cloudflared
@@ -26,14 +28,6 @@ spec:
           effect: NoSchedule
       nodeSelector:
         homelab.grncunha.com/pool: system
-      # Two replicas on one node buy nothing: a node reboot takes both.
-      topologySpreadConstraints:
-        - maxSkew: 1
-          topologyKey: kubernetes.io/hostname
-          whenUnsatisfiable: DoNotSchedule
-          labelSelector:
-            matchLabels:
-              app: cloudflared
       containers:
         - name: cloudflared
           image: cloudflare/cloudflared:2026.8.2

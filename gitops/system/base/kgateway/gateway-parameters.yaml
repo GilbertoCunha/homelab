@@ -3,8 +3,18 @@
 # Cilium load balancer and kgateway meet: kgateway provisions the Service, and
 # Cilium fills in the address of any Service that asks to be a LoadBalancer.
 # docs/concepts/ingress.md has the full path.
-# Every Envoy runs on the system nodes; see docs/concepts/node-pools.md. They
-# are the way into the cluster, not an application.
+#
+# Every Envoy runs on the worker, beside the applications it forwards to, so a
+# request does not cross from one guest to another on its way in. Each selects
+# the worker pool's label rather than the system pool's; see
+# docs/concepts/node-pools.md.
+#
+# One replica each. A second on the same node survives nothing the first does
+# not, and a rollout starts the new pod before it stops the old one.
+#
+# `--concurrency` is Envoy's number of worker threads, which is also the most
+# CPUs it can use. Left unset it takes one per vCPU on the node, so three
+# Gateways would each try to use the whole worker.
 apiVersion: gateway.kgateway.dev/v1alpha1
 kind: GatewayParameters
 metadata:
@@ -16,31 +26,19 @@ spec:
   kube:
     service:
       type: LoadBalancer
-      externalTrafficPolicy: Cluster
+      # The address is announced only from a node running this Envoy; see
+      # docs/concepts/ingress.md.
+      externalTrafficPolicy: Local
     deployment:
-      replicas: 2
-    # Sized from `kubectl top` on 2026-09-30: 22Mi per replica.
+      replicas: 1
     podTemplate:
-      tolerations:
-        - key: homelab.grncunha.com/pool
-          operator: Equal
-          value: system
-          effect: NoSchedule
       nodeSelector:
-        homelab.grncunha.com/pool: system
-      # Two replicas on one node buy nothing: a node reboot takes both, and
-      # the other system node's CPU goes unused. `pod-template-hash` spreads
-      # a rollout's new pods among themselves, not around the old ones.
-      topologySpreadConstraints:
-        - maxSkew: 1
-          topologyKey: kubernetes.io/hostname
-          whenUnsatisfiable: DoNotSchedule
-          labelSelector:
-            matchLabels:
-              app.kubernetes.io/instance: gw-internal-prod
-          matchLabelKeys:
-            - pod-template-hash
+        homelab.grncunha.com/pool: worker
+    # Sized from `kubectl top` on 2026-09-30: 22Mi per replica.
     envoyContainer:
+      extraArgs:
+        - --concurrency
+        - "2"
       resources:
         requests:
           cpu: 10m
@@ -64,36 +62,23 @@ spec:
   kube:
     service:
       type: LoadBalancer
-      externalTrafficPolicy: Cluster
+      externalTrafficPolicy: Local
     deployment:
-      replicas: 2
-    # Far more than prod's, because load tests run against dev. The CPU
-    # request sets Envoy's share when a system node is saturated. Half a CPU
-    # per replica leaves room in the system pool for everything else.
+      replicas: 1
     podTemplate:
-      tolerations:
-        - key: homelab.grncunha.com/pool
-          operator: Equal
-          value: system
-          effect: NoSchedule
       nodeSelector:
-        homelab.grncunha.com/pool: system
-      # Two replicas on one node buy nothing: a node reboot takes both, and
-      # the other system node's CPU goes unused. `pod-template-hash` spreads
-      # a rollout's new pods among themselves, not around the old ones.
-      topologySpreadConstraints:
-        - maxSkew: 1
-          topologyKey: kubernetes.io/hostname
-          whenUnsatisfiable: DoNotSchedule
-          labelSelector:
-            matchLabels:
-              app.kubernetes.io/instance: gw-internal-dev
-          matchLabelKeys:
-            - pod-template-hash
+        homelab.grncunha.com/pool: worker
+    # Far more than prod's, because load tests run against dev. Envoy used 2.1
+    # CPUs at 10,000 requests a second on 2026-10-01. The request is its share
+    # of the worker when the applications want the same CPUs; four threads is
+    # what the two replicas it replaces had between them.
     envoyContainer:
+      extraArgs:
+        - --concurrency
+        - "4"
       resources:
         requests:
-          cpu: 500m
+          cpu: "2"
           memory: 512Mi
     serviceOverlay:
       metadata:
@@ -115,29 +100,15 @@ spec:
     service:
       type: ClusterIP
     deployment:
-      replicas: 2
-    # Sized from `kubectl top` on 2026-09-30: 20Mi per replica.
+      replicas: 1
     podTemplate:
-      tolerations:
-        - key: homelab.grncunha.com/pool
-          operator: Equal
-          value: system
-          effect: NoSchedule
       nodeSelector:
-        homelab.grncunha.com/pool: system
-      # Two replicas on one node buy nothing: a node reboot takes both, and
-      # the other system node's CPU goes unused. `pod-template-hash` spreads
-      # a rollout's new pods among themselves, not around the old ones.
-      topologySpreadConstraints:
-        - maxSkew: 1
-          topologyKey: kubernetes.io/hostname
-          whenUnsatisfiable: DoNotSchedule
-          labelSelector:
-            matchLabels:
-              app.kubernetes.io/instance: gw-public
-          matchLabelKeys:
-            - pod-template-hash
+        homelab.grncunha.com/pool: worker
+    # Sized from `kubectl top` on 2026-09-30: 20Mi per replica.
     envoyContainer:
+      extraArgs:
+        - --concurrency
+        - "2"
       resources:
         requests:
           cpu: 10m

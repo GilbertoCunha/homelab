@@ -55,8 +55,8 @@ locals {
       proxy = {
         disabled = true
       }
-      # Three dedicated control planes exist precisely so workloads stay off
-      # them. Flip this only if the cluster is ever collapsed to three nodes.
+      # The control plane is its own guest precisely so workloads stay off it.
+      # Flip this only if the cluster is ever collapsed to a single node.
       allowSchedulingOnControlPlanes = false
     }
   }
@@ -111,11 +111,16 @@ locals {
   # Workers install from their own image, which carries their kernel arguments;
   # see `image.tf`. Setting it here is what makes a `talosctl upgrade` or a
   # reinstall keep them. A running node only picks it up on its next upgrade.
+  #
+  # The label names the pool; see `worker_pool` in `locals.tf`.
   worker_patches = {
     for name, node in local.workers : name => {
       machine = {
         install = {
           image = data.talos_image_factory_urls.workers.urls.installer
+        }
+        nodeLabels = {
+          (local.worker_pool.key) = local.worker_pool.value
         }
       }
     }
@@ -163,8 +168,9 @@ locals {
                 }]
               },
               # The control planes share one address. Talos elects a holder and
-              # moves it on failure, which is what makes the API endpoint
-              # highly available without a load balancer in front.
+              # moves it on failure. With one control plane there is nothing to
+              # move it to; it stays so the API endpoint does not change when a
+              # second one is added.
               node.machine_type == "controlplane" ? { vip = { ip = var.cluster_vip } } : {},
             )
           ]
@@ -212,7 +218,7 @@ resource "talos_machine_configuration_apply" "this" {
   depends_on = [module.talos_node]
 }
 
-# Runs against one control plane only. etcd forms from there and the other two
+# Runs against one control plane only. etcd forms from there and any others
 # join it; bootstrapping more than once would create split clusters.
 resource "talos_machine_bootstrap" "this" {
   client_configuration = talos_machine_secrets.this.client_configuration
