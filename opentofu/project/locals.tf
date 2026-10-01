@@ -74,7 +74,7 @@ locals {
     "worker-${i + 1}" => {
       vm_id        = 121 + i
       ip_cidr      = "10.10.10.${21 + i}/24"
-      cpu_cores    = 8
+      cpu_cores    = 10
       memory_mb    = 65536
       disk_gb      = 100
       data_disk_gb = 100

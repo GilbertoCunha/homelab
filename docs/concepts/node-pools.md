@@ -19,14 +19,17 @@ big they are. Everywhere else links here.
 | --- | --- | --- | --- | --- | --- |
 | Control plane | 1 | 2 | 8 GiB | 40 GB | 150 |
 | System | 1 | 2 | 16 GiB | 40 GB + 100 GB data | 100 |
-| Worker | 1 | 8 | 64 GiB | 100 GB + 100 GB data | 200 |
-| **Total** | **3** | **12** | **88 GiB** | | |
+| Worker | 1 | 10 | 64 GiB | 100 GB + 100 GB data | 200 |
+| **Total** | **3** | **14** | **88 GiB** | | |
 
 The host has 6 cores, 12 threads and 125 GiB of usable memory. The guests share
-10 of those threads; see [Host threads](#host-threads). That makes 1.2:1 CPU
-overcommit, and leaves about 37 GiB for the host itself. The control plane and
-the system node idle at about 0.3 vCPUs each, so in practice the worker has the
-10 threads to itself.
+10 of those threads; see [Host threads](#host-threads). That makes 1.4:1 CPU
+overcommit, and leaves about 37 GiB for the host itself.
+
+The worker has a vCPU for every thread the guests share. The control plane and
+the system node idle at about 0.3 vCPUs each, so the worker can use nearly all
+10. When all three are busy at once, the [CPU weights](#cpu-weights) decide who
+waits.
 
 `opentofu/project/locals.tf` is what actually sets these. Change a size there
 and update this table in the same commit. Addresses are in
@@ -50,7 +53,7 @@ worker, and a request crosses between guests only on its way in and out.
 
 The same load test, `peak.js` from the `system-design` repo, was run from a
 laptop on the mesh against both layouts on 2026-10-01. It holds 10,000 requests
-a second for a minute:
+a second for a minute. The worker had 8 vCPUs at the time:
 
 | During the hold | 8 nodes, 28 vCPUs | 3 nodes, 12 vCPUs |
 | --- | --- | --- |
