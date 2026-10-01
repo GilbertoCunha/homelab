@@ -29,6 +29,11 @@ table inet filter {
     # Quoted names match by string, so these rules load before the interfaces exist.
     iifname "tailscale0" tcp dport { {{ mesh_tcp_ports | join(', ') }} } accept
     iifname "tailscale0" icmp type echo-request accept
+
+    # --- guests ---
+    # The cluster scrapes the server's node-exporter. Nothing else on the
+    # server is open to a guest.
+    iifname "{{ pve_bridge }}" tcp dport {{ node_exporter_port }} accept
   }
 
   chain forward {

@@ -22,6 +22,10 @@
     - role: proxmox
       tags: [proxmox]
 
+    # Serves the server's own metrics to the cluster on the guest bridge.
+    - role: node_exporter
+      tags: [node_exporter]
+
     # Truly last: reboots only if something is still running on old code.
     - role: reboot
       tags: [reboot]

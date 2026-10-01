@@ -16,3 +16,6 @@
 
 - name: Configure the guest network
   ansible.builtin.import_tasks: network.yaml
+
+- name: Reserve host threads for the server
+  ansible.builtin.import_tasks: guest_cpus.yaml

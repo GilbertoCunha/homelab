@@ -1,0 +1,23 @@
+---
+# The package recommends a second one, of timers that write SMART and apt
+# state to text files. Nothing reads those here.
+- name: Install node-exporter
+  ansible.builtin.apt:
+    name: "{{ node_exporter_package }}"
+    state: present
+    install_recommends: false
+
+- name: Set the node-exporter arguments
+  ansible.builtin.template:
+    src: node-exporter.j2
+    dest: "{{ node_exporter_args_file }}"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart node-exporter
+
+- name: Enable node-exporter
+  ansible.builtin.service:
+    name: "{{ node_exporter_service }}"
+    enabled: true
+    state: started

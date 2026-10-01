@@ -1,0 +1,5 @@
+# Managed by Ansible (roles/node_exporter). Do not edit on the server.
+#
+# Every address, because the guest bridge may not have its own yet when this
+# starts at boot. The firewall in roles/common is what limits it to guests.
+ARGS="--web.listen-address=:{{ node_exporter_port }}"

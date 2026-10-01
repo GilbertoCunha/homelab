@@ -1,0 +1,20 @@
+---
+# Every guest runs inside `qemu.slice`, so one setting on the slice confines
+# them all. Proxmox has a per-guest `affinity` option that does the same, but
+# only root may set it, and OpenTofu is not root.
+- name: Create the drop-in directory for the guest slice
+  ansible.builtin.file:
+    path: /etc/systemd/system/qemu.slice.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Keep the guests off the server's own threads
+  ansible.builtin.template:
+    src: qemu-slice.conf.j2
+    dest: /etc/systemd/system/qemu.slice.d/10-guest-cpus.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Reload systemd

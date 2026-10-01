@@ -34,6 +34,12 @@ pve_gateway: 10.10.10.1  # the bridge address, as guests see it
 k8s_pod_subnet: 10.244.0.0/16  # reserved, Talos default
 k8s_service_subnet: 10.96.0.0/12  # reserved, Talos default
 
+# The server's own metrics, scraped by VictoriaMetrics in the cluster. Read by
+# the role that serves them and by the firewall that lets guests reach them.
+# The same port is the scrape target in
+# gitops/system/base/victoria-metrics/application.yaml.
+node_exporter_port: 9100
+
 # Firewall.
 public_tcp_ports: [22, 80, 443]
 # 443 carries the Proxmox interface

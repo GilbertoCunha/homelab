@@ -1,0 +1,6 @@
+---
+# systemd applies a slice's cgroup settings when it re-reads the unit, so
+# running guests move without a restart.
+- name: Reload systemd
+  ansible.builtin.systemd_service:
+    daemon_reload: true

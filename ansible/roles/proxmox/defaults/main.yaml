@@ -29,6 +29,12 @@ proxmox_storage_content:
   - iso        # the Talos boot image
   - snippets   # cloud-init data, if the generated drive is ever not enough
 
+# The host threads guests may run on. The i7-8700 pairs thread N with thread
+# N+6 on one core, so this leaves core 0, threads 0 and 6, to the server: the
+# mesh client, the guest bridge and Proxmox itself. Guests that fill every
+# thread leave those waiting behind them. See docs/concepts/node-pools.md.
+proxmox_guest_cpus: 1-5,7-11
+
 # OpenTofu reaches the API as this user, never as root. See
 # docs/manual/3-provision-cluster.md for minting the token.
 proxmox_api_user: opentofu@pve

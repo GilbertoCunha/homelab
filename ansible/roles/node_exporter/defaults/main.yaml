@@ -1,0 +1,6 @@
+---
+# Debian's own package. It is a service reading one file of arguments, which is
+# all this role needs, and unattended-upgrades keeps it patched.
+node_exporter_package: prometheus-node-exporter
+node_exporter_service: prometheus-node-exporter
+node_exporter_args_file: /etc/default/prometheus-node-exporter
