@@ -1,0 +1,14 @@
+---
+# The message cache. Without a volume, a restart loses every message a
+# disconnected phone has not fetched yet. No storageClassName: local-path is
+# the default class.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ntfy-cache
+  namespace: ntfy
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 1Gi

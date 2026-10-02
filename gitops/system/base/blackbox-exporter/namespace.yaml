@@ -1,0 +1,7 @@
+---
+# Declared here rather than left to the Application's `CreateNamespace`,
+# because targets.yaml lands in it too, and is not part of the chart.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: blackbox-exporter
