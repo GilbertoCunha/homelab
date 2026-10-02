@@ -21,6 +21,12 @@ the document or the manifests should change.
 `gitops/system/base/victoria-traces/` and `gitops/system/base/otel/` are empty
 directories: nothing is deployed, so there is nothing to give a volume to yet.
 
+## The uptime check's resource requests are guesses
+
+The blackbox exporter, `probe-targets` and ntfy were given requests before any
+of them had run. Every other system component is sized from `kubectl top`.
+Measure them after a day and replace the figures; each manifest says so.
+
 ## etcd and kubelet logs are not collected
 
 The log collector reads pod logs on every node. etcd and the kubelet are Talos

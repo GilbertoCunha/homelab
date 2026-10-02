@@ -13,6 +13,10 @@ data gets there, and — more usefully — what is not collected at all.
 Hubble is not covered here. It is a property of the CNI and lives in
 [The cluster's networking](./cilium.md).
 
+None of the four tells you anything unless you are looking. Whether each
+hostname answers, and telling a phone when one does not, is in
+[Knowing when something is down](./alerts.md).
+
 ## What is used
 
 **VictoriaMetrics** for metrics, **VictoriaLogs** for logs, **Pyroscope** for

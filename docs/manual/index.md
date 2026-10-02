@@ -25,6 +25,8 @@ Standalone procedures. Read the one you need.
   application to live, which is one file in the catalog
 - [Exposing a service](./maintenance/exposing-a-service.md): making a workload
   reachable by name, which is one `HTTPRoute` and nothing else
+- [Receiving alerts](./maintenance/receiving-alerts.md): getting the "is down"
+  and "is back up" messages on a phone
 - [Updating a component](./maintenance/updating-a-component.md): what to do
   with a pull request from Renovate, and the updates a merge does not finish
 - [Upgrading Cilium](./maintenance/upgrading-cilium.md): the CNI, which is also
