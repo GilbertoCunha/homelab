@@ -24,7 +24,7 @@ spec:
   source:
     chart: grafana
     repoURL: https://grafana-community.github.io/helm-charts
-    targetRevision: 13.0.0
+    targetRevision: 13.2.5
     # Inlined for the same reason as victoria-logs; see that application.yaml.
     helm:
       valuesObject:
