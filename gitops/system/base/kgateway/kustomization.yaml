@@ -8,4 +8,5 @@ resources:
   - namespace.yaml
   - gateway-parameters.yaml
   - gateways.yaml
+  - listener-policy.yaml
   - certificates.yaml
