@@ -1,0 +1,15 @@
+---
+# Port 80, so the address Grafana posts to needs no port:
+# http://ntfy.ntfy.svc.cluster.local/<topic>
+apiVersion: v1
+kind: Service
+metadata:
+  name: ntfy
+  namespace: ntfy
+spec:
+  selector:
+    app: ntfy
+  ports:
+    - name: http
+      port: 80
+      targetPort: http

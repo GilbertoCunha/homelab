@@ -1,0 +1,46 @@
+---
+# ntfy's own configuration, and the template that turns one of Grafana's alert
+# notifications into a message worth reading on a phone.
+#
+# ntfy reads server.yml once, at startup. After changing it, restart the pod:
+# nothing does that for a ConfigMap; see docs/backlog.md.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ntfy
+  namespace: ntfy
+data:
+  server.yml: |
+    # The name devices subscribe at. Mesh only; see route.yaml.
+    base-url: https://ntfy.k8s.homelab.grncunha.com
+    listen-http: ":8080"
+    # The Gateway's Envoy is in front, so the caller's address is in a header.
+    behind-proxy: true
+
+    # Messages wait here for a device that was not connected when they were
+    # sent, and the phone is only reachable while it is on the mesh. The
+    # default is 12 hours, which a weekend away from the mesh outlasts.
+    cache-file: /var/cache/ntfy/cache.db
+    cache-duration: 72h
+
+    template-dir: /etc/ntfy/templates
+
+    # On a port of its own, so the route above does not serve it.
+    enable-metrics: true
+    metrics-listen-http: ":9090"
+
+    # No users and no access control: the mesh is what decides who can reach
+    # this, the same as every other name under k8s.homelab.
+
+  # Selected by `?template=uptime` on the address Grafana posts to; see the
+  # contact point in gitops/system/base/grafana/application.yaml. The fields
+  # are Grafana's webhook payload. One notification is one hostname, because
+  # the notification policy there groups by it.
+  uptime.yml: |
+    title: |
+      {{ .groupLabels.hostname }} is {{ if eq .status "firing" }}down{{ else }}back up{{ end }}
+    message: |
+      {{ if eq .status "firing" }}The uptime check has failed for two minutes.{{ else }}The uptime check passes again.{{ end }}
+      Route {{ .commonLabels.route }} in {{ .commonLabels.namespace }}.
+    priority: |
+      {{ if eq .status "firing" }}4{{ else }}3{{ end }}

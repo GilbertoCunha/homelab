@@ -1,0 +1,63 @@
+---
+# Asks every hostname the cluster serves for a page, the way a browser would,
+# and reports whether one came back. It is the only thing here that tests the
+# whole path -- the DNS record, the Gateway, the tunnel, the certificate and the
+# workload -- rather than one part of it. See docs/concepts/observability.md.
+#
+# It holds no list of hostnames. VictoriaMetrics hands it one name per scrape,
+# from the list targets.yaml builds out of the cluster's HTTPRoutes; the
+# `uptime` job in gitops/system/base/victoria-metrics/application.yaml is where
+# the two meet.
+#
+# Wave 1: it needs only the API server. Grafana, which alerts on the result, is
+# wave 4.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: blackbox-exporter
+  namespace: argocd
+  labels:
+    tier: system
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  project: default
+  destination:
+    namespace: blackbox-exporter
+    server: https://kubernetes.default.svc
+  source:
+    chart: prometheus-blackbox-exporter
+    repoURL: https://prometheus-community.github.io/helm-charts
+    targetRevision: 11.19.1
+    helm:
+      valuesObject:
+        # Without this the Service is `blackbox-exporter-prometheus-blackbox-exporter`.
+        # The scrape job names it, so the name is worth being able to read.
+        fullnameOverride: blackbox-exporter
+
+        # No `config`: the chart's default is one module, `http_2xx`, which
+        # follows redirects and passes on any 2xx. That is the whole check. A
+        # route whose root does not answer 2xx names a path that does, by
+        # annotation; see targets.yaml.
+
+        # On the system nodes; see docs/concepts/node-pools.md.
+        tolerations:
+          - key: homelab.grncunha.com/pool
+            operator: Equal
+            value: system
+            effect: NoSchedule
+        nodeSelector:
+          homelab.grncunha.com/pool: system
+        # An estimate, not yet measured: the exporter idles between probes.
+        # Replace with `kubectl top` once it has run for a day.
+        resources:
+          requests:
+            cpu: 10m
+            memory: 32Mi
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    # No CreateNamespace: namespace.yaml declares it.
+    syncOptions:
+      - ServerSideApply=true

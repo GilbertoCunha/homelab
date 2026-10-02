@@ -1,0 +1,96 @@
+---
+# Delivers alerts to a phone. Grafana posts to it; a phone on the mesh
+# subscribes to it. See docs/concepts/observability.md.
+#
+# It runs here, in the cluster it reports on. An alert about an application
+# arrives; nothing arrives when the system node, the server or the mesh is
+# what failed.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ntfy
+  namespace: ntfy
+spec:
+  replicas: 1
+  # The volume is ReadWriteOnce and holds a SQLite file. The old pod has to let
+  # go of it before the new one starts.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: ntfy
+  template:
+    metadata:
+      labels:
+        app: ntfy
+      annotations:
+        # Scraped by the discovery job in
+        # gitops/system/base/victoria-metrics/application.yaml.
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+    spec:
+      # On the system nodes; see docs/concepts/node-pools.md.
+      tolerations:
+        - key: homelab.grncunha.com/pool
+          operator: Equal
+          value: system
+          effect: NoSchedule
+      nodeSelector:
+        homelab.grncunha.com/pool: system
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        # Makes the volume writable by the user above.
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: ntfy
+          image: binwiederhier/ntfy:v2.28.0
+          args: ["serve"]
+          ports:
+            - name: http
+              containerPort: 8080
+            - name: metrics
+              containerPort: 9090
+          readinessProbe:
+            httpGet:
+              path: /v1/health
+              port: http
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /v1/health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          # An estimate, not yet measured. Replace with `kubectl top` once it
+          # has run for a day.
+          resources:
+            requests:
+              cpu: 5m
+              memory: 32Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: config
+              mountPath: /etc/ntfy/server.yml
+              subPath: server.yml
+              readOnly: true
+            - name: config
+              mountPath: /etc/ntfy/templates/uptime.yml
+              subPath: uptime.yml
+              readOnly: true
+            - name: cache
+              mountPath: /var/cache/ntfy
+      volumes:
+        - name: config
+          configMap:
+            name: ntfy
+        - name: cache
+          persistentVolumeClaim:
+            claimName: ntfy-cache

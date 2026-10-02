@@ -1,0 +1,39 @@
+---
+# For the phone, not for Grafana. Grafana posts to the Service directly, so an
+# alert does not depend on the DNS record or the Gateway it may be about.
+#
+# A mesh Gateway on purpose. A public name would be served through the tunnel,
+# and losing the tunnel or its DNS record would take the alerts with it.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: ntfy
+  namespace: ntfy
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+    # A tile on the front page; see gitops/applications/base/homepage/.
+    gethomepage.dev/enabled: "true"
+    gethomepage.dev/name: ntfy
+    gethomepage.dev/group: Observability
+    gethomepage.dev/description: Alerts, on your phone
+    gethomepage.dev/icon: ntfy.png
+    gethomepage.dev/pod-selector: app=ntfy
+spec:
+  parentRefs:
+    - name: gw-internal-prod
+      namespace: gateway-system
+  hostnames:
+    - ntfy.k8s.homelab.grncunha.com
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      # A subscription is one request that stays open for as long as the
+      # device listens. Envoy ends a request after 15 seconds unless told
+      # otherwise, and the phone would reconnect four times a minute.
+      timeouts:
+        request: 0s
+      backendRefs:
+        - name: ntfy
+          port: 80

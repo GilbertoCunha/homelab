@@ -1,0 +1,179 @@
+---
+# The list of hostnames to probe, built from the cluster's HTTPRoutes and served
+# as JSON. VictoriaMetrics reads it with `http_sd_configs`; see the `uptime` job
+# in gitops/system/base/victoria-metrics/application.yaml.
+#
+# This exists because nothing discovers an HTTPRoute for scraping. The
+# Kubernetes discovery VictoriaMetrics and Prometheus share knows pods,
+# Services and Ingresses, and no Gateway API kind. Without it, exposing a
+# service would mean adding its hostname to a list as well, and the list would
+# be what goes stale.
+#
+# Two annotations on a route change what is probed:
+#
+#   homelab.grncunha.com/probe: "false"       leaves the route out
+#   homelab.grncunha.com/probe-path: /healthz probes that path, not `/`
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: probe-targets
+  namespace: blackbox-exporter
+---
+# Reads routes in every namespace, and nothing else.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: probe-targets
+rules:
+  - apiGroups: ["gateway.networking.k8s.io"]
+    resources: ["httproutes"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: probe-targets
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: probe-targets
+subjects:
+  - kind: ServiceAccount
+    name: probe-targets
+    namespace: blackbox-exporter
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: probe-targets
+  namespace: blackbox-exporter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: probe-targets
+  template:
+    metadata:
+      labels:
+        app: probe-targets
+    spec:
+      serviceAccountName: probe-targets
+      # On the system nodes; see docs/concepts/node-pools.md.
+      tolerations:
+        - key: homelab.grncunha.com/pool
+          operator: Equal
+          value: system
+          effect: NoSchedule
+      nodeSelector:
+        homelab.grncunha.com/pool: system
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        # Lists the routes once a minute and rewrites the file.
+        - name: discover
+          image: alpine/k8s:1.36.5
+          # The script is written here rather than mounted from a ConfigMap, so
+          # that changing it rolls the pod. Nothing restarts a pod when a
+          # ConfigMap changes; see docs/backlog.md.
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              set -u
+              while true; do
+                # Two steps, so a failed listing leaves the last good file in
+                # place instead of replacing it with an empty one. The rename
+                # is what keeps a reader from seeing half a file.
+                if kubectl get httproutes.gateway.networking.k8s.io \
+                     --all-namespaces --output json > /tmp/routes.json \
+                   && jq --compact-output '[
+                        .items[]
+                        | select(.metadata.annotations["homelab.grncunha.com/probe"] != "false")
+                        | . as $route
+                        | .spec.hostnames[]?
+                        # A wildcard is not a name anything can be asked for.
+                        | select(startswith("*") | not)
+                        | {
+                            targets: ["https://" + . + ($route.metadata.annotations["homelab.grncunha.com/probe-path"] // "/")],
+                            labels: {
+                              hostname: .,
+                              namespace: $route.metadata.namespace,
+                              route: $route.metadata.name
+                            }
+                          }
+                      ]' /tmp/routes.json > /srv/targets.json.new; then
+                  mv /srv/targets.json.new /srv/targets.json
+                else
+                  echo "Listing the routes failed. Serving the last list."
+                fi
+                sleep 60
+              done
+          env:
+            # kubectl caches API discovery under $HOME, and the root
+            # filesystem is read-only.
+            - name: HOME
+              value: /tmp
+          # An estimate, not yet measured. kubectl runs for a moment each
+          # minute and the loop sleeps otherwise.
+          resources:
+            requests:
+              cpu: 5m
+              memory: 64Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: targets
+              mountPath: /srv
+            - name: tmp
+              mountPath: /tmp
+        # Serves the file. Nothing more than a static web server.
+        - name: serve
+          image: busybox:1.38
+          command: ["httpd", "-f", "-p", "8080", "-h", "/srv"]
+          ports:
+            - name: http
+              containerPort: 8080
+          # Not ready until the first list is written, so VictoriaMetrics is
+          # never handed a 404 as though it were an empty list.
+          readinessProbe:
+            httpGet:
+              path: /targets.json
+              port: http
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 1m
+              memory: 8Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: targets
+              mountPath: /srv
+              readOnly: true
+      volumes:
+        - name: targets
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: probe-targets
+  namespace: blackbox-exporter
+spec:
+  selector:
+    app: probe-targets
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
