@@ -25,7 +25,7 @@ spec:
     repoURL: https://helm.cilium.io/
     # Move one minor version at a time, and read the upstream notes first:
     # https://docs.cilium.io/en/stable/operations/upgrade/
-    targetRevision: 1.20.1
+    targetRevision: 1.20.2
     helm:
       valuesObject:
         # Pod addresses come from the podCIDR Kubernetes gives each node, which
