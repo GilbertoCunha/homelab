@@ -10,7 +10,7 @@ proxmox_suite: trixie
 # compare with the repository above, and opens a pull request when a newer
 # one is out. Set it after upgrading; the role says so when it has drifted.
 # See docs/manual/maintenance/updating-a-component.md.
-proxmox_version: "9.2.11"
+proxmox_version: "9.2.21"
 
 proxmox_packages:
   - proxmox-ve
