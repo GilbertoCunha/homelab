@@ -2,84 +2,135 @@
 # nodes join with. Generated once and kept in state, which is why state is
 # encrypted before it reaches R2.
 resource "talos_machine_secrets" "this" {
-  # The contract, not the version the nodes run; see `talos_config_contract`.
-  # The provider replaces this resource, and with it every certificate in the
-  # cluster, if the value is ever lowered.
-  talos_version = var.talos_config_contract
+  # Only read when the secrets are first generated. The provider records it,
+  # and replaces the resource -- every certificate in the cluster -- if the
+  # recorded version is ever lowered. Following `talos_version` would turn
+  # reverting a bad Talos upgrade into exactly that, so after creation a
+  # change to the version is ignored here.
+  talos_version = var.talos_version
+
+  lifecycle {
+    ignore_changes = [talos_version]
+  }
 }
 
-# Applies to every node regardless of role.
+# The node configuration is generated for `talos_version`, and what is written
+# here changes it. Talos keeps the configuration in documents, one per subject,
+# and each element of a list below patches one document: that is why these are
+# lists of small objects rather than one large one.
+#
+# The set of documents belongs to the Talos minor version. A new minor can
+# rename one or add one with a default this cluster does not want, the way
+# 1.14 added Flannel and kube-proxy as documents of their own. Nothing checks
+# that before a node is given the result, so a new minor version means reading
+# its release notes against this file. See
+# docs/manual/maintenance/upgrading-talos-and-kubernetes.md.
 locals {
-  common_patch = {
-    machine = {
-      install = {
+  # Applies to every node regardless of role.
+  common_patches = [
+    {
+      apiVersion  = "v1alpha1"
+      kind        = "ResolverConfig"
+      nameservers = [for address in var.nameservers : { address = address }]
+      # CoreDNS forwards to the nameservers above rather than through the
+      # DNS cache Talos runs on each node. Talos' own Cilium guide lists that
+      # forwarding as broken once Cilium masquerades in eBPF, which it does;
+      # see `gitops/system/base/cilium/cilium.yaml`.
+      hostDNS = {
+        enabled              = true
+        forwardKubeDNSToHost = false
+      }
+    },
+    {
+      # On by default, and pinned here because Cilium is configured to reach
+      # the API server through it.
+      apiVersion = "v1alpha1"
+      kind       = "KubePrismConfig"
+      port       = local.kubeprism_port
+    },
+    {
+      apiVersion     = "v1alpha1"
+      kind           = "KubeNetworkConfig"
+      podSubnets     = [local.pod_subnet]
+      serviceSubnets = [var.service_subnet]
+    },
+  ]
+
+  # Applies to the control planes only: these documents do not exist in a
+  # worker's configuration, and a patch for a missing document is an error.
+  #
+  # The control plane keeps the taint Talos gives it, so workloads stay off it
+  # with nothing written here. It is its own guest precisely for that.
+  control_plane_patches = [
+    {
+      # Talos would otherwise install Flannel, which cannot enforce a
+      # NetworkPolicy and would collide with Cilium. See `cilium.tf`. Removing
+      # the document is how Flannel is turned off: no CNI is installed without
+      # one.
+      apiVersion = "v1alpha1"
+      kind       = "KubeFlannelCNIConfig"
+      "$patch"   = "delete"
+    },
+    {
+      # Cilium replaces it. Unlike Flannel, removing this document is not
+      # enough: kube-proxy is installed without one. It has to be switched
+      # off.
+      apiVersion = "v1alpha1"
+      kind       = "KubeProxyConfig"
+      enabled    = false
+    },
+    # Only the control planes apply inline manifests, and the rendered chart is
+    # some 75 KB, so it is kept out of the worker configurations.
+    {
+      cluster = {
+        inlineManifests = [{
+          name     = "cilium"
+          contents = data.helm_template.cilium.manifest
+        }]
+      }
+    },
+  ]
+
+  # What a node installs itself from, and onto which disk.
+  #
+  # One patch for each node, holding both the image and the disk. They cannot
+  # be two patches, one common and one for the workers' image: a second patch
+  # to this document drops the disk selector the first one set, and the
+  # configuration no longer validates.
+  install_patches = {
+    for name, node in local.nodes : name => {
+      apiVersion = "v1alpha1"
+      kind       = "UnattendedInstallConfig"
+      installer = {
+        # The image the node writes to disk, which is not the image it booted.
+        # Left unset, Talos installs its plain image: without the extensions
+        # the factory image carries, so the guest agent silently never appears.
+        #
+        # Workers install from their own, which carries their kernel
+        # arguments; see `image.tf`. It is the image `talos_machine` keeps a
+        # running node on, and the two have to agree.
+        image = local.installer_images[name]
+      }
+      provisioning = {
         # virtio0 on the guest. Talos writes itself here on first apply, and
         # the node boots from disk from then on.
-        disk = "/dev/vda"
-
-        # The image the node writes to disk, which is not the image it booted.
-        # Left unset, the provider installs plain Talos at whatever version it
-        # was built against: the wrong version, and without the extensions the
-        # factory image carries, so the guest agent silently never appears.
-        image = data.talos_image_factory_urls.this.urls.installer
+        diskSelector = { match = "disk.dev_path == \"/dev/vda\"" }
       }
-      network = {
-        nameservers = var.nameservers
-      }
-      features = {
-        # On by default, and pinned here because Cilium is configured to reach
-        # the API server through it.
-        kubePrism = {
-          enabled = true
-          port    = local.kubeprism_port
-        }
-        # CoreDNS forwards to the nameservers above rather than through the
-        # DNS cache Talos runs on each node. Talos' own Cilium guide lists that
-        # forwarding as broken once Cilium masquerades in eBPF, which it does;
-        # see `gitops/system/base/cilium/cilium.yaml`.
-        hostDNS = {
-          enabled              = true
-          forwardKubeDNSToHost = false
-        }
-      }
-    }
-    cluster = {
-      network = {
-        podSubnets     = [local.pod_subnet]
-        serviceSubnets = [var.service_subnet]
-
-        # Talos would otherwise install Flannel, which cannot enforce a
-        # NetworkPolicy and would collide with Cilium. See `cilium.tf`.
-        cni = {
-          name = "none"
-        }
-      }
-      # Cilium replaces it.
-      proxy = {
-        disabled = true
-      }
-      # The control plane is its own guest precisely so workloads stay off it.
-      # Flip this only if the cluster is ever collapsed to a single node.
-      allowSchedulingOnControlPlanes = false
     }
   }
 
-  # Only the control planes apply inline manifests, and the rendered chart is
-  # some 75 KB, so keeping it out of the worker configurations is worth the
-  # conditional in `config_patches` below.
-  cilium_patch = {
-    cluster = {
-      inlineManifests = [{
-        name     = "cilium"
-        contents = data.helm_template.cilium.manifest
-      }]
-    }
+  # The installer image for each node: the workers' own for a worker, and the
+  # common one for every other pool.
+  installer_images = {
+    for name, node in local.nodes : name => (
+      contains(keys(local.workers), name)
+      ? data.talos_image_factory_urls.workers.urls.installer
+      : data.talos_image_factory_urls.this.urls.installer
+    )
   }
 
-  # The hostname is its own configuration document as of Talos 1.13, and setting
-  # it in `machine.network` as well is rejected outright. `auto` generates a name
-  # from the machine's identity and has to be turned off before a static one is
-  # accepted; the two cannot both be set.
+  # `auto` generates a name from the machine's identity and has to be turned
+  # off before a static one is accepted; the two cannot both be set.
   hostname_patches = {
     for name, node in local.nodes : name => {
       apiVersion = "v1alpha1"
@@ -93,8 +144,8 @@ locals {
   # claims it as a user volume. Talos mounts a user volume at /var/mnt/<name>
   # and propagates that mount into the kubelet container, which is the whole
   # reason for doing it this way: a plain directory under /var would need a
-  # `machine.kubelet.extraMounts` bind mount before a hostPath pod could see
-  # it. local-path-provisioner writes here; see docs/concepts/storage.md.
+  # bind mount into the kubelet before a hostPath pod could see it.
+  # local-path-provisioner writes here; see docs/concepts/storage.md.
   #
   # `!system_disk` matches the only other disk the guest has. No maxSize, so
   # the volume grows to fill it.
@@ -111,51 +162,43 @@ locals {
     } if node.data_disk_gb > 0
   }
 
-  # Workers install from their own image, which carries their kernel arguments;
-  # see `image.tf`. This is the image a new worker installs from. The same
-  # image is what `talos_machine.worker` below keeps a running one on.
-  #
   # The label names the pool; see `worker_pool` in `locals.tf`.
-  worker_patches = {
-    for name, node in local.workers : name => {
-      machine = {
-        install = {
-          image = data.talos_image_factory_urls.workers.urls.installer
-        }
-        nodeLabels = {
-          (local.worker_pool.key) = local.worker_pool.value
-        }
-      }
-    }
-  }
+  worker_patches = [
+    {
+      apiVersion = "v1alpha1"
+      kind       = "KubeNodeConfig"
+      labels     = { (local.worker_pool.key) = local.worker_pool.value }
+    },
+  ]
 
   # Reserves the system nodes for the cluster's own components; see
   # docs/concepts/node-pools.md.
   #
   # The label is ordinary: Talos keeps it in step with this file. The taint is
   # not. Kubernetes lets a worker's kubelet set taints only when it first
-  # registers the node, never afterwards, so `machine.nodeTaints` would fail on
-  # a worker. `registerWithTaints` is the kubelet setting for that first
-  # registration, which also means changing it here reaches a new node only.
-  # To change the taint on a running node, use `kubectl taint`.
-  system_pool_patches = {
-    for name, node in local.system_nodes : name => {
-      machine = {
-        nodeLabels = {
-          (local.system_pool.key) = local.system_pool.value
-        }
-        kubelet = {
-          extraConfig = {
-            registerWithTaints = [local.system_pool]
-          }
-        }
-      }
-    }
-  }
+  # registers the node, never afterwards. `registerWithTaints` is the kubelet
+  # setting for that first registration, which also means changing it here
+  # reaches a new node only. To change the taint on a running node, use
+  # `kubectl taint`.
+  system_pool_patches = [
+    {
+      apiVersion = "v1alpha1"
+      kind       = "KubeNodeConfig"
+      labels     = { (local.system_pool.key) = local.system_pool.value }
+    },
+    {
+      apiVersion = "v1alpha1"
+      kind       = "KubeletConfig"
+      config     = { registerWithTaints = [local.system_pool] }
+    },
+  ]
 
   # Per-node networking. There is no DHCP on the guest bridge, so every address
   # is written out. The interface is matched by driver rather than by name,
   # because predictable names depend on the emulated hardware.
+  #
+  # Still in the original document, the one without a `kind`. Talos 1.14
+  # generates no newer document for interfaces and reads them from here.
   node_patches = {
     for name, node in local.nodes : name => {
       machine = {
@@ -191,27 +234,31 @@ data "talos_machine_configuration" "this" {
   machine_type     = each.value.machine_type
   machine_secrets  = talos_machine_secrets.this.machine_secrets
 
-  # The layout the configuration is written in, which is not the version the
-  # nodes run. See `talos_config_contract`.
-  talos_version = var.talos_config_contract
+  # The version the nodes run, and the version the configuration is generated
+  # for. One value on purpose: see the note above the patches.
+  talos_version = var.talos_version
 
   # The version a node is born with. On a running cluster a change here is
   # carried out by `talos_cluster` below and by nothing else; see
   # `ignore_kubernetes_upgrade_drift`.
   kubernetes_version = var.kubernetes_version
 
-  # Each element is a separate patch, which is what lets the third one address a
-  # different configuration document from the first two.
+  # One patch per element, and no document patched twice.
+  #
+  # Each list is encoded before the lists are joined. The patches are objects
+  # of different shapes, and a conditional needs both of its results to be the
+  # same type; as text they are.
   config_patches = concat(
+    [for patch in local.common_patches : yamlencode(patch)],
     [
-      yamlencode(local.common_patch),
+      yamlencode(local.install_patches[each.key]),
       yamlencode(local.node_patches[each.key]),
       yamlencode(local.hostname_patches[each.key]),
     ],
-    each.value.machine_type == "controlplane" ? [yamlencode(local.cilium_patch)] : [],
+    each.value.machine_type == "controlplane" ? [for patch in local.control_plane_patches : yamlencode(patch)] : [],
     each.value.data_disk_gb > 0 ? [yamlencode(local.user_volume_patches[each.key])] : [],
-    contains(keys(local.system_nodes), each.key) ? [yamlencode(local.system_pool_patches[each.key])] : [],
-    contains(keys(local.workers), each.key) ? [yamlencode(local.worker_patches[each.key])] : [],
+    contains(keys(local.system_nodes), each.key) ? [for patch in local.system_pool_patches : yamlencode(patch)] : [],
+    contains(keys(local.workers), each.key) ? [for patch in local.worker_patches : yamlencode(patch)] : [],
   )
 }
 
@@ -246,7 +293,7 @@ resource "talos_machine" "control_plane" {
   node                  = local.node_ips[each.key]
   client_configuration  = talos_machine_secrets.this.client_configuration
   machine_configuration = data.talos_machine_configuration.this[each.key].machine_configuration
-  image                 = data.talos_image_factory_urls.this.urls.installer
+  image                 = local.installer_images[each.key]
   kubeconfig_wo         = ephemeral.talos_cluster_kubeconfig.drain.kubeconfig_raw
 
   # The Kubernetes version is in every node's configuration, as the tag on
@@ -265,7 +312,7 @@ resource "talos_machine" "system" {
   node                            = local.node_ips[each.key]
   client_configuration            = talos_machine_secrets.this.client_configuration
   machine_configuration           = data.talos_machine_configuration.this[each.key].machine_configuration
-  image                           = data.talos_image_factory_urls.this.urls.installer
+  image                           = local.installer_images[each.key]
   kubeconfig_wo                   = ephemeral.talos_cluster_kubeconfig.drain.kubeconfig_raw
   ignore_kubernetes_upgrade_drift = true
 
@@ -278,10 +325,9 @@ resource "talos_machine" "worker" {
   node                  = local.node_ips[each.key]
   client_configuration  = talos_machine_secrets.this.client_configuration
   machine_configuration = data.talos_machine_configuration.this[each.key].machine_configuration
-  # The workers' own image, which carries their kernel arguments. It has to be
-  # the one in `worker_patches`: the provider compares the image a node runs
-  # with this, and reinstalls a node that boots anything else.
-  image                           = data.talos_image_factory_urls.workers.urls.installer
+  # The workers' own image. The provider compares the image a node runs with
+  # this, and reinstalls a node that runs anything else.
+  image                           = local.installer_images[each.key]
   kubeconfig_wo                   = ephemeral.talos_cluster_kubeconfig.drain.kubeconfig_raw
   ignore_kubernetes_upgrade_drift = true
 
