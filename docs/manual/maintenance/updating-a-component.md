@@ -86,10 +86,9 @@ before merging. Then merge, and carry on from step 4.
 
 ### Talos and Kubernetes
 
-Merging changes no running node. It only records the version a rebuilt cluster
-would be born with, so it comes last. Follow
-[Upgrading Talos and Kubernetes](./upgrading-talos-and-kubernetes.md), which
-ends with the merge.
+Merging changes no running node. The next `task tofu:apply` does the upgrade,
+and for Talos that reboots every node in turn. Follow
+[Upgrading Talos and Kubernetes](./upgrading-talos-and-kubernetes.md).
 
 ### An OpenTofu provider
 

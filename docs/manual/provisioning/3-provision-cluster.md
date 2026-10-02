@@ -330,7 +330,7 @@ pvesh get /storage/local
 
 `images` and `snippets` should both be listed.
 
-**`talos_machine_configuration_apply` times out on every node at once**, with
+**`talos_machine` times out on every node at once**, with
 `dial tcp 10.10.10.x:50000: i/o timeout` for all of them. The guests are fine; your
 device has no route to them. Check the client half:
 
@@ -355,7 +355,7 @@ Either way, apply again afterwards. The run hangs for several minutes before
 failing, because each guest retries the connection until it gives up.
 [The mesh network](../../concepts/mesh.md) has the full path.
 
-**`talos_machine_configuration_apply` times out on one node.** That guest is
+**`talos_machine` times out on one node.** That guest is
 reachable but its Talos API is not answering yet. Applying again is safe; nothing
 is half-written.
 

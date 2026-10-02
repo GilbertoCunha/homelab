@@ -2,7 +2,10 @@
 # nodes join with. Generated once and kept in state, which is why state is
 # encrypted before it reaches R2.
 resource "talos_machine_secrets" "this" {
-  talos_version = var.talos_version
+  # The contract, not the version the nodes run; see `talos_config_contract`.
+  # The provider replaces this resource, and with it every certificate in the
+  # cluster, if the value is ever lowered.
+  talos_version = var.talos_config_contract
 }
 
 # Applies to every node regardless of role.
@@ -109,8 +112,8 @@ locals {
   }
 
   # Workers install from their own image, which carries their kernel arguments;
-  # see `image.tf`. Setting it here is what makes a `talosctl upgrade` or a
-  # reinstall keep them. A running node only picks it up on its next upgrade.
+  # see `image.tf`. This is the image a new worker installs from. The same
+  # image is what `talos_machine.worker` below keeps a running one on.
   #
   # The label names the pool; see `worker_pool` in `locals.tf`.
   worker_patches = {
@@ -183,23 +186,19 @@ locals {
 data "talos_machine_configuration" "this" {
   for_each = local.nodes
 
-  cluster_name       = var.cluster_name
-  cluster_endpoint   = local.cluster_endpoint
-  machine_type       = each.value.machine_type
-  machine_secrets    = talos_machine_secrets.this.machine_secrets
-  talos_version      = var.talos_version
+  cluster_name     = var.cluster_name
+  cluster_endpoint = local.cluster_endpoint
+  machine_type     = each.value.machine_type
+  machine_secrets  = talos_machine_secrets.this.machine_secrets
+
+  # The layout the configuration is written in, which is not the version the
+  # nodes run. See `talos_config_contract`.
+  talos_version = var.talos_config_contract
+
+  # The version a node is born with. On a running cluster a change here is
+  # carried out by `talos_cluster` below and by nothing else; see
+  # `ignore_kubernetes_upgrade_drift`.
   kubernetes_version = var.kubernetes_version
-}
-
-# The node boots the image into maintenance mode with the address its cloud-init
-# drive gave it. This is the first moment it can be reached, and applying the
-# configuration is what turns it into a cluster member.
-resource "talos_machine_configuration_apply" "this" {
-  for_each = local.nodes
-
-  client_configuration        = talos_machine_secrets.this.client_configuration
-  machine_configuration_input = data.talos_machine_configuration.this[each.key].machine_configuration
-  node                        = local.node_ips[each.key]
 
   # Each element is a separate patch, which is what lets the third one address a
   # different configuration document from the first two.
@@ -214,17 +213,99 @@ resource "talos_machine_configuration_apply" "this" {
     contains(keys(local.system_nodes), each.key) ? [yamlencode(local.system_pool_patches[each.key])] : [],
     contains(keys(local.workers), each.key) ? [yamlencode(local.worker_patches[each.key])] : [],
   )
+}
+
+# What lets a node be drained before it is upgraded. Built from the cluster's
+# secrets rather than read from a node, so it exists before the cluster does,
+# and ephemeral, so it is never written to state.
+ephemeral "talos_cluster_kubeconfig" "drain" {
+  cluster_name    = var.cluster_name
+  machine_secrets = talos_machine_secrets.this.machine_secrets
+  endpoint        = local.cluster_endpoint
+}
+
+# A node: its configuration, and the Talos version it runs.
+#
+# A new node boots the image into maintenance mode with the address its
+# cloud-init drive gave it. This is the first moment it can be reached, and
+# applying the configuration is what turns it into a cluster member.
+#
+# A running node is kept on `image`. When `talos_version` changes, the next
+# apply drains the node, installs the new version, reboots it and waits for it
+# to come back. That is the whole of a Talos upgrade; see
+# docs/manual/maintenance/upgrading-talos-and-kubernetes.md.
+#
+# One resource per pool, not one for every node, because only separate
+# resources can wait for each other. The chain is control plane, system,
+# workers: each pool is finished before the next starts, so a bad version
+# stops at the control plane with the applications still running. Nodes inside
+# one pool would upgrade together; each pool is a single node.
+resource "talos_machine" "control_plane" {
+  for_each = local.control_planes
+
+  node                  = local.node_ips[each.key]
+  client_configuration  = talos_machine_secrets.this.client_configuration
+  machine_configuration = data.talos_machine_configuration.this[each.key].machine_configuration
+  image                 = data.talos_image_factory_urls.this.urls.installer
+  kubeconfig_wo         = ephemeral.talos_cluster_kubeconfig.drain.kubeconfig_raw
+
+  # The Kubernetes version is in every node's configuration, as the tag on
+  # five images. Without this, changing it would be pushed to every node at
+  # once from here, with none of the ordering and health checks of the proper
+  # procedure, which `talos_cluster` runs. With it, only those tags are left
+  # out when deciding whether a node's configuration has changed.
+  ignore_kubernetes_upgrade_drift = true
 
   depends_on = [module.talos_node]
 }
 
-# Runs against one control plane only. etcd forms from there and any others
-# join it; bootstrapping more than once would create split clusters.
-resource "talos_machine_bootstrap" "this" {
-  client_configuration = talos_machine_secrets.this.client_configuration
-  node                 = local.first_control_plane
+resource "talos_machine" "system" {
+  for_each = local.system_nodes
 
-  depends_on = [talos_machine_configuration_apply.this]
+  node                            = local.node_ips[each.key]
+  client_configuration            = talos_machine_secrets.this.client_configuration
+  machine_configuration           = data.talos_machine_configuration.this[each.key].machine_configuration
+  image                           = data.talos_image_factory_urls.this.urls.installer
+  kubeconfig_wo                   = ephemeral.talos_cluster_kubeconfig.drain.kubeconfig_raw
+  ignore_kubernetes_upgrade_drift = true
+
+  depends_on = [module.talos_node, talos_machine.control_plane]
+}
+
+resource "talos_machine" "worker" {
+  for_each = local.workers
+
+  node                  = local.node_ips[each.key]
+  client_configuration  = talos_machine_secrets.this.client_configuration
+  machine_configuration = data.talos_machine_configuration.this[each.key].machine_configuration
+  # The workers' own image, which carries their kernel arguments. It has to be
+  # the one in `worker_patches`: the provider compares the image a node runs
+  # with this, and reinstalls a node that boots anything else.
+  image                           = data.talos_image_factory_urls.workers.urls.installer
+  kubeconfig_wo                   = ephemeral.talos_cluster_kubeconfig.drain.kubeconfig_raw
+  ignore_kubernetes_upgrade_drift = true
+
+  depends_on = [module.talos_node, talos_machine.system]
+}
+
+# The cluster: etcd, started once, and the Kubernetes version it runs.
+#
+# Starting etcd runs against one control plane only. etcd forms from there and
+# any others join it; doing it more than once would create split clusters.
+#
+# When `kubernetes_version` changes, the next apply upgrades the control
+# plane's components one at a time, then each kubelet, checking health in
+# between. That is the whole of a Kubernetes upgrade.
+#
+# After the nodes, so that when both versions change in one apply Talos goes
+# first. The newer Talos is the one that knows the newer Kubernetes.
+resource "talos_cluster" "this" {
+  node                 = local.first_control_plane
+  control_plane_nodes  = local.control_plane_ips
+  client_configuration = talos_machine_secrets.this.client_configuration
+  kubernetes_version   = var.kubernetes_version
+
+  depends_on = [talos_machine.control_plane, talos_machine.system, talos_machine.worker]
 }
 
 data "talos_client_configuration" "this" {
@@ -238,7 +319,7 @@ resource "talos_cluster_kubeconfig" "this" {
   client_configuration = talos_machine_secrets.this.client_configuration
   node                 = local.first_control_plane
 
-  depends_on = [talos_machine_bootstrap.this]
+  depends_on = [talos_cluster.this]
 }
 
 # Makes `tofu apply` mean "the cluster is up", not "the VMs exist". Without it
@@ -250,8 +331,8 @@ data "talos_cluster_health" "this" {
   worker_nodes         = [for k, v in local.nodes : local.node_ips[k] if v.machine_type == "worker"]
 
   # A data source is read at plan time unless something it depends on is about
-  # to change. Depending on the configuration applies is what defers it when a
-  # node is being added: otherwise the plan itself waits for a node that does
-  # not exist yet, and fails after ten minutes.
-  depends_on = [talos_cluster_kubeconfig.this, talos_machine_configuration_apply.this]
+  # to change. Depending on the nodes and the cluster is what defers it when a
+  # node is being added or upgraded: otherwise the plan itself waits for a node
+  # that does not exist yet, and fails after ten minutes.
+  depends_on = [talos_cluster_kubeconfig.this, talos_cluster.this]
 }

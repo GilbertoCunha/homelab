@@ -79,7 +79,7 @@ born with, and skipping it leaves `tofu plan` permanently dirty.
 
 | What the plan shows | What it means |
 | --- | --- |
-| 1 × `talos_machine_configuration_apply` updated | Correct. The worker and the system node do not carry the manifest. |
+| 1 × `talos_machine` updated, the control plane's | Correct. The worker and the system node do not carry the manifest. |
 | Every node updated | The change touched `common_patch`, not just Cilium. Stop and read the diff. |
 | Any `proxmox_virtual_environment_vm` replaced | Wrong. Nothing here should rebuild a guest. Stop. |
 

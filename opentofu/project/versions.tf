@@ -1,5 +1,7 @@
 terraform {
-  required_version = ">= 1.10"
+  # 1.11 for ephemeral resources and write-only attributes; see the
+  # kubeconfig in cluster.tf.
+  required_version = ">= 1.11"
 
   required_providers {
     proxmox = {

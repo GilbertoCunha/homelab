@@ -193,10 +193,10 @@
       ],
     },
     {
-      description: "Talos and Kubernetes are upgraded with talosctl, not by a merge",
+      description: "Talos and Kubernetes are upgraded by the next apply, not by a merge",
       matchPackageNames: ["siderolabs/talos", "kubernetes/kubernetes"],
       prBodyNotes: [
-        "Merging changes nothing on a running node. It records the version a rebuilt cluster would get. Follow [Upgrading Talos and Kubernetes](../blob/main/docs/manual/maintenance/upgrading-talos-and-kubernetes.md), which ends with this merge. Kubernetes must stay inside the range the Talos version supports.",
+        "Merging changes nothing on a running node. The next `task tofu:apply` does the upgrade, and reboots nodes if this is Talos: follow [Upgrading Talos and Kubernetes](../blob/main/docs/manual/maintenance/upgrading-talos-and-kubernetes.md). Kubernetes must stay inside the range the Talos version supports.",
       ],
     },
     {
