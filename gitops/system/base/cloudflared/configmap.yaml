@@ -19,8 +19,14 @@ data:
     # At the default of 100, a load test on 2026-10-02 had it opening about
     # 800 a second to one address, which used up its local ports: requests
     # failed with 502, "cannot assign requested address".
+    #
+    # It has to be more than the requests ever in flight at once, or the rest
+    # are opened and closed per request all the same. At 1000, a second test
+    # that day passed it at 9,000 requests a second, and cloudflared spent 4
+    # CPUs in the kernel opening connections. 8000 is above the 5,000
+    # simulated users `peak.js` allows.
     originRequest:
-      keepAliveConnections: 1000
+      keepAliveConnections: 8000
 
     # One catch-all. The Gateway picks the HTTPRoute by Host, which cloudflared
     # preserves, so adding a public app is one more HTTPRoute and nothing here.
