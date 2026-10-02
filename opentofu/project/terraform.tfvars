@@ -9,11 +9,27 @@ proxmox_bridge       = "vmbr1"
 
 cluster_name = "homelab"
 
-# Talos 1.13 supports Kubernetes 1.31 to 1.36. Check the support matrix before
-# changing either of these:
+# The versions the cluster runs. Changing either one upgrades the cluster on
+# the next `task tofu:apply`; see
+# docs/manual/maintenance/upgrading-talos-and-kubernetes.md.
+#
+# Kubernetes must be inside the range the Talos version supports. Check the
+# support matrix before changing either of these:
 # https://www.talos.dev/latest/introduction/support-matrix/
 talos_version      = "v1.14.1"
 kubernetes_version = "v1.37.1"
+
+# The layout the machine configuration is written in. Talos 1.14 moved most
+# settings into documents of their own, and the patches in cluster.tf are
+# written for the 1.13 layout, which 1.14 still accepts. Generated in the 1.14
+# layout with those patches, the configuration does not validate.
+#
+# Not the version the nodes run, and Renovate does not move it. It changes
+# when the patches are rewritten, and never downwards: the provider compares
+# it with the value in state, and lowering it replaces the cluster's
+# certificates. `v1.13` counts as lower than `v1.13.9`, which is why the patch
+# version is written out.
+talos_config_contract = "v1.13.9"
 
 # The CNI is not here. Talos ships Flannel by default; this cluster replaces it
 # with Cilium, whose version and values live in

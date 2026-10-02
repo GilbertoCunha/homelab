@@ -62,8 +62,22 @@ resource "proxmox_download_file" "talos" {
   content_type = "iso"
   url          = data.talos_image_factory_urls.this.urls.iso
 
-  # The factory URL carries the schematic id, which changes whenever the
-  # extension list does. Naming the file after both keeps the two images apart
-  # instead of one silently overwriting the other.
-  file_name = "talos-${var.talos_version}-${substr(talos_image_factory_schematic.this.id, 0, 12)}-nocloud-amd64.iso"
+  file_name = local.talos_boot_image
+}
+
+locals {
+  # Named after the schematic and not the Talos version. A guest boots this
+  # once, to be installed; an upgrade never reads it. With the version in the
+  # name, every upgrade renamed the file and changed the CD drive of every
+  # guest to match. Now an upgrade replaces the file in place and no guest is
+  # touched.
+  #
+  # The schematic stays in the name: it changes whenever the extension list
+  # does, and two schematics must not overwrite each other.
+  talos_boot_image = "talos-${substr(talos_image_factory_schematic.this.id, 0, 12)}-nocloud-amd64.iso"
+
+  # The id Proxmox gives the file above. Written out rather than read from
+  # the download, so that replacing the download is not a change to the
+  # guests that name it.
+  talos_boot_image_id = "${var.proxmox_datastore_id}:iso/${local.talos_boot_image}"
 }

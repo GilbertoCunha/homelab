@@ -20,5 +20,9 @@ module "talos_node" {
   datastore_id  = var.proxmox_datastore_id
   bridge        = var.proxmox_bridge
   gateway       = var.gateway
-  boot_image_id = proxmox_download_file.talos.id
+  boot_image_id = local.talos_boot_image_id
+
+  # The id above is a string, so nothing else says the file has to be there
+  # before a guest is created to boot from it.
+  depends_on = [proxmox_download_file.talos]
 }

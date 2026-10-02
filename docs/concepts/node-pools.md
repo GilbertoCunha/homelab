@@ -273,16 +273,12 @@ can reach, the public path's certificate stays at Cloudflare, and Envoy is the
 component that gains most from the cheaper system calls.
 
 The arguments are part of the Talos image, not the machine configuration, so
-workers install from their own image; see `opentofu/project/image.tf`. A worker
-only picks up a change to them when it is upgraded, and it must be upgraded to
-that image:
+workers install from their own image; see `opentofu/project/image.tf`.
+Changing them changes that image, and the next `task tofu:apply` reinstalls
+the worker from it, with a reboot.
 
-```bash
-talosctl --nodes 10.10.10.21 upgrade --image "$(task tofu:output -- -raw worker_installer_image)"
-```
-
-Upgrading a worker to the image the other pools use turns its mitigations back
-on. Check a node with:
+A worker on the image the other pools use has its mitigations back on. Check a
+node with:
 
 ```bash
 talosctl --nodes 10.10.10.21 read /sys/devices/system/cpu/vulnerabilities/spectre_v2

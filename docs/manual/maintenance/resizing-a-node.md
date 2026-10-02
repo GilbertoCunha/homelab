@@ -34,7 +34,7 @@ What the plan should show:
 | --- | --- |
 | One `proxmox_virtual_environment_vm` updated in-place per node you resized | Correct |
 | Any `proxmox_virtual_environment_vm` replaced | Wrong. A resize never rebuilds a guest. Stop and read the diff |
-| Any `talos_machine_configuration_apply` changed | Something else changed too. Apply that on its own first |
+| Any `talos_machine` changed | Something else changed too. Apply that on its own first |
 
 Update the sizes table in [Node pools](../../concepts/node-pools.md) in the
 same commit. It is the only place in the docs that repeats them.

@@ -83,7 +83,7 @@ pull request says so, and says what to check.
 | --- | --- | --- |
 | A chart or an image | ArgoCD applies it within minutes | Check it is healthy |
 | Cilium | ArgoCD upgrades the running cluster | [Upgrading Cilium](../manual/maintenance/upgrading-cilium.md), which ends with a `tofu apply` |
-| Talos, Kubernetes | Nothing on a running node | [Upgrading Talos and Kubernetes](../manual/maintenance/upgrading-talos-and-kubernetes.md), which ends with the merge |
+| Talos, Kubernetes | Nothing on a running node | `task tofu:apply`, which does the upgrade: [Upgrading Talos and Kubernetes](../manual/maintenance/upgrading-talos-and-kubernetes.md) |
 | An OpenTofu provider | Nothing until OpenTofu next runs | `task tofu:init -- -upgrade`, then a plan |
 | Headscale | Nothing on the server | `task ansible:role -- headscale` |
 | Proxmox | Nothing on the server. The pull request is the notice that a newer one is out | [Upgrading it by hand](../manual/maintenance/updating-a-component.md#proxmox), which ends with the merge |
