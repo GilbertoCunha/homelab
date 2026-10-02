@@ -3,8 +3,35 @@
 # These are extra addresses that belong to Services rather than to machines,
 # so they do not collide with the nodes at .11-.13 and .21-.23.
 #
+# Two pools, because the Gateways' addresses are fixed and everything else's
+# are not. A Gateway asks for its address by name, in
+# gitops/system/base/kgateway/gateway-parameters.yaml, and DNS points at it.
+# Any other Service takes the next free one. In a single pool the two race: on
+# a rebuild, whichever Service is created first gets `.200`, and when that was
+# an application's database the Gateway was refused its own address and stayed
+# `<pending>`. Separate pools make the Gateways' addresses unavailable to
+# anything else.
+#
 # See docs/architecture/networks.md for the guest address table, and
 # docs/concepts/ingress.md for how an address here becomes reachable.
+apiVersion: cilium.io/v2
+kind: CiliumLoadBalancerIPPool
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+  name: gateways
+spec:
+  blocks:
+    - start: 10.10.10.200
+      stop: 10.10.10.209
+  # Only Services in the Gateways' namespace. The key is one Cilium provides
+  # for this; it is not a label on the Service.
+  serviceSelector:
+    matchLabels:
+      io.kubernetes.service.namespace: gateway-system
+---
+# Everything that is not a Gateway: the LoadBalancer Services an application
+# asks for, such as a database or a cache reachable from the mesh.
 apiVersion: cilium.io/v2
 kind: CiliumLoadBalancerIPPool
 metadata:
@@ -13,5 +40,10 @@ metadata:
   name: guest-bridge
 spec:
   blocks:
-    - start: 10.10.10.200
+    - start: 10.10.10.210
       stop: 10.10.10.250
+  serviceSelector:
+    matchExpressions:
+      - key: io.kubernetes.service.namespace
+        operator: NotIn
+        values: [gateway-system]

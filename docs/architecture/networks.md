@@ -37,7 +37,8 @@ cloud-init drive rather than finding one itself.
 | `10.10.10.21` | `worker-1` | Worker. `.22`-`.29` are kept for more |
 | `10.10.10.31` | `system-1` | System node. `.32`-`.39` are kept for more |
 | `10.10.10.100`-`.199` | Free | For anything that is not a cluster node |
-| `10.10.10.200`-`.250` | Kubernetes LoadBalancers | Assigned by Cilium, not by a machine. See [Getting traffic into the cluster](../concepts/ingress.md) |
+| `10.10.10.200`-`.209` | The Gateways | Fixed, one each, and what DNS points at. `.200` prod, `.201` dev. See [Getting traffic into the cluster](../concepts/ingress.md) |
+| `10.10.10.210`-`.250` | Other Kubernetes LoadBalancers | Assigned by Cilium in the order they are asked for, so not stable across a rebuild. Reach them by name |
 | `10.10.10.251`-`.254` | Free | |
 
 What each node is for, and how big it is, is in
