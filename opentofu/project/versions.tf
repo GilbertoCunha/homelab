@@ -8,7 +8,7 @@ terraform {
     }
     talos = {
       source  = "siderolabs/talos"
-      version = "~> 0.11"
+      version = "~> 0.12"
     }
     # Renders the Cilium chart at plan time. Nothing is installed with it: the
     # rendered manifest is handed to Talos, which applies it during bootstrap.
