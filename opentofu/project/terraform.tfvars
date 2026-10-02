@@ -12,7 +12,7 @@ cluster_name = "homelab"
 # Talos 1.13 supports Kubernetes 1.31 to 1.36. Check the support matrix before
 # changing either of these:
 # https://www.talos.dev/latest/introduction/support-matrix/
-talos_version      = "v1.13.9"
+talos_version      = "v1.14.1"
 kubernetes_version = "v1.36.2"
 
 # The CNI is not here. Talos ships Flannel by default; this cluster replaces it
