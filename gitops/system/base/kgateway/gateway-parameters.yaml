@@ -104,12 +104,16 @@ spec:
     podTemplate:
       nodeSelector:
         homelab.grncunha.com/pool: worker
-    # Sized from `kubectl top` on 2026-09-30: 20Mi per replica.
+    # As many threads as dev's, because load tests run against prod through
+    # the tunnel too. Envoy used 0.4 CPUs and 50Mi at about 2,300 requests a
+    # second on 2026-10-02, and dev's used 2.1 CPUs at 10,000, which two
+    # threads cannot give it. The request is its share of the worker when
+    # cloudflared and the applications want the same CPUs.
     envoyContainer:
       extraArgs:
         - --concurrency
-        - "2"
+        - "4"
       resources:
         requests:
-          cpu: 10m
-          memory: 64Mi
+          cpu: "1"
+          memory: 128Mi

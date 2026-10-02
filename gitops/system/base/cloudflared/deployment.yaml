@@ -9,7 +9,7 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "4"
 spec:
-  # One, because there is one system node. A second on the same node survives
+  # One, because there is one worker. A second on the same node survives
   # nothing the first does not.
   replicas: 1
   selector:
@@ -20,14 +20,12 @@ spec:
       labels:
         app: cloudflared
     spec:
-      # On the system nodes; see docs/concepts/node-pools.md.
-      tolerations:
-        - key: homelab.grncunha.com/pool
-          operator: Equal
-          value: system
-          effect: NoSchedule
+      # On the worker, beside gw-public and the applications, so a public
+      # request does not cross from one guest to another on its way in. It
+      # selects the worker pool's label rather than the system pool's; see
+      # docs/concepts/node-pools.md.
       nodeSelector:
-        homelab.grncunha.com/pool: system
+        homelab.grncunha.com/pool: worker
       containers:
         - name: cloudflared
           image: cloudflare/cloudflared:2026.9.3
@@ -36,12 +34,20 @@ spec:
             - --config
             - /etc/cloudflared/config/config.yaml
             - run
-          # Sized from `kubectl top` on 2026-09-30: 16Mi. Without a request
-          # the whole public path was BestEffort, first to go under pressure.
+          # The most CPUs cloudflared can use, as `--concurrency` is for the
+          # Gateways' Envoys. Left unset, Go takes one thread per vCPU on the
+          # node, so it could take the whole worker.
+          env:
+            - name: GOMAXPROCS
+              value: "4"
+          # Sized from a load test on 2026-10-02, on the system node: 1.6 CPUs
+          # and 127Mi at about 2,300 requests a second, which was all that
+          # node's 2 vCPUs could give it. The request is its share of the
+          # worker when the applications want the same CPUs.
           resources:
             requests:
-              cpu: 10m
-              memory: 32Mi
+              cpu: "1"
+              memory: 256Mi
           livenessProbe:
             httpGet:
               path: /ready

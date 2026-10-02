@@ -15,6 +15,13 @@ data:
     metrics: 0.0.0.0:2000
     no-autoupdate: true
 
+    # Idle connections to the Gateway that cloudflared keeps open for reuse.
+    # At the default of 100, a load test on 2026-10-02 had it opening about
+    # 800 a second to one address, which used up its local ports: requests
+    # failed with 502, "cannot assign requested address".
+    originRequest:
+      keepAliveConnections: 1000
+
     # One catch-all. The Gateway picks the HTTPRoute by Host, which cloudflared
     # preserves, so adding a public app is one more HTTPRoute and nothing here.
     ingress:

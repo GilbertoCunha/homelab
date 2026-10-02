@@ -10,7 +10,7 @@ whatever that node runs is down until it is back:
 | --- | --- |
 | `cp-1` | The Kubernetes API. Running pods keep serving; nothing can be deployed or rescheduled |
 | `system-1` | ArgoCD, Grafana, metrics and logs. Metrics have a gap |
-| `worker-1` | Every application and every Gateway |
+| `worker-1` | Every application, every Gateway and the tunnel |
 
 A plain `task tofu:apply` changes every guest it has a change for at once. A
 resize is applied one node at a time, with `-target`, so only one of those rows

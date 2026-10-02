@@ -8,7 +8,7 @@ nodes.
 | --- | --- | --- | --- | --- |
 | Control plane | `cp-1` | etcd, the API server, the scheduler, the controller manager | `node-role.kubernetes.io/control-plane`, set by Talos | The taint of the same name, `NoSchedule` |
 | System | `system-1` | The cluster's own components | `homelab.grncunha.com/pool=system` | `homelab.grncunha.com/pool=system:NoSchedule` |
-| Worker | `worker-1` | Applications, and the Gateways in front of them | `homelab.grncunha.com/pool=worker` | Nothing |
+| Worker | `worker-1` | Applications, and the Gateways and the tunnel in front of them | `homelab.grncunha.com/pool=worker` | Nothing |
 
 ## Sizes
 
@@ -134,15 +134,16 @@ outright:
 | Selects the worker label | Why |
 | --- | --- |
 | Each Gateway's Envoy, in `gitops/system/base/kgateway/gateway-parameters.yaml` | It lives under `gitops/system/`, where everything else selects the system pool. The selector says this one is deliberate |
+| cloudflared, in `gitops/system/base/cloudflared/deployment.yaml` | The same |
 | The load balancer announcements, in `gitops/system/base/cilium/l2-announcement.yaml` | An address must be held by the node its packets are for; see [Getting traffic into the cluster](./ingress.md#why-externaltrafficpolicy-local) |
 
 ## What runs where
 
 | Where | What |
 | --- | --- |
-| System node only | ArgoCD, the blackbox exporter and its target list, cert-manager, cloudflared, the CloudNativePG operator, both external-dns instances, Grafana, kgateway's controller, kube-state-metrics, local-path-provisioner, metrics-server, ntfy, Pyroscope and its Alloy, sops-secrets-operator, VictoriaLogs, VictoriaMetrics, Hubble relay and UI |
+| System node only | ArgoCD, the blackbox exporter and its target list, cert-manager, the CloudNativePG operator, both external-dns instances, Grafana, kgateway's controller, kube-state-metrics, local-path-provisioner, metrics-server, ntfy, Pyroscope and its Alloy, sops-secrets-operator, VictoriaLogs, VictoriaMetrics, Hubble relay and UI |
 | Every node | Cilium's agent and its Envoy, node-exporter, the log collector |
-| Worker | Every Gateway's Envoy, every application, and every database CloudNativePG creates for one |
+| Worker | Every Gateway's Envoy, cloudflared, every application, and every database CloudNativePG creates for one |
 | Control plane or worker | Cilium's operator and CoreDNS. Their installers let them onto the control plane, not the system node, and they are left as installed |
 
 The Gateways' Envoys are the way into the cluster, and they used to run on the
@@ -155,6 +156,13 @@ between guests into every request. On the worker, two settings do the same job:
 | `--concurrency` | Envoy's number of worker threads, so it cannot take the whole worker either |
 
 Both are in `gateway-parameters.yaml`, per Gateway.
+
+cloudflared is the way in for public names, and it followed the Envoys to the
+worker on 2026-10-02. On the system node's 2 vCPUs it stopped keeping up at
+about 2,300 requests a second: a load test through the tunnel had Cloudflare
+answer `503` for a third of its requests, while the application behind it used
+half a CPU. It has the same two settings in its own `deployment.yaml`, with
+`GOMAXPROCS` in place of `--concurrency`.
 
 A new system component needs both settings below. Without them it lands on a
 worker, and nothing warns you.
@@ -265,12 +273,18 @@ weighed by what it holds and who can run code on it:
 | --- | --- | --- |
 | Control plane | On | etcd holds every Secret. Little is gained: nothing on it serves requests. |
 | System node | On | It holds ArgoCD's credentials and the key that decrypts every secret in git. |
-| Worker | Off | It runs this repo's own applications and the Gateways' Envoys. |
+| Worker | Off | It runs this repo's own applications, the Gateways' Envoys and cloudflared. |
 
 Moving Envoy to the worker put the Gateways' TLS keys on the node without
 mitigations. That is a deliberate trade: the keys are for names only the mesh
 can reach, the public path's certificate stays at Cloudflare, and Envoy is the
 component that gains most from the cheaper system calls.
+
+Moving cloudflared there put the tunnel's credentials on it too. Those let
+their holder run the tunnel, and so receive the public names' requests. The
+trade is the same one: cloudflared is the other component that is all small
+system calls, and it is the one workload the internet can reach, so this is
+the secret most exposed by it.
 
 The arguments are part of the Talos image, not the machine configuration, so
 workers install from their own image; see `opentofu/project/image.tf`.
