@@ -88,9 +88,17 @@
       customType: "regex",
       description: "Headscale, installed on the server by Ansible",
       managerFilePatterns: ["/^ansible/roles/headscale/defaults/main\\.yaml$/"],
-      matchStrings: ["headscale_version:\\s*\"(?<currentValue>[^\"]+)\""],
+      // The version and the package's checksum, as one dependency, so both
+      // change in the same pull request. The checksum line follows the
+      // version, with any comment lines in between.
+      matchStrings: [
+        "headscale_version:\\s*\"(?<currentValue>[^\"]+)\"\\n(?:\\s*#.*\\n)*headscale_deb_sha256:\\s*(?<currentDigest>[a-f0-9]{64})",
+      ],
       depNameTemplate: "juanfont/headscale",
-      datasourceTemplate: "github-releases",
+      // Not `github-releases`: this one reads a release's files. It finds the
+      // file the current checksum belongs to, and takes the same file's
+      // checksum from the new release.
+      datasourceTemplate: "github-release-attachments",
       // The release is tagged v0.29.3; the role writes 0.29.3.
       extractVersionTemplate: "^v(?<version>.+)$",
     },
@@ -178,6 +186,7 @@
       description: "Headscale runs on the server, so Ansible installs it",
       matchPackageNames: ["juanfont/headscale"],
       prBodyNotes: [
+        "This must change two lines in `ansible/roles/headscale/defaults/main.yaml`: `headscale_version` and `headscale_deb_sha256`. If only the version changed, set the checksum by hand before merging, from the `linux_amd64.deb` line of this release's `checksums.txt`. Without it the download fails its check.",
         "Merging changes nothing on the server. Apply it afterwards with `task ansible:role -- headscale`.",
       ],
     },

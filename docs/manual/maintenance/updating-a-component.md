@@ -110,7 +110,29 @@ plan before applying anything.
 
 ### Headscale
 
-Headscale runs on the server, so Ansible installs it. After merging:
+Headscale runs on the server, so Ansible installs it.
+
+The pull request must change two lines in
+`ansible/roles/headscale/defaults/main.yaml`: `headscale_version` and
+`headscale_deb_sha256`. The checksum is what proves the package installed is
+the one that was reviewed.
+
+If only the version changed, read the new checksum:
+
+```bash
+curl -sSL https://github.com/juanfont/headscale/releases/download/v<version>/checksums.txt \
+  | grep linux_amd64.deb
+```
+
+```
+1f65364716ae...  headscale_<version>_linux_amd64.deb
+```
+
+Set `headscale_deb_sha256` in `ansible/roles/headscale/defaults/main.yaml` to
+it, in the same pull request. With the old one, the run stops at
+`Download the headscale package` with `The checksum ... did not match`.
+
+After merging:
 
 ```bash
 git pull

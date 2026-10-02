@@ -1,6 +1,10 @@
 ---
 headscale_version: "0.29.4"
-headscale_deb_sha256: 14eccf8d41fd93927ad3fe1fd9e49dbe14d5668a244c4205d940967c442aea0d
+# Belongs to the version above and changes with it: the `linux_amd64.deb`
+# line of the release's checksums.txt. Renovate updates both together, and
+# finds this line by its position under the version; see
+# .github/renovate.json5. Keep them adjacent.
+headscale_deb_sha256: 1f65364716ae1fcc3845b1a65a47583469022e9c6f194dfdfeb25403f89f0841
 headscale_deb_name: "headscale_{{ headscale_version }}_linux_amd64.deb"
 # Not /tmp: that is cleared on reboot, so the package would download again
 # every time and the task would never settle.
