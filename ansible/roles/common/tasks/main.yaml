@@ -37,10 +37,15 @@
   loop: "{{ common_sshd_settings | dict2items }}"
   notify: Restart sshd
 
+# Written to a file of its own under /etc/sysctl.d, which is not the module's
+# default. The default is /etc/sysctl.conf, and Debian 13 no longer reads that
+# file at boot: the setting held until the next reboot and was then gone, with
+# every guest unreachable and unable to reach the internet.
 - name: Enable IPv4 forwarding for Proxmox guests
   ansible.posix.sysctl:
     name: net.ipv4.ip_forward
     value: "1"
+    sysctl_file: "{{ common_sysctl_file }}"
     sysctl_set: true
     state: present
     reload: true

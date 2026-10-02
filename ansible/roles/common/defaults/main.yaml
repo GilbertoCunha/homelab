@@ -24,6 +24,10 @@ common_apt_periodic:
   Unattended-Upgrade: 1
   AutocleanInterval: 7
 
+# Kernel settings this role makes permanent. Under /etc/sysctl.d because that
+# is the directory read at boot; /etc/sysctl.conf is not, on Debian 13.
+common_sysctl_file: /etc/sysctl.d/90-homelab.conf
+
 common_sshd_settings:
   PasswordAuthentication: "no"
   PermitRootLogin: prohibit-password
