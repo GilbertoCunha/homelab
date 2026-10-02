@@ -21,7 +21,7 @@ spec:
       # Run init container to make config dir writeable
       initContainers:
         - name: init-config
-          image: busybox:1.36
+          image: busybox:1.38
           command:
             - sh
             - -c
