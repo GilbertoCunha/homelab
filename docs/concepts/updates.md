@@ -86,6 +86,7 @@ pull request says so, and says what to check.
 | Talos, Kubernetes | Nothing on a running node | [Upgrading Talos and Kubernetes](../manual/maintenance/upgrading-talos-and-kubernetes.md), which ends with the merge |
 | An OpenTofu provider | Nothing until OpenTofu next runs | `task tofu:init -- -upgrade`, then a plan |
 | Headscale | Nothing on the server | `task ansible:role -- headscale` |
+| Proxmox | Nothing on the server. The pull request is the notice that a newer one is out | [Upgrading it by hand](../manual/maintenance/updating-a-component.md#proxmox), which ends with the merge |
 
 Each of these pull requests carries a note saying the same.
 
@@ -93,7 +94,7 @@ Each of these pull requests carries a note saying the same.
 
 | What | Why | How it is updated |
 | --- | --- | --- |
-| The server's own packages | Not in git | Debian updates itself daily. Proxmox is left out on purpose, and upgraded by hand |
+| The server's own packages | Not in git | Debian's packages, Caddy and Tailscale upgrade themselves daily. Proxmox does not: its version is recorded in git, so Renovate says when a newer one is out, and it is upgraded by hand |
 | The sops-secrets-operator CRD | It is a copy of a file, and Renovate changes version numbers, not files | By hand, when the chart's pull request says the CRD changed |
 | Ansible collections | Floors, not pins | The newest is installed anyway |
 

@@ -88,19 +88,36 @@
       customType: "regex",
       description: "Headscale, installed on the server by Ansible",
       managerFilePatterns: ["/^ansible/roles/headscale/defaults/main\\.yaml$/"],
-      // The version and the package's checksum, as one dependency, so both
-      // change in the same pull request. The checksum line follows the
-      // version, with any comment lines in between.
+      // The release tag and the package's checksum, as one dependency, so
+      // both change in the same pull request. The checksum line follows the
+      // tag, with any comment lines in between.
+      //
+      // The tag is matched whole, `v` included, and there is no
+      // `extractVersionTemplate` to strip it. To find the checksum, Renovate
+      // asks GitHub for the release by this exact value, and `0.29.4` is not
+      // a tag there: the lookup fails with a 404.
       matchStrings: [
-        "headscale_version:\\s*\"(?<currentValue>[^\"]+)\"\\n(?:\\s*#.*\\n)*headscale_deb_sha256:\\s*(?<currentDigest>[a-f0-9]{64})",
+        "headscale_tag:\\s*\"(?<currentValue>[^\"]+)\"\\n(?:\\s*#.*\\n)*headscale_deb_sha256:\\s*(?<currentDigest>[a-f0-9]{64})",
       ],
       depNameTemplate: "juanfont/headscale",
       // Not `github-releases`: this one reads a release's files. It finds the
       // file the current checksum belongs to, and takes the same file's
       // checksum from the new release.
       datasourceTemplate: "github-release-attachments",
-      // The release is tagged v0.29.3; the role writes 0.29.3.
-      extractVersionTemplate: "^v(?<version>.+)$",
+    },
+    {
+      customType: "regex",
+      description: "Proxmox VE, upgraded on the server by hand",
+      managerFilePatterns: ["/^ansible/roles/proxmox/defaults/main\\.yaml$/"],
+      matchStrings: ["proxmox_version:\\s*\"(?<currentValue>[^\"]+)\""],
+      // The package whose version is the Proxmox VE version.
+      depNameTemplate: "pve-manager",
+      // Reads the package index of an apt repository. The address, suite and
+      // component repeat `proxmox_repo_url` and `proxmox_suite` in the role's
+      // defaults and the repository the role adds: Renovate cannot read them
+      // from there. Change them together on a new Debian release.
+      datasourceTemplate: "deb",
+      registryUrlTemplate: "http://download.proxmox.com/debian/pve?suite=trixie&components=pve-no-subscription&binaryArch=amd64",
     },
     {
       customType: "regex",
@@ -186,8 +203,20 @@
       description: "Headscale runs on the server, so Ansible installs it",
       matchPackageNames: ["juanfont/headscale"],
       prBodyNotes: [
-        "This must change two lines in `ansible/roles/headscale/defaults/main.yaml`: `headscale_version` and `headscale_deb_sha256`. If only the version changed, set the checksum by hand before merging, from the `linux_amd64.deb` line of this release's `checksums.txt`. Without it the download fails its check.",
+        "This must change two lines in `ansible/roles/headscale/defaults/main.yaml`: `headscale_tag` and `headscale_deb_sha256`. If only the tag changed, set the checksum by hand before merging, from the `linux_amd64.deb` line of this release's `checksums.txt`. Without it the download fails its check.",
         "Merging changes nothing on the server. Apply it afterwards with `task ansible:role -- headscale`.",
+      ],
+    },
+    {
+      description: "Proxmox is upgraded on the server by hand, not by a merge",
+      matchPackageNames: ["pve-manager"],
+      // An apt repository says which versions exist and not when each was
+      // published. With no date, the seven-day rule above can never be met,
+      // and Renovate would hold this pull request back for good. It is only
+      // a notice, so there is nothing for the wait to protect.
+      minimumReleaseAge: null,
+      prBodyNotes: [
+        "This is a notice that a newer Proxmox VE is out. Merging changes nothing on the server. Follow [Updating a component](../blob/main/docs/manual/maintenance/updating-a-component.md#proxmox), which ends with this merge.",
       ],
     },
     {

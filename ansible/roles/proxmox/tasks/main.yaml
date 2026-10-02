@@ -19,3 +19,6 @@
 
 - name: Reserve host threads for the server
   ansible.builtin.import_tasks: guest_cpus.yaml
+
+- name: Compare the server with the recorded Proxmox version
+  ansible.builtin.import_tasks: version.yaml

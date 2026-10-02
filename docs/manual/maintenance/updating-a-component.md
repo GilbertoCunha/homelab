@@ -113,11 +113,11 @@ plan before applying anything.
 Headscale runs on the server, so Ansible installs it.
 
 The pull request must change two lines in
-`ansible/roles/headscale/defaults/main.yaml`: `headscale_version` and
+`ansible/roles/headscale/defaults/main.yaml`: `headscale_tag` and
 `headscale_deb_sha256`. The checksum is what proves the package installed is
 the one that was reviewed.
 
-If only the version changed, read the new checksum:
+If only the tag changed, read the new checksum:
 
 ```bash
 curl -sSL https://github.com/juanfont/headscale/releases/download/v<version>/checksums.txt \
@@ -148,6 +148,57 @@ systemctl is-active headscale
 ```
 active
 ```
+
+### Proxmox
+
+The pull request is a notice, not an upgrade. Nothing upgrades Proxmox on its
+own, and merging changes nothing on the server. `proxmox_version` in
+`ansible/roles/proxmox/defaults/main.yaml` records what the server runs, and
+Renovate compares it with the Proxmox repository.
+
+Upgrade first, on the **server**. `full-upgrade`, never `upgrade`: Proxmox
+releases move packages between each other, and `upgrade` holds those back.
+
+```bash
+apt update
+apt full-upgrade
+pveversion
+```
+
+```
+pve-manager/9.2.21/... (running kernel: ...)
+```
+
+The version after `pve-manager/` should be the one in the pull request. If it
+is newer still, change the pull request to match before merging.
+
+Then merge, and on your own machine:
+
+```bash
+git pull
+task ansible:site
+```
+
+The run ends with the `reboot` role. **If the upgrade brought a new kernel, it
+reboots the server, and every guest with it: the whole cluster is down until
+they are back.** Run it when that is acceptable.
+
+Afterwards, check the guests came back:
+
+```bash
+kubectl get nodes
+```
+
+```
+NAME       STATUS   ROLES           AGE   VERSION
+cp-1       Ready    control-plane   ...   ...
+system-1   Ready    <none>          ...   ...
+worker-1   Ready    <none>          ...   ...
+```
+
+If the server and the recorded version ever disagree, the `proxmox` role says
+so in its output: `The server runs Proxmox VE ... and proxmox_version records
+...`.
 
 ### ArgoCD
 

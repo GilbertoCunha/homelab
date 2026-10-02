@@ -24,6 +24,24 @@
     state: present
     update_cache: "{{ mesh_node_repo.changed }}"
 
+# Unattended upgrades only touch Debian's own repositories unless told about
+# another, and the task above installs tailscale without ever upgrading it.
+# This adds the repository to the list the common role schedules. The package
+# restarts tailscaled itself when it is upgraded, which drops the route to the
+# guests for a moment.
+- name: Let unattended upgrades keep tailscale current
+  ansible.builtin.copy:
+    content: |
+      // Managed by Ansible (roles/mesh_node). Do not edit on the server.
+      Unattended-Upgrade::Origins-Pattern {
+        "origin={{ mesh_node_apt_origin }}";
+      };
+    dest: "{{ mesh_node_apt_origin_path }}"
+    owner: root
+    group: root
+    mode: "0644"
+    validate: apt-config -c %s dump
+
 - name: Enable tailscaled
   ansible.builtin.service:
     name: tailscaled

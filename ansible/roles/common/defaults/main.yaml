@@ -15,8 +15,10 @@ common_wireguard_port: 41641     # tailscale data plane
 
 # Installing unattended-upgrades is not enough. The apt-daily timers only act
 # when these are set, and Debian ships no such file, so nothing is applied.
-# 1 means daily. Debian's own origins allow list decides what is eligible; the
-# Proxmox repository is not a Debian origin, so PVE is never auto-upgraded.
+# 1 means daily. An allow list of origins decides what is eligible, and it
+# starts as Debian's own repositories only. The caddy and mesh_node roles each
+# add theirs. Nothing adds the Proxmox repository, so PVE is never
+# auto-upgraded.
 common_apt_periodic:
   Update-Package-Lists: 1
   Unattended-Upgrade: 1

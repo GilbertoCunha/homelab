@@ -24,6 +24,23 @@
     state: present
     update_cache: "{{ caddy_repo.changed }}"
 
+# Unattended upgrades only touch Debian's own repositories unless told about
+# another, and the task above installs caddy without ever upgrading it. This
+# adds the repository to the list the common role schedules. The package
+# restarts caddy itself when it is upgraded.
+- name: Let unattended upgrades keep caddy current
+  ansible.builtin.copy:
+    content: |
+      // Managed by Ansible (roles/caddy). Do not edit on the server.
+      Unattended-Upgrade::Origins-Pattern {
+        "origin={{ caddy_apt_origin }}";
+      };
+    dest: "{{ caddy_apt_origin_path }}"
+    owner: root
+    group: root
+    mode: "0644"
+    validate: apt-config -c %s dump
+
 - name: Create the per-service vhost directory
   ansible.builtin.file:
     path: "{{ caddy_sites_dir }}"

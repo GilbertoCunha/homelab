@@ -1,0 +1,17 @@
+---
+# Proxmox is upgraded by hand, so nothing here installs a version. This only
+# compares the server with the version recorded in the role's defaults, which
+# is what Renovate reads to know when a newer one is out. A record that has
+# drifted from the server makes Renovate propose the wrong upgrade, or none.
+- name: Read the installed Proxmox VE version
+  ansible.builtin.command: dpkg-query -W -f='${Version}' pve-manager
+  register: proxmox_installed_version
+  changed_when: false
+
+- name: Say so when the server is not on the recorded version
+  ansible.builtin.debug:
+    msg: >-
+      The server runs Proxmox VE {{ proxmox_installed_version.stdout }} and
+      `proxmox_version` records {{ proxmox_version }}. Set it to what the
+      server runs. See docs/manual/maintenance/updating-a-component.md.
+  when: proxmox_installed_version.stdout != proxmox_version

@@ -1,10 +1,15 @@
 ---
-headscale_version: "0.29.4"
-# Belongs to the version above and changes with it: the `linux_amd64.deb`
-# line of the release's checksums.txt. Renovate updates both together, and
-# finds this line by its position under the version; see
-# .github/renovate.json5. Keep them adjacent.
+# The release, by its tag exactly as GitHub has it, `v` included. Renovate
+# asks GitHub for the release by this value, and a tag without the `v` does
+# not exist.
+headscale_tag: "v0.29.4"
+# Belongs to the tag above and changes with it: the `linux_amd64.deb` line of
+# the release's checksums.txt. Renovate updates both together, and finds this
+# line by its position under the tag; see .github/renovate.json5. Keep them
+# adjacent.
 headscale_deb_sha256: 1f65364716ae1fcc3845b1a65a47583469022e9c6f194dfdfeb25403f89f0841
+# The version as the package and dpkg write it: the tag without its `v`.
+headscale_version: "{{ headscale_tag | regex_replace('^v', '') }}"
 headscale_deb_name: "headscale_{{ headscale_version }}_linux_amd64.deb"
 # Not /tmp: that is cleared on reboot, so the package would download again
 # every time and the task would never settle.
@@ -12,7 +17,7 @@ headscale_cache_dir: /var/cache/headscale
 headscale_deb_path: "{{ headscale_cache_dir }}/{{ headscale_deb_name }}"
 headscale_releases_url: https://github.com/juanfont/headscale/releases/download
 headscale_deb_url: >-
-  {{ headscale_releases_url }}/v{{ headscale_version }}/{{ headscale_deb_name }}
+  {{ headscale_releases_url }}/{{ headscale_tag }}/{{ headscale_deb_name }}
 
 # Loopback only. Caddy is the sole ingress.
 headscale_listen_addr: 127.0.0.1:8080
