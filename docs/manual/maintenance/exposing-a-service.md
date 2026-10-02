@@ -162,3 +162,17 @@ curl -skS -o /dev/null -w '%{http_code}\n' \
 ```
 
 A `200` here with a failure above means DNS, and nothing else.
+
+## 6. Nothing to do: it is watched from here on
+
+Every route's hostname is requested twice a minute, and a phone is told when
+one stops answering. A new route is picked up within a minute, with no list to
+add it to. See [Knowing when something is down](../../concepts/alerts.md).
+
+The check asks for `/` and passes on any `2xx`. Two annotations on the route
+change that:
+
+| Annotation | When |
+| --- | --- |
+| `homelab.grncunha.com/probe-path: /healthz` | `/` does not answer `2xx`, for instance because the route serves one path only |
+| `homelab.grncunha.com/probe: "false"` | The route should not be watched at all |

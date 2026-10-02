@@ -140,7 +140,7 @@ outright:
 
 | Where | What |
 | --- | --- |
-| System node only | ArgoCD, cert-manager, cloudflared, the CloudNativePG operator, both external-dns instances, Grafana, kgateway's controller, kube-state-metrics, local-path-provisioner, metrics-server, Pyroscope and its Alloy, sops-secrets-operator, VictoriaLogs, VictoriaMetrics, Hubble relay and UI |
+| System node only | ArgoCD, the blackbox exporter and its target list, cert-manager, cloudflared, the CloudNativePG operator, both external-dns instances, Grafana, kgateway's controller, kube-state-metrics, local-path-provisioner, metrics-server, ntfy, Pyroscope and its Alloy, sops-secrets-operator, VictoriaLogs, VictoriaMetrics, Hubble relay and UI |
 | Every node | Cilium's agent and its Envoy, node-exporter, the log collector |
 | Worker | Every Gateway's Envoy, every application, and every database CloudNativePG creates for one |
 | Control plane or worker | Cilium's operator and CoreDNS. Their installers let them onto the control plane, not the system node, and they are left as installed |

@@ -28,6 +28,15 @@ upgrade of every node.
 Worth doing once something holds data that is not cheap to lose. Metrics and
 logs are not that.
 
+## Noticing when the cluster itself is down
+
+Alerts are sent from inside the cluster, so they stop when the system node,
+the server or the mesh does. Nothing says so: the phone is simply quiet. See
+[Knowing when something is down](./concepts/alerts.md).
+
+A dead man's switch is the likely answer: an alert that always fires and pings
+a service outside the cluster, which notifies when the pings stop.
+
 ## Backups
 
 Defining a strategy for anything that might need backups, including potentially

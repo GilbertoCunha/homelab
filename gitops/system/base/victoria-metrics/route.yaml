@@ -6,6 +6,10 @@ metadata:
   namespace: victoria-metrics
   annotations:
     argocd.argoproj.io/sync-wave: "2"
+    # The uptime check asks for `/` unless told otherwise, and this route
+    # serves one path only. A GET on it answers 204 and writes nothing. See
+    # gitops/system/base/blackbox-exporter/targets.yaml.
+    homelab.grncunha.com/probe-path: /api/v1/write
 spec:
   parentRefs:
     - name: gw-internal-prod

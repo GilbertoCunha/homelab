@@ -105,6 +105,96 @@ spec:
           # local-path is the default class.
           enabled: true
 
+        # Alerting, provisioned from here like everything else Grafana serves.
+        # One rule, one place it is sent. See docs/concepts/observability.md.
+        alerting:
+          rules.yaml:
+            apiVersion: 1
+            groups:
+              - orgId: 1
+                name: uptime
+                folder: Uptime
+                interval: 1m
+                rules:
+                  - uid: uptime-app-down
+                    title: App is down
+                    condition: down
+                    data:
+                      # One series per hostname, 1 or 0, from the `uptime` job
+                      # in gitops/system/base/victoria-metrics/application.yaml.
+                      # Each becomes its own alert, so a new route is covered
+                      # without an edit here.
+                      - refId: probe
+                        relativeTimeRange:
+                          from: 300
+                          to: 0
+                        datasourceUid: victoriametrics
+                        model:
+                          refId: probe
+                          expr: probe_success{job="uptime"}
+                          instant: true
+                          range: false
+                      - refId: down
+                        datasourceUid: __expr__
+                        model:
+                          refId: down
+                          type: threshold
+                          expression: probe
+                          conditions:
+                            - evaluator:
+                                type: lt
+                                params: [1]
+                    # Two minutes of failures, so one slow answer is not an
+                    # outage.
+                    for: 2m
+                    # When the query returns nothing or fails, the probe is
+                    # what broke, not the applications. Every alert keeps the
+                    # state it had. The defaults would resolve them, and send
+                    # "back up" for an application that is still down.
+                    noDataState: KeepLast
+                    execErrState: KeepLast
+                    # No annotations. The message is written by ntfy's
+                    # template, from the labels. One here would also need its
+                    # braces escaped: the chart passes this whole block
+                    # through Helm's templating first.
+
+          contactpoints.yaml:
+            apiVersion: 1
+            contactPoints:
+              - orgId: 1
+                name: ntfy
+                receivers:
+                  - uid: ntfy
+                    type: webhook
+                    # Sends again when the alert clears, which is the "back
+                    # up" message. False is the default; written out because
+                    # the whole design leans on it.
+                    disableResolveMessage: false
+                    settings:
+                      # The Service, not ntfy's hostname: an alert must not
+                      # depend on the DNS record or the Gateway it may be
+                      # about. `uptime` is the topic a phone subscribes to;
+                      # the template is what turns this payload into a
+                      # sentence. See gitops/system/base/ntfy/configmap.yaml.
+                      url: http://ntfy.ntfy.svc.cluster.local/uptime?template=uptime
+                      httpMethod: POST
+
+          # The whole notification policy tree. Grafana has one, and
+          # provisioning it replaces whatever was clicked together.
+          policies.yaml:
+            apiVersion: 1
+            policies:
+              - orgId: 1
+                receiver: ntfy
+                # One notification per hostname. The ntfy template reads the
+                # hostname from the group, so this is not optional.
+                group_by: [alertname, hostname]
+                group_wait: 10s
+                # How long after an alert clears "back up" is sent.
+                group_interval: 1m
+                # A reminder once a day while something stays down.
+                repeat_interval: 24h
+
         datasources:
           datasources.yaml:
             apiVersion: 1

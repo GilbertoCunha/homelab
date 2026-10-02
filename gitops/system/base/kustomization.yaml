@@ -5,6 +5,7 @@ kind: Kustomization
 resources:
   - applications
   - argocd
+  - blackbox-exporter
   - cert-manager
   - cilium
   - cloudflared
@@ -16,6 +17,7 @@ resources:
   - local-path-provisioner
   - metrics-server
   - node-exporter
+  - ntfy
   - pyroscope
   - sops
   - victoria-logs

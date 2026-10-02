@@ -81,6 +81,35 @@ spec:
                 - job_name: proxmox-host
                   static_configs:
                     - targets: ["10.10.10.1:9100"]
+                # Whether each hostname the cluster serves answers. The
+                # targets are not scraped: each one is a hostname handed to
+                # the blackbox exporter, which requests it and reports
+                # `probe_success`. The list comes from the cluster's
+                # HTTPRoutes, so a new route is probed without an edit here.
+                # See gitops/system/base/blackbox-exporter/.
+                #
+                # Grafana alerts on the result, by this job's name; see the
+                # rule in gitops/system/base/grafana/application.yaml.
+                - job_name: uptime
+                  # A probe is a real request to a real application. Twice a
+                  # minute is enough to notice an outage and costs nothing.
+                  scrape_interval: 30s
+                  scrape_timeout: 10s
+                  metrics_path: /probe
+                  params:
+                    module: [http_2xx]
+                  http_sd_configs:
+                    - url: http://probe-targets.blackbox-exporter.svc.cluster.local:8080/targets.json
+                  relabel_configs:
+                    # The discovered address is the URL to probe. It becomes
+                    # the `target` parameter, and the address actually scraped
+                    # is the exporter's.
+                    - source_labels: [__address__]
+                      target_label: __param_target
+                    - source_labels: [__param_target]
+                      target_label: instance
+                    - target_label: __address__
+                      replacement: blackbox-exporter.blackbox-exporter.svc.cluster.local:9115
                 - job_name: "kubernetes-apiservers"
                   kubernetes_sd_configs:
                     - role: endpoints
