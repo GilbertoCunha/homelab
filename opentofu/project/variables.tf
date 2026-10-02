@@ -30,12 +30,7 @@ variable "cluster_name" {
 }
 
 variable "talos_version" {
-  description = "Talos Linux version the nodes run. Decides which Kubernetes versions are supported. Changing it upgrades every node on the next apply."
-  type        = string
-}
-
-variable "talos_config_contract" {
-  description = "Talos version whose layout the machine configuration is written in. Not the version the nodes run: it stays put across upgrades, and moves only when the patches in cluster.tf are rewritten for a newer layout."
+  description = "Talos Linux version: the one the nodes run, and the one their configuration is generated for. Decides which Kubernetes versions are supported. Changing it upgrades every node on the next apply."
   type        = string
 }
 

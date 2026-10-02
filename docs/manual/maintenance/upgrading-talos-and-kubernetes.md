@@ -22,6 +22,10 @@ If both have a new version, merge both and apply once. Talos goes first.
 
 **Read the release notes.** They are in the pull request.
 
+**For a new Talos minor version, read them against `cluster.tf`.** 1.14 to
+1.15 is a minor version; 1.14.1 to 1.14.2 is not. See
+[A new minor version](#a-new-minor-version) first.
+
 **Check the two versions fit together.** Kubernetes must be inside the range
 the Talos version supports:
 <https://www.talos.dev/latest/introduction/support-matrix/>
@@ -54,7 +58,7 @@ task tofu:plan
 | The three `talos_machine` resources updated, and the image download replaced | A Talos upgrade. Correct |
 | `talos_cluster` updated, with `kubernetes_version` changing. The `talos_machine` resources are listed too, with nothing under them | A Kubernetes upgrade. Correct |
 | Any `proxmox_virtual_environment_vm` changed or replaced | Wrong. An upgrade does not touch a guest. Stop and read the diff |
-| `talos_machine_secrets` replaced | Wrong, and destructive: it replaces every certificate in the cluster. Stop. `talos_config_contract` was lowered |
+| `talos_machine_secrets` changed or replaced | Wrong, and destructive: replacing it replaces every certificate in the cluster. Stop |
 
 ## 2. Applying
 
@@ -108,18 +112,34 @@ picks up where it stopped: a node already on the new version is left alone.
 | A node does not come back | Talos keeps the version it had: `talosctl --nodes <address> rollback`. If it does not answer at all, open its console in Proxmox, reset it, and pick the other entry in the boot menu |
 | `error upgrading Kubernetes`, with `connection refused` | The API server was still restarting. Wait for `talosctl --nodes 10.10.10.11 health` to pass, and apply again |
 
-## The version that does not move
+## A new minor version
 
-`talos_config_contract` in `opentofu/project/terraform.tfvars` looks like a
-Talos version and is not the one the nodes run. It is the layout the node
-configuration is written in. Renovate leaves it alone, and so should an
-upgrade.
+`talos_version` is one value with two jobs: it is the Talos the nodes run, and
+the version their configuration is generated for. They are kept the same on
+purpose, so a node never runs one version with a configuration written for
+another.
 
-| | `talos_version` | `talos_config_contract` |
-| --- | --- | --- |
-| What it is | The Talos the nodes run | The layout of their configuration |
-| Who changes it | Renovate | You, when rewriting the patches in `cluster.tf` |
-| Lowering it | Downgrades the nodes | **Replaces every certificate in the cluster** |
+The cost is that a new minor version can change what the configuration is made
+of. Talos keeps it in documents, one per subject, and `cluster.tf` patches them
+by name. A new minor can rename a document, or add one with a default this
+cluster does not want. 1.14 did both: it added Flannel and kube-proxy as
+documents of their own, and the settings that had turned them off stopped
+applying.
+
+**Nothing checks this before a node is given the result.** The plan passes
+either way. So for a minor version:
+
+1. Read the release notes for configuration changes, and change the patches in
+   `opentofu/project/cluster.tf` in the same pull request.
+2. Apply as usual, and watch the first node.
+
+| What happens | What it means |
+| --- | --- |
+| The apply stops on `cp-1` with `error applying machine configuration` and a message naming a document | Talos refused the configuration. The node is upgraded and still runs its old configuration, and nothing else has been touched. Fix the patch the message names and apply again |
+| The apply finishes, and `kubectl -n kube-system get daemonsets` lists `kube-proxy` or `kube-flannel` | A default came back. Turn it off in `control_plane_patches` and apply again |
+
+The control plane goes first for this reason: a configuration Talos refuses
+stops there, with the applications still running.
 
 ## Checking it worked
 
