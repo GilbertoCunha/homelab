@@ -64,6 +64,6 @@ One line per hostname. `1` is answering, `0` is not.
 | `could not resolve host` on the test | The device is not on the mesh, or not accepting its routes |
 | The test prints JSON, the phone shows nothing | The phone is off the mesh, or Android closed the app's connection: check step 2's battery setting |
 | The phone reconnects every few seconds | The route's `timeouts.request: 0s` is not applied; see `gitops/system/base/ntfy/route.yaml` |
-| A hostname is missing from the list | Its route carries `homelab.grncunha.com/probe: "false"`, or `probe-targets` has not listed it yet: `kubectl -n blackbox-exporter logs deploy/probe-targets -c discover` |
+| A hostname is missing from the list | Its route carries `homelab.grncunha.com/probe: "false"`, or `probe-targets` has not listed it yet: `kubectl -n blackbox-exporter logs deploy/probe-targets` |
 | A hostname reads `0` and the page loads for you | Its root does not answer `2xx`. Name a path that does, with `homelab.grncunha.com/probe-path` |
 | An application was down and no message came | `kubectl -n grafana logs deploy/grafana -c grafana \| grep -i notif` |
