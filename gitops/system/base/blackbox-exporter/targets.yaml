@@ -75,7 +75,7 @@ spec:
       containers:
         # Lists the routes once a minute and rewrites the file.
         - name: discover
-          image: alpine/k8s:1.36.5
+          image: alpine/k8s:1.37.0
           # The script is written here rather than mounted from a ConfigMap, so
           # that changing it rolls the pod. Nothing restarts a pod when a
           # ConfigMap changes; see docs/backlog.md.
