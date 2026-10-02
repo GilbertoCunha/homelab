@@ -178,9 +178,10 @@ change once records exist without orphaning every `TXT` written so far.
 
 kgateway reads none of these annotations. They are not Gateway API.
 
-The annotation prefix becomes `external-dns.kubernetes.io/` in external-dns
-v0.22.0, so upgrading past chart 1.21.x stops every annotation here being read,
-silently, unless `--annotation-prefix` is set.
+The annotation prefix is `external-dns.kubernetes.io/`, since external-dns
+v0.22.0 (chart 1.22.0). An annotation under the older
+`external-dns.alpha.kubernetes.io/` is ignored, silently: external-dns then
+deletes the record it wrote from it.
 
 **cert-manager** solves **DNS-01**, not HTTP-01. Two reasons, and either alone
 would be enough: the mesh names point at an address Let's Encrypt cannot reach,

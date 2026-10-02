@@ -113,7 +113,7 @@ metadata:
     # The only external-dns annotation read from a Gateway. Every other one is
     # read from the HTTPRoute, which is why proxying is a label above rather
     # than an annotation here. See docs/concepts/ingress.md.
-    external-dns.alpha.kubernetes.io/target: 0fe39bd7-3b36-4059-8151-9bc3c07ce0dd.cfargotunnel.com
+    external-dns.kubernetes.io/target: 0fe39bd7-3b36-4059-8151-9bc3c07ce0dd.cfargotunnel.com
 spec:
   gatewayClassName: kgateway
   infrastructure:
