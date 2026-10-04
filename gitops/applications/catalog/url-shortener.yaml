@@ -3,7 +3,9 @@ name: url-shortener
 environments:
   - name: dev
     quotas:
-      cpu: 10
+      # The API's 4-CPU limit, twice during a rollout (old and new pod at
+      # once), plus Postgres (2) and Redis (1.1)
+      cpu: 12
       memory: 4Gi
       storage: 20Gi
     sync:
@@ -12,7 +14,9 @@ environments:
       path: url-shortener/overlays/dev
   - name: prod
     quotas:
-      cpu: 10
+      # The API's 4-CPU limit, twice during a rollout (old and new pod at
+      # once), plus Postgres (2) and Redis (1.1)
+      cpu: 12
       memory: 4Gi
       storage: 20Gi
     sync:
