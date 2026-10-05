@@ -5,7 +5,7 @@ environments:
     quotas:
       # The API's 4-CPU limit, twice during a rollout (old and new pod at
       # once), plus Postgres (2) and Redis (1.1)
-      cpu: 12
+      cpu: 16
       memory: 4Gi
       storage: 20Gi
     sync:
