@@ -31,7 +31,7 @@ env:
   # renovate: datasource=github-releases depName=go-task/task
   TASK_VERSION: v3.53.1
   # renovate: datasource=github-releases depName=opentofu/opentofu
-  TOFU_VERSION: v1.13.0
+  TOFU_VERSION: v1.13.1
 
 jobs:
   check:
