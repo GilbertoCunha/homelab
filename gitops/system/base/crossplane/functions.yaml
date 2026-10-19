@@ -1,0 +1,33 @@
+---
+# The functions a Composition's pipeline calls. Since Crossplane v2 a
+# Composition is a pipeline of functions and nothing else, so without at least
+# one of these no Composition can do anything.
+#
+# Wave 2, after Crossplane, which registers this kind when it starts rather
+# than through ArgoCD. `SkipDryRunOnMissingResource` lets the sync start before
+# then; on a fresh cluster the first attempt still fails, and self-heal
+# retries it once Crossplane is up.
+
+# Renders composed resources from Go templates: the resources are written out
+# as YAML, the way every other manifest here is.
+apiVersion: pkg.crossplane.io/v1
+kind: Function
+metadata:
+  name: function-go-templating
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  package: xpkg.crossplane.io/crossplane-contrib/function-go-templating:v0.13.0
+---
+# Marks a composite resource ready once everything it composed is. Without it
+# a template has to say when each resource is ready.
+apiVersion: pkg.crossplane.io/v1
+kind: Function
+metadata:
+  name: function-auto-ready
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  package: xpkg.crossplane.io/crossplane-contrib/function-auto-ready:v0.7.0

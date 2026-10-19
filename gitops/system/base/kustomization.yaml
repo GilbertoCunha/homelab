@@ -10,6 +10,7 @@ resources:
   - cilium
   - cloudflared
   - cnpg
+  - crossplane
   - external-dns
   - grafana
   - kgateway
