@@ -1,0 +1,45 @@
+---
+# How Crossplane runs every provider and function it installs: each is a
+# Deployment it creates, and this is the template it starts from.
+#
+# Named `default` because that is what a package's `runtimeConfigRef` falls
+# back to, so a new package lands on the system nodes without naming this.
+# Crossplane creates an empty `default` only when none exists, so it does not
+# fight this one; see internal/initializer/deployment_runtime_config.go at the
+# pinned tag.
+#
+# The requests suit a function, which idles at a few tens of MiB. A provider
+# needing more gets a config of its own, named in its `runtimeConfigRef`.
+#
+# Wave 2, after Crossplane, which registers this kind when it starts. Until it
+# has, the dry run would fail on an unknown kind; see functions.yaml.
+apiVersion: pkg.crossplane.io/v1beta1
+kind: DeploymentRuntimeConfig
+metadata:
+  name: default
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  deploymentTemplate:
+    spec:
+      # Required by the schema. Crossplane replaces it with its own.
+      selector: {}
+      template:
+        spec:
+          # On the system nodes; see docs/concepts/node-pools.md.
+          tolerations:
+            - key: homelab.grncunha.com/pool
+              operator: Equal
+              value: system
+              effect: NoSchedule
+          nodeSelector:
+            homelab.grncunha.com/pool: system
+          containers:
+            # The name Crossplane gives the package's own container. Any
+            # other name would be added as a sidecar instead.
+            - name: package-runtime
+              resources:
+                requests:
+                  cpu: 5m
+                  memory: 32Mi

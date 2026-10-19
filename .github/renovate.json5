@@ -30,6 +30,11 @@
   kubernetes: {
     managerFilePatterns: ["/^gitops/.+\\.ya?ml$/"],
   },
+  // Crossplane's Function and Provider packages, which neither manager above
+  // reads. Only Crossplane's own component holds any.
+  crossplane: {
+    managerFilePatterns: ["/^gitops/system/base/crossplane/.+\\.ya?ml$/"],
+  },
 
   // grafana.com has no release feed Renovate knows, so these two read its API.
   // A dashboard's version is its revision number; a plugin's is a normal one.

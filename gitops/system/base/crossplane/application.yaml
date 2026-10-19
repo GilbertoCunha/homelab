@@ -1,0 +1,72 @@
+---
+# Crossplane: composes resources from `CompositeResourceDefinition`s and
+# `Composition`s, and runs the providers and functions that do the work.
+#
+# Wave 1: it needs only the API server.
+#
+# Its CRDs are not in gitops/crds, and the chart ships none. Crossplane's init
+# container applies them on every start, so they are upgraded with the image
+# rather than left behind by Helm; see `core init` in
+# cmd/crossplane/core/init.go at the pinned tag.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: crossplane
+  namespace: argocd
+  labels:
+    tier: system
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  project: default
+  destination:
+    namespace: crossplane-system
+    server: https://kubernetes.default.svc
+  source:
+    chart: crossplane
+    repoURL: https://charts.crossplane.io/stable
+    targetRevision: 2.4.2
+    helm:
+      valuesObject:
+        # On the system nodes; see docs/concepts/node-pools.md. These place
+        # Crossplane and its RBAC manager. Providers and functions are placed
+        # by runtime-config.yaml.
+        tolerations:
+          - key: homelab.grncunha.com/pool
+            operator: Equal
+            value: system
+            effect: NoSchedule
+        nodeSelector:
+          homelab.grncunha.com/pool: system
+        rbacManager:
+          tolerations:
+            - key: homelab.grncunha.com/pool
+              operator: Equal
+              value: system
+              effect: NoSchedule
+          nodeSelector:
+            homelab.grncunha.com/pool: system
+        # Requests only, as elsewhere: the chart's limits are removed so a
+        # burst of reconciles is not throttled. The chart derives GOMAXPROCS
+        # and GOMEMLIMIT from the limits; without them both follow the node.
+        # Not yet measured; resize from `kubectl top` once it has run a while.
+        resourcesCrossplane:
+          limits: null
+          requests:
+            cpu: 20m
+            memory: 128Mi
+        resourcesRBACManager:
+          limits: null
+          requests:
+            cpu: 10m
+            memory: 64Mi
+        # Adds the `prometheus.io/scrape` annotations VictoriaMetrics selects
+        # pods by.
+        metrics:
+          enabled: true
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - ServerSideApply=true
