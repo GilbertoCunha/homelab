@@ -27,7 +27,7 @@ env:
   # renovate: datasource=github-releases depName=kubernetes-sigs/kustomize extractVersion=^kustomize/(?<version>.+)$
   KUSTOMIZE_VERSION: v5.8.2
   # renovate: datasource=github-releases depName=helm/helm
-  HELM_VERSION: v4.3.0
+  HELM_VERSION: v4.3.1
   # renovate: datasource=github-releases depName=go-task/task
   TASK_VERSION: v3.53.1
   # renovate: datasource=github-releases depName=opentofu/opentofu
