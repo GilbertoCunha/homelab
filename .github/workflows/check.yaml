@@ -25,7 +25,7 @@ env:
   # The versions on the machine these were last run from by hand. Renovate
   # keeps them current, through the comment above each one.
   # renovate: datasource=github-releases depName=kubernetes-sigs/kustomize extractVersion=^kustomize/(?<version>.+)$
-  KUSTOMIZE_VERSION: v5.8.2
+  KUSTOMIZE_VERSION: v5.8.3
   # renovate: datasource=github-releases depName=helm/helm
   HELM_VERSION: v4.3.0
   # renovate: datasource=github-releases depName=go-task/task
