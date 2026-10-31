@@ -2,12 +2,12 @@
 # The release, by its tag exactly as GitHub has it, `v` included. Renovate
 # asks GitHub for the release by this value, and a tag without the `v` does
 # not exist.
-headscale_tag: "v0.29.4"
+headscale_tag: "v0.29.6"
 # Belongs to the tag above and changes with it: the `linux_amd64.deb` line of
 # the release's checksums.txt. Renovate updates both together, and finds this
 # line by its position under the tag; see .github/renovate.json5. Keep them
 # adjacent.
-headscale_deb_sha256: 1f65364716ae1fcc3845b1a65a47583469022e9c6f194dfdfeb25403f89f0841
+headscale_deb_sha256: a3b49916a16418c704cef89818d734bc8af0528aac965a2dd5ca4bfa4cef48e2
 # The version as the package and dpkg write it: the tag without its `v`.
 headscale_version: "{{ headscale_tag | regex_replace('^v', '') }}"
 headscale_deb_name: "headscale_{{ headscale_version }}_linux_amd64.deb"
