@@ -8,37 +8,37 @@ The provider is installed by `gitops/system/base/crossplane/providers/`. It
 does nothing until the App exists and its credentials are in
 `github-app.sops.yaml`, which this procedure does.
 
-## What the App can and cannot do
+## What the App can reach
 
-The App is installed on the personal account `GilbertoCunha`.
+The App belongs to, and is installed on, the organization `grnc-homelab`. An
+installation reaches its own account's repositories and nothing else.
 
 | Can | Cannot |
 | --- | --- |
-| Manage repositories it is installed on: settings, branches, branch protection, rulesets, files, Actions secrets and variables, environments, webhooks, deploy keys | Create a repository. GitHub only lets an App create repositories in an organization, never in a personal account |
-| | Manage teams or organization secrets. A personal account has none |
-
-To create repositories, the owner has to become an organization, or the
-provider a personal access token.
+| Create repositories in `grnc-homelab`, and manage them: settings, branches, branch protection, rulesets, files, Actions secrets and variables, environments, webhooks, deploy keys | Touch anything under the personal account `GilbertoCunha`, including this repository. That is deliberate: what the cluster runs cannot rewrite the repository it deploys from |
 
 ## 1. Create the App
 
-1. Open <https://github.com/settings/apps/new>.
+1. Open <https://github.com/organizations/grnc-homelab/settings/apps/new>.
+   Only an organization owner can create one.
 2. Fill in:
 
    | Field | Value |
    | --- | --- |
-   | GitHub App name | `grncunha-crossplane`, or anything unique on GitHub |
-   | Homepage URL | `https://github.com/GilbertoCunha/homelab` |
+   | GitHub App name | `grnc-homelab-crossplane`, or anything unique on GitHub |
+   | Homepage URL | `https://github.com/grnc-homelab`. Required, never used |
+| Callback URL, Setup URL, Device Flow, user authorization during installation | Empty and unchecked. They are for Apps that sign people in; Crossplane signs in as the App itself |
    | Webhook → Active | Unchecked. Crossplane polls; it receives nothing |
-   | Where can this GitHub App be installed? | Only on this account |
+   | Where can this GitHub App be installed? | Only on this account, which is `grnc-homelab` |
 
 3. Under **Repository permissions**, give only what you will manage. Every
-   other permission stays at **No access**.
+   other permission, and every organization and account permission, stays at
+   **No access**.
 
    | Permission | Access | Needed for |
    | --- | --- | --- |
    | Metadata | Read-only | Always; GitHub sets it |
-   | Administration | Read and write | Repository settings, branch protection, rulesets, deploy keys |
+   | Administration | Read and write | Creating and deleting repositories, settings, branch protection, rulesets, deploy keys |
    | Contents | Read and write | Branches and files |
    | Secrets | Read and write | Actions secrets |
    | Variables | Read and write | Actions variables |
@@ -53,19 +53,21 @@ The App's page opens. Note its **App ID**, a number near the top.
 
 On the App's page, under **Private keys**, click **Generate a private key**.
 
-Expected: a file such as `grncunha-crossplane.2026-11-11.private-key.pem` is
+Expected: a file such as `grnc-homelab-crossplane.2026-11-11.private-key.pem` is
 downloaded. GitHub keeps no copy.
 
 ## 3. Install the App
 
 1. On the App's page, click **Install App**, then **Install** next to
-   `GilbertoCunha`.
-2. Choose **All repositories**, or **Only select repositories** to limit what
-   Crossplane can touch.
+   `grnc-homelab`.
+2. Choose **All repositories**. With **Only select repositories**, a repository
+   Crossplane creates is outside the installation, and Crossplane cannot manage
+   it after creating it.
 3. Click **Install**.
 
-The browser lands on `https://github.com/settings/installations/<number>`. That
-number is the **installation ID**.
+The browser lands on
+`https://github.com/organizations/grnc-homelab/settings/installations/<number>`.
+That number is the **installation ID**.
 
 ## 4. Store the credentials
 
@@ -74,15 +76,19 @@ ID and the key, with the key's line breaks written as `\n`. `jq` builds it, and
 `sops set` writes it straight into the encrypted file, so it never sits on disk
 in plain text:
 
+These run `sops` directly, not through `task`, so first tell it where the
+key is; see [Where the key lives](../../concepts/sops.md#where-the-key-lives).
+
 ```bash
+export SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt
 APP_ID=123456
 INSTALLATION_ID=7890123
-PEM=~/Downloads/grncunha-crossplane.2026-11-11.private-key.pem
+PEM=~/Downloads/grnc-homelab-crossplane.2026-11-11.private-key.pem
 
 sops set gitops/system/base/crossplane/providers/github-app.sops.yaml \
   '["spec"]["secretTemplates"][0]["stringData"]["credentials"]' \
   "$(jq -n --arg id "$APP_ID" --arg inst "$INSTALLATION_ID" --rawfile pem "$PEM" \
-    '{owner: "GilbertoCunha", app_auth: [{id: $id, installation_id: $inst, pem_file: $pem}]} | tojson')"
+    '{owner: "grnc-homelab", app_auth: [{id: $id, installation_id: $inst, pem_file: $pem}]} | tojson')"
 ```
 
 Check the result:
@@ -116,36 +122,36 @@ kubectl -n crossplane-system get secret github-app
 
 Expected: one line, `github-app   Opaque   1`.
 
-Then observe a repository that already exists. `Observe` only reads, so nothing
-on GitHub changes:
+Then create a throwaway repository, which proves the App can do the one thing
+it is in an organization for:
 
 ```bash
 kubectl apply -f - <<'EOF'
 apiVersion: repo.github.m.upbound.io/v1alpha1
 kind: Repository
 metadata:
-  name: homelab
+  name: crossplane-check
   namespace: default
-  annotations:
-    crossplane.io/external-name: homelab
 spec:
-  managementPolicies: ["Observe"]
-  forProvider: {}
+  forProvider:
+    visibility: private
 EOF
-kubectl -n default get repository.repo.github.m.upbound.io homelab
+kubectl -n default get repository.repo.github.m.upbound.io crossplane-check
 ```
 
-Expected: `SYNCED True` and `READY True`. `SYNCED False` with a 401 or 404 in
-`kubectl describe` means a wrong ID, a wrong key, or an installation that does
-not include the repository.
+Expected, within a minute: `SYNCED True` and `READY True`, and
+`https://github.com/grnc-homelab/crossplane-check` exists. `SYNCED False` with
+a 401 or 403 in `kubectl describe` means a wrong ID, a wrong key, or a missing
+Administration permission.
 
 Clean up:
 
 ```bash
-kubectl -n default delete repository.repo.github.m.upbound.io homelab
+kubectl -n default delete repository.repo.github.m.upbound.io crossplane-check
 ```
 
-Deleting an observed resource leaves the repository alone.
+Expected: the repository is gone from GitHub too. Deleting a resource Crossplane
+created deletes what it created.
 
 ## Rotating the key
 
