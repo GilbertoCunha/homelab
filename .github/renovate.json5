@@ -135,6 +135,15 @@
     },
     {
       customType: "regex",
+      description: "CRDs read from a tag's files on GitHub",
+      managerFilePatterns: ["/^gitops/crds/base/kustomization\\.yaml$/"],
+      matchStrings: [
+        "https://raw\\.githubusercontent\\.com/(?<depName>[^/\\s]+/[^/\\s]+)/(?<currentValue>v[^/\\s]+)/",
+      ],
+      datasourceTemplate: "github-releases",
+    },
+    {
+      customType: "regex",
       description: "Tools the pull request check installs",
       managerFilePatterns: ["/^\\.github/workflows/.+\\.ya?ml$/"],
       matchStrings: [
@@ -170,6 +179,12 @@
       prBodyNotes: [
         "The chart and the CRDs carry different version numbers. Before merging, check that the chart's `appVersion` is the version the CRDs are fetched at in `gitops/crds/base/kustomization.yaml`.",
       ],
+    },
+    {
+      description: "The kro chart and its CRDs",
+      // The chart's name ends the OCI path; the CRDs are kubernetes-sigs/kro.
+      matchPackageNames: ["/(^|/)kro$/"],
+      groupName: "kro",
     },
 
     {

@@ -1,0 +1,77 @@
+---
+# Manages GitHub as Kubernetes resources: repositories' settings, branches,
+# files, Actions secrets and variables. Built with Upjet, so each resource is
+# the Terraform GitHub provider's resource of the same name.
+#
+# It acts as a GitHub App installed on GilbertoCunha; setting the App up is
+# docs/manual/maintenance/connecting-crossplane-to-github.md.
+#
+# The provider runs Terraform inside its pod, which needs far more memory than
+# the `default` runtime config gives a function. Not yet measured; resize from
+# `kubectl top` once it has run a while.
+#
+# Wave 2, after Crossplane, which registers this kind when it starts. Until it
+# has, the dry run would fail on an unknown kind; see ../functions.yaml.
+apiVersion: pkg.crossplane.io/v1beta1
+kind: DeploymentRuntimeConfig
+metadata:
+  name: provider-upjet-github
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  deploymentTemplate:
+    spec:
+      # Required by the schema. Crossplane replaces it with its own.
+      selector: {}
+      template:
+        spec:
+          # On the system nodes; see docs/concepts/node-pools.md. A config
+          # replaces `default` rather than adding to it, so these repeat it.
+          tolerations:
+            - key: homelab.grncunha.com/pool
+              operator: Equal
+              value: system
+              effect: NoSchedule
+          nodeSelector:
+            homelab.grncunha.com/pool: system
+          containers:
+            - name: package-runtime
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 256Mi
+---
+apiVersion: pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  name: provider-upjet-github
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  package: ghcr.io/crossplane-contrib/provider-upjet-github:v0.20.0
+  runtimeConfigRef:
+    name: provider-upjet-github
+---
+# The credentials every namespaced GitHub resource uses unless it names
+# another config. `default` is the name a resource's `providerConfigRef` falls
+# back to.
+#
+# Wave 3, with the Secret it reads. The provider registers this kind once its
+# package is installed, which can be after the wave starts; on a fresh cluster
+# self-heal retries it.
+apiVersion: github.m.upbound.io/v1beta1
+kind: ClusterProviderConfig
+metadata:
+  name: default
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  credentials:
+    source: Secret
+    secretRef:
+      namespace: crossplane-system
+      name: github-app
+      key: credentials

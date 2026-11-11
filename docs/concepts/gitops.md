@@ -119,9 +119,9 @@ order:
 | --- | --- | --- |
 | -1 | `crds` | — |
 | 0 | kgateway CRDs, sops-secrets-operator, local-path-provisioner | — |
-| 1 | kgateway, cert-manager, crossplane, grafana, victoria-logs, victoria-metrics | Their CRDs established, and a default storage class |
-| 2 | Gateways, `GatewayParameters`, address pool, `ClusterIssuer`, certificates, every `HTTPRoute`, external-dns, Crossplane's functions and runtime config | `GatewayParameters` is a kind kgateway registers; Crossplane registers its own kinds when it starts |
-| 3 | every `SopsSecret` | The operator, and the namespaces the Secrets land in |
+| 1 | kgateway, cert-manager, crossplane, kro, grafana, victoria-logs, victoria-metrics | Their CRDs established, and a default storage class |
+| 2 | Gateways, `GatewayParameters`, address pool, `ClusterIssuer`, certificates, every `HTTPRoute`, external-dns, Crossplane's functions, providers and runtime configs | `GatewayParameters` is a kind kgateway registers; Crossplane registers its own kinds when it starts |
+| 3 | every `SopsSecret`, Crossplane's provider configs | The operator, and the namespaces the Secrets land in; a provider config's kind is registered by its provider |
 | 4 | `cloudflared` | Its credentials, and `gw-public` to dial |
 | 5 | `applications` | The Gateways its routes attach to, and the tunnel anything public arrives through |
 

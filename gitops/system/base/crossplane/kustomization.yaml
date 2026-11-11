@@ -7,3 +7,4 @@ resources:
   - application.yaml
   - runtime-config.yaml
   - functions.yaml
+  - providers
