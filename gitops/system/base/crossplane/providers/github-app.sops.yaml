@@ -1,0 +1,35 @@
+# The GitHub App's credentials, encrypted, and committed. sops-secrets-operator
+# decrypts it in the cluster and writes a Secret named github-app into the
+# crossplane-system namespace, which the GitHub provider's
+# ClusterProviderConfig reads.
+#
+# `credentials` is one JSON document: the owner, the App's ID, its
+# installation's ID and its private key. The values here are placeholders.
+# Filling them in is docs/manual/maintenance/connecting-crossplane-to-github.md.
+apiVersion: isindir.github.com/v1alpha3
+kind: SopsSecret
+metadata:
+    name: github-app
+    namespace: crossplane-system
+    annotations:
+        argocd.argoproj.io/sync-wave: "3"
+spec:
+    secretTemplates:
+        - name: ENC[AES256_GCM,data:pHzB0+jchkqKfA==,iv:n5tLY1WlDA8ho1ItGiuRP53Y62IAcuHdUwNvGlwQS+s=,tag:uY67hQHVXqo2bOBW5GzRUQ==,type:str]
+          stringData:
+            credentials: ENC[AES256_GCM,data:15imSFnpfon38joXfocJUWR0P08JK5AXENgli8rTyMPn2k8bS8QGNungQZ2jJGxScW0dMBWleFCbGdqG8edOUS87B99xsIjLz/brDX2rG+7KKGEDuPdh0+MZ5lfJLFUqyUyw729BER841lNlorSToz6pJQ==,iv:4+zSIpE22ATaNDs/yJBHH1a9db/6nBcfKtHo3rUBaB8=,tag:u2DB+UifkLDQ+LSwbDb7sQ==,type:str]
+sops:
+    age:
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBvVmdaNlhjaEVnSi9DSWVp
+            bUUzVitVUXdZKys4VFBZT2NlK0ZLZjA3a3kwCmlQakZmVS9IZEM4WTRqYlNQUnBL
+            Tno5VTVmNjFlbG9VVDh0b0VoL0ZjeXcKLS0tIEpFZFNBMXlEaXlrNWdwZzR1VER0
+            czI0bjN6MmNOZ0RKUVhheUtoUDR4M3MKYpmXwiRZhdwg1XaBuoCuEuY8PhGxrpEp
+            2p2y/qLMoNk/u+4aQzrudgq5Fg8wLerlmzDZc2M8LKyZasMmFFemEw==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age16y8uf79y5gmc6zpm07mrd5exkuf58pl24gc6ucf4pe6uwvp834hs6k59pk
+    encrypted_suffix: Templates
+    lastmodified: "2026-11-11T20:58:27Z"
+    mac: ENC[AES256_GCM,data:WFbx59NxOVKuKbBjU5hcXUMavue7ls2W8UXmBYkxvcvuom/R/AXUXheKkYqvcT905y8TjhBwvaejMonZB6bE7jZ43+aXoBAshncVAZO8pGFjkbiPw+X6ma0fZGacdFmtsYkX/YesWRjFnqNno75pY0aqZ0N7j+5VrN75nOem2KQ=,iv:X9E/Rr1nxb2HxSNw21f6OqGIabWDQUuVzjCdVjvPv5M=,tag:ylU16DEpoun/dJeRDQ6cag==,type:str]
+    version: 3.13.3

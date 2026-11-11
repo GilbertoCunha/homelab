@@ -18,5 +18,10 @@ resources:
   # CloudNativePG CRDs
   - https://github.com/cloudnative-pg/cloudnative-pg/config/crd?ref=v1.30.1
 
+  # kro CRDs. The release publishes none on their own, so each is read from
+  # the tag's chart.
+  - https://raw.githubusercontent.com/kubernetes-sigs/kro/v0.9.4/helm/crds/kro.run_resourcegraphdefinitions.yaml
+  - https://raw.githubusercontent.com/kubernetes-sigs/kro/v0.9.4/helm/crds/internal.kro.run_graphrevisions.yaml
+
   # sops-secrets-operator CRD, vendored
   - sops-secrets-operator

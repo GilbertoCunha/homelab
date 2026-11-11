@@ -1,0 +1,63 @@
+---
+# kro: turns a `ResourceGraphDefinition` into a new API. Each one names a set
+# of resources and how they depend on each other, and kro serves a CRD whose
+# instances create that set.
+#
+# Wave 1: it needs only the API server and its CRDs, which the crds
+# Application applies at wave -1.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kro
+  namespace: argocd
+  labels:
+    tier: system
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  project: default
+  destination:
+    namespace: kro-system
+    server: https://kubernetes.default.svc
+  source:
+    chart: kro
+    repoURL: registry.k8s.io/kro/charts
+    targetRevision: 0.9.4
+    helm:
+      # CRDs come from gitops/crds instead. Keep that version in step with
+      # this one.
+      skipCrds: true
+      valuesObject:
+        # Left at the chart's `unrestricted`: kro may create any kind, so a
+        # new ResourceGraphDefinition needs no RBAC change. `aggregation`
+        # would grant only what labelled ClusterRoles add.
+        rbac:
+          mode: unrestricted
+        deployment:
+          # On the system nodes; see docs/concepts/node-pools.md.
+          tolerations:
+            - key: homelab.grncunha.com/pool
+              operator: Equal
+              value: system
+              effect: NoSchedule
+          nodeSelector:
+            homelab.grncunha.com/pool: system
+          # Requests only, as elsewhere: the chart's limits are removed so a
+          # burst of reconciles is not throttled. Not yet measured; resize
+          # from `kubectl top` once it has run a while.
+          resources:
+            limits: null
+            requests:
+              cpu: 20m
+              memory: 64Mi
+          # The annotations VictoriaMetrics selects pods by. The port is the
+          # chart's `config.metricsBindAddress`.
+          podAnnotations:
+            prometheus.io/scrape: "true"
+            prometheus.io/port: "8078"
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - ServerSideApply=true

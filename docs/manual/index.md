@@ -23,6 +23,8 @@ Standalone procedures. Read the one you need.
 
 - [Adding a project](./maintenance/adding-a-project.md): somewhere for an
   application to live, which is one file in the catalog
+- [Connecting Crossplane to GitHub](./maintenance/connecting-crossplane-to-github.md):
+  the GitHub App the GitHub provider acts as, and its credentials
 - [Exposing a service](./maintenance/exposing-a-service.md): making a workload
   reachable by name, which is one `HTTPRoute` and nothing else
 - [Receiving alerts](./maintenance/receiving-alerts.md): getting the "is down"
