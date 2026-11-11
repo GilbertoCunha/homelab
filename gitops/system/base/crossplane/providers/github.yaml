@@ -3,7 +3,8 @@
 # files, Actions secrets and variables. Built with Upjet, so each resource is
 # the Terraform GitHub provider's resource of the same name.
 #
-# It acts as a GitHub App installed on GilbertoCunha; setting the App up is
+# It acts as a GitHub App installed on the grnc-homelab organization, so it
+# reaches that organization's repositories and no others. Setting the App up is
 # docs/manual/maintenance/connecting-crossplane-to-github.md.
 #
 # The provider runs Terraform inside its pod, which needs far more memory than
